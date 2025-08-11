@@ -63,7 +63,9 @@ export default function ShopPage() {
   const { addToCart, cartItems, loading: cartLoading, error: cartError, loadingItems } = useCart();
   const { navigateImmediately } = useImmediateNavigation();
   const [startIndex, setStartIndex] = useState(0);
-  const visibleItems = 5;
+  const [visibleItems, setVisibleItems] = useState(6);
+  const [autoScrollInterval, setAutoScrollInterval] = useState<NodeJS.Timeout | null>(null);
+  const [isAutoScrolling, setIsAutoScrolling] = useState(true);
   const [activeFilter, setActiveFilter] = useState<number | null>(null);
   
   // Data states
@@ -549,17 +551,69 @@ export default function ShopPage() {
   );
   const ratings = [1, 2, 3, 4, 5];
 
-  // Carousel navigation
+  // Auto-scroll categories
+  useEffect(() => {
+    if (!isAutoScrolling || categories.length <= visibleItems) return;
+
+    const interval = setInterval(() => {
+      setStartIndex((prevIndex) => {
+        const nextIndex = prevIndex + 1;
+        return nextIndex >= categories.length - visibleItems + 1 ? 0 : nextIndex;
+      });
+    }, 3000); // Auto-scroll every 3 seconds
+
+    setAutoScrollInterval(interval);
+
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [categories.length, visibleItems, isAutoScrolling]);
+
+  // Pause auto-scroll on user interaction
+  const pauseAutoScroll = () => {
+    setIsAutoScrolling(false);
+    if (autoScrollInterval) {
+      clearInterval(autoScrollInterval);
+      setAutoScrollInterval(null);
+    }
+    
+    // Resume auto-scroll after 5 seconds of no interaction
+    setTimeout(() => {
+      setIsAutoScrolling(true);
+    }, 5000);
+  };
+
+  // Update visible items based on screen size
+  useEffect(() => {
+    const updateVisibleItems = () => {
+      if (window.innerWidth >= 1024) {
+        setVisibleItems(6); // Desktop: show 6 items
+      } else if (window.innerWidth >= 768) {
+        setVisibleItems(4); // Tablet: show 4 items
+      } else {
+        setVisibleItems(2); // Mobile: show 2 items
+      }
+    };
+
+    updateVisibleItems();
+    window.addEventListener('resize', updateVisibleItems);
+    return () => window.removeEventListener('resize', updateVisibleItems);
+  }, []);
+
   const nextSlide = () => {
-    setStartIndex(prev => 
-      prev + 1 > categories.length - visibleItems ? 0 : prev + 1
-    );
+    pauseAutoScroll();
+    setStartIndex((prevIndex) => {
+      const nextIndex = prevIndex + 1;
+      return nextIndex >= categories.length - visibleItems + 1 ? 0 : nextIndex;
+    });
   };
 
   const prevSlide = () => {
-    setStartIndex(prev => 
-      prev - 1 < 0 ? categories.length - visibleItems : prev - 1
-    );
+    pauseAutoScroll();
+    setStartIndex((prevIndex) => {
+      const prevIndexNew = prevIndex - 1;
+      return prevIndexNew < 0 ? categories.length - visibleItems : prevIndexNew;
+    });
   };
 
   const toggleFilterOption = (value: string, selected: string[], setSelected: React.Dispatch<React.SetStateAction<string[]>>) => {
@@ -728,14 +782,50 @@ export default function ShopPage() {
 
         {/* Carousel Container */}
         <div className="relative overflow-hidden">
+          {/* Navigation Arrows */}
+          {categories.length > visibleItems && (
+            <>
+              <button
+                onClick={prevSlide}
+                className="absolute left-2 top-1/2 transform -translate-y-1/2 z-10 bg-white/80 hover:bg-white text-gray-700 hover:text-gray-900 rounded-full p-2 shadow-lg transition-all duration-200 hover:scale-110"
+                aria-label="Previous categories"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 sm:h-6 sm:w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+              </button>
+              <button
+                onClick={nextSlide}
+                className="absolute right-2 top-1/2 transform -translate-y-1/2 z-10 bg-white/80 hover:bg-white text-gray-700 hover:text-gray-900 rounded-full p-2 shadow-lg transition-all duration-200 hover:scale-110"
+                aria-label="Next categories"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 sm:h-6 sm:w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
+            </>
+          )}
+
+          {/* Auto-scroll indicator */}
+          {isAutoScrolling && categories.length > visibleItems && (
+            <div className="absolute top-2 right-2 z-10">
+              <div className="bg-blue-500 text-white text-xs px-2 py-1 rounded-full animate-pulse">
+                Auto-scroll
+              </div>
+            </div>
+          )}
+
           <div 
-            className="flex transition-transform duration-300 gap-2 sm:gap-4 py-4"
+            className="flex transition-transform duration-500 gap-2 sm:gap-4 py-4"
             style={{ transform: `translateX(-${startIndex * (100/visibleItems)}%)` }}
           >
             {categories.map((category) => (
               <div key={category.category_id} className="relative">
                 <button
                   onClick={() => {
+                    // Pause auto-scroll on category selection
+                    pauseAutoScroll();
+                    
                     // Immediate visual feedback
                     const newCategory = selectedCategories[0] === category.slug ? [] : [category.slug];
                     setSelectedCategories(newCategory);
@@ -759,9 +849,30 @@ export default function ShopPage() {
                     {category.name}
                   </h3>
                 </button>
-                    </div>
+              </div>
             ))}
-                  </div>
+          </div>
+
+          {/* Progress dots */}
+          {categories.length > visibleItems && (
+            <div className="flex justify-center mt-4 space-x-2">
+              {Array.from({ length: Math.ceil(categories.length / visibleItems) }, (_, i) => (
+                <button
+                  key={i}
+                  onClick={() => {
+                    pauseAutoScroll();
+                    setStartIndex(i * visibleItems);
+                  }}
+                  className={`w-2 h-2 rounded-full transition-all duration-200 ${
+                    i === Math.floor(startIndex / visibleItems) 
+                      ? 'bg-blue-500 w-4' 
+                      : 'bg-gray-300 hover:bg-gray-400'
+                  }`}
+                  aria-label={`Go to page ${i + 1}`}
+                />
+              ))}
+            </div>
+          )}
         </div>
       </div>
 

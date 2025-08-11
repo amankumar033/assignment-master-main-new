@@ -55,6 +55,8 @@ const Categories = () => {
   const ITEM_WIDTH_PX = 116;
   const ITEM_GAP_PX = 25;
   const SCROLL_STEP_PX = ITEM_WIDTH_PX + ITEM_GAP_PX;
+  const [isAutoScrolling, setIsAutoScrolling] = useState(true);
+  const [currentScrollPosition, setCurrentScrollPosition] = useState(0);
 
   useEffect(() => {
     const fetchCategories = async () => {
@@ -144,10 +146,10 @@ const Categories = () => {
     };
   }, []);
 
-  // Auto-scroll the categories row horizontally (every 1s)
+  // Infinite auto-scroll the categories row horizontally
   useEffect(() => {
     const container = categoriesContainerRef.current;
-    if (!container) return;
+    if (!container || !isAutoScrolling || categories.length === 0) return;
 
     // Clear any existing
     if (autoScrollInterval.current) {
@@ -155,21 +157,73 @@ const Categories = () => {
     }
 
     autoScrollInterval.current = setInterval(() => {
-      const maxScrollLeft = container.scrollWidth - container.clientWidth;
-      const nextLeft = container.scrollLeft + SCROLL_STEP_PX;
-      if (nextLeft >= maxScrollLeft - 1) {
-        container.scrollTo({ left: 0, behavior: 'smooth' });
+      if (!container) return;
+      
+      const currentScroll = container.scrollLeft;
+      const maxScroll = container.scrollWidth - container.clientWidth;
+      const singleSetWidth = categories.length * SCROLL_STEP_PX;
+      
+      // If we're near the end of the first set, jump to the second set
+      if (currentScroll >= singleSetWidth - 50) {
+        container.scrollTo({ left: 0, behavior: 'auto' });
       } else {
         container.scrollBy({ left: SCROLL_STEP_PX, behavior: 'smooth' });
       }
-    }, 1000);
+    }, 2000); // Scroll every 2 seconds for smooth infinite effect
 
     return () => {
       if (autoScrollInterval.current) {
         clearInterval(autoScrollInterval.current);
       }
     };
-  }, [categories.length]);
+  }, [categories.length, isAutoScrolling, SCROLL_STEP_PX]);
+
+  // Pause auto-scroll on user interaction
+  const pauseAutoScroll = () => {
+    setIsAutoScrolling(false);
+    if (autoScrollInterval.current) {
+      clearInterval(autoScrollInterval.current);
+      autoScrollInterval.current = null;
+    }
+    
+    // Resume auto-scroll after 5 seconds of no interaction
+    setTimeout(() => {
+      setIsAutoScrolling(true);
+    }, 5000);
+  };
+
+  // Manual navigation with infinite scroll
+  const scrollLeft = () => {
+    pauseAutoScroll();
+    const container = categoriesContainerRef.current;
+    if (!container) return;
+    
+    const currentScroll = container.scrollLeft;
+    const singleSetWidth = categories.length * SCROLL_STEP_PX;
+    
+    if (currentScroll <= SCROLL_STEP_PX) {
+      // Jump to the end of the second set
+      container.scrollTo({ left: singleSetWidth, behavior: 'smooth' });
+    } else {
+      container.scrollBy({ left: -SCROLL_STEP_PX, behavior: 'smooth' });
+    }
+  };
+
+  const scrollRight = () => {
+    pauseAutoScroll();
+    const container = categoriesContainerRef.current;
+    if (!container) return;
+    
+    const currentScroll = container.scrollLeft;
+    const singleSetWidth = categories.length * SCROLL_STEP_PX;
+    
+    if (currentScroll >= singleSetWidth - SCROLL_STEP_PX) {
+      // Jump to the beginning
+      container.scrollTo({ left: 0, behavior: 'smooth' });
+    } else {
+      container.scrollBy({ left: SCROLL_STEP_PX, behavior: 'smooth' });
+    }
+  };
 
   // Rotate first-row advertisement (IDs 1,2,3): one visible at a time, every 2s
   useEffect(() => {
@@ -200,50 +254,57 @@ const Categories = () => {
             <div className="categories-heading">
               <h1 className="text-2xl font-bold text-gray-900">Featured by Categories</h1>
             </div>
+
             <button
               type="button"
-              onClick={() => {
-                const container = categoriesContainerRef.current;
-                if (!container) return;
-                
-                // Stop auto-scroll when user manually navigates
-                if (autoScrollInterval.current) {
-                  clearInterval(autoScrollInterval.current);
-                  autoScrollInterval.current = null;
-                }
-                
-                container.scrollBy({ left: -SCROLL_STEP_PX, behavior: 'smooth' });
-                
-                // Resume auto-scroll after 3 seconds of no manual interaction
-                setTimeout(() => {
-                  if (!autoScrollInterval.current) {
-                    autoScrollInterval.current = setInterval(() => {
-                      const maxScrollLeft = container.scrollWidth - container.clientWidth;
-                      const nextLeft = container.scrollLeft + SCROLL_STEP_PX;
-                      if (nextLeft >= maxScrollLeft - 1) {
-                        container.scrollTo({ left: 0, behavior: 'smooth' });
-                      } else {
-                        container.scrollBy({ left: SCROLL_STEP_PX, behavior: 'smooth' });
-                      }
-                    }, 1000);
-                  }
-                }, 3000);
-              }}
-              className="absolute top-1/2 -translate-y-1/2 z-10 bg-transparent rounded-full p-3 transition-all duration-300 hover:scale-110"
+              onClick={scrollLeft}
+              className="absolute top-1/2 -translate-y-1/2 z-10 bg-white/80 hover:bg-white text-gray-700 hover:text-gray-900 rounded-full p-3 shadow-lg transition-all duration-300 hover:scale-110"
               style={{ left: -60 }}
               aria-label="Scroll left"
             >
-              <svg className="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
               </svg>
             </button>
 
-            <div ref={categoriesContainerRef} className="categories-container">
+            <div 
+              ref={categoriesContainerRef} 
+              className="categories-container"
+              onMouseEnter={pauseAutoScroll}
+              onTouchStart={pauseAutoScroll}
+            >
+              {/* First set of categories */}
               {categories.map((category) => (
                 <div
-                  key={category.category_id}
+                  key={`first-${category.category_id}`}
                   className="category-circle cursor-pointer"
                   onClick={() => {
+                    pauseAutoScroll();
+                    navigate(`/shop?category=${category.slug}`);
+                  }}
+                >
+                  <div className="circle">
+                    <img 
+                      src={`/api/categories/image/${category.category_id}`} 
+                      alt={category.name}
+                      onError={(e) => {
+                        // Replace with placeholder on error
+                        (e.target as HTMLImageElement).src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjQwIiBoZWlnaHQ9IjQwIiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik0yMCAyMEM2LjY2NjcgMjAgMjAgMjAgMjAgMjBDMjAgMjAgMzMuMzMzMyAyMCAyMCAyMFoiIGZpbGw9IiM5Q0EzQUYiLz4KPC9zdmc+';
+                      }}
+                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    />
+                  </div>
+                  <span className="category-label">{category.name}</span>
+                </div>
+              ))}
+              
+              {/* Second set of categories for infinite scroll */}
+              {categories.map((category) => (
+                <div
+                  key={`second-${category.category_id}`}
+                  className="category-circle cursor-pointer"
+                  onClick={() => {
+                    pauseAutoScroll();
                     navigate(`/shop?category=${category.slug}`);
                   }}
                 >
@@ -265,38 +326,12 @@ const Categories = () => {
 
             <button
               type="button"
-              onClick={() => {
-                const container = categoriesContainerRef.current;
-                if (!container) return;
-                
-                // Stop auto-scroll when user manually navigates
-                if (autoScrollInterval.current) {
-                  clearInterval(autoScrollInterval.current);
-                  autoScrollInterval.current = null;
-                }
-                
-                container.scrollBy({ left: SCROLL_STEP_PX, behavior: 'smooth' });
-                
-                // Resume auto-scroll after 3 seconds of no manual interaction
-                setTimeout(() => {
-                  if (!autoScrollInterval.current) {
-                    autoScrollInterval.current = setInterval(() => {
-                      const maxScrollLeft = container.scrollWidth - container.clientWidth;
-                      const nextLeft = container.scrollLeft + SCROLL_STEP_PX;
-                      if (nextLeft >= maxScrollLeft - 1) {
-                        container.scrollTo({ left: 0, behavior: 'smooth' });
-                      } else {
-                        container.scrollBy({ left: SCROLL_STEP_PX, behavior: 'smooth' });
-                      }
-                    }, 1000);
-                  }
-                }, 3000);
-              }}
-              className="absolute top-1/2 -translate-y-1/2 z-10 bg-transparent rounded-full p-3 transition-all duration-300 hover:scale-110"
+              onClick={scrollRight}
+              className="absolute top-1/2 -translate-y-1/2 z-10 bg-white/80 hover:bg-white text-gray-700 hover:text-gray-900 rounded-full p-3 shadow-lg transition-all duration-300 hover:scale-110"
               style={{ right: -60 }}
               aria-label="Scroll right"
             >
-              <svg className="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
               </svg>
             </button>

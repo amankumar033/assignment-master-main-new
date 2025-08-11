@@ -18,6 +18,9 @@ const Categoriesalone = () => {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [autoScrollInterval, setAutoScrollInterval] = useState<NodeJS.Timeout | null>(null);
+  const [isAutoScrolling, setIsAutoScrolling] = useState(true);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   // Background colors for categories
   const bgColors = [
@@ -47,8 +50,62 @@ const Categoriesalone = () => {
 
     fetchCategories();
   }, []);
+
+  // Auto-scroll functionality
+  useEffect(() => {
+    if (!isAutoScrolling || !scrollContainerRef.current || categories.length === 0) return;
+
+    const container = scrollContainerRef.current;
+    const scrollStep = 200; // Scroll by 200px each time
+    const scrollInterval = 3000; // Scroll every 3 seconds
+
+    const interval = setInterval(() => {
+      if (container.scrollLeft >= container.scrollWidth - container.clientWidth) {
+        // Reset to beginning when reaching the end
+        container.scrollTo({ left: 0, behavior: 'smooth' });
+      } else {
+        container.scrollBy({ left: scrollStep, behavior: 'smooth' });
+      }
+    }, scrollInterval);
+
+    setAutoScrollInterval(interval);
+
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [categories.length, isAutoScrolling]);
+
+  // Pause auto-scroll on user interaction
+  const pauseAutoScroll = () => {
+    setIsAutoScrolling(false);
+    if (autoScrollInterval) {
+      clearInterval(autoScrollInterval);
+      setAutoScrollInterval(null);
+    }
+    
+    // Resume auto-scroll after 5 seconds of no interaction
+    setTimeout(() => {
+      setIsAutoScrolling(true);
+    }, 5000);
+  };
+
+  // Manual navigation
+  const scrollLeft = () => {
+    pauseAutoScroll();
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollBy({ left: -200, behavior: 'smooth' });
+    }
+  };
+
+  const scrollRight = () => {
+    pauseAutoScroll();
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollBy({ left: 200, behavior: 'smooth' });
+    }
+  };
+
   return (
-    <div className=" py-5 bg-gray-100">
+    <div className="py-5 bg-gray-100">
       <div className="flex justify-center flex-col">
         <h1 className="text-3xl font-bold text-center text-gray-900 mb-12">
           Featured by Categories
@@ -63,12 +120,49 @@ const Categoriesalone = () => {
             {error}
           </div>
         ) : (
-          <div className="flex justify-center pb-4 scrollbar-hide">
-            <div className="flex space-x-4 min-w-max">
+          <div className="relative max-w-6xl mx-auto px-4">
+            {/* Auto-scroll indicator */}
+            {isAutoScrolling && (
+              <div className="absolute top-0 right-4 z-10">
+                <div className="bg-blue-500 text-white text-xs px-2 py-1 rounded-full animate-pulse">
+                  Auto-scroll
+                </div>
+              </div>
+            )}
+
+            {/* Navigation arrows */}
+            <button
+              onClick={scrollLeft}
+              className="absolute left-2 top-1/2 transform -translate-y-1/2 z-10 bg-white/80 hover:bg-white text-gray-700 hover:text-gray-900 rounded-full p-2 shadow-lg transition-all duration-200 hover:scale-110"
+              aria-label="Scroll left"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
+            </button>
+
+            <button
+              onClick={scrollRight}
+              className="absolute right-2 top-1/2 transform -translate-y-1/2 z-10 bg-white/80 hover:bg-white text-gray-700 hover:text-gray-900 rounded-full p-2 shadow-lg transition-all duration-200 hover:scale-110"
+              aria-label="Scroll right"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+
+            {/* Categories container */}
+            <div 
+              ref={scrollContainerRef}
+              className="flex space-x-4 min-w-max overflow-x-auto scrollbar-hide pb-4"
+              onMouseEnter={pauseAutoScroll}
+              onTouchStart={pauseAutoScroll}
+            >
               {categories.map((category, index) => (
                 <div 
                   key={category.category_id} 
-                  className="flex flex-col items-center group flex-shrink-0"
+                  className="flex flex-col items-center group flex-shrink-0 cursor-pointer"
+                  onClick={pauseAutoScroll}
                 >
                   <div className={`relative w-[100px] h-[100px] rounded-full overflow-hidden shadow-lg ${bgColors[index % bgColors.length]} group-hover:shadow-xl transition-all duration-300 hover:border-3 border-[#F29F05]`}>
                     {category.image ? (
@@ -96,7 +190,6 @@ const Categoriesalone = () => {
           </div>
         )}
       </div>
-     
     </div>
   );
 };

@@ -51,15 +51,6 @@ const LocationPage = () => {
   
   const router = useRouter();
 
-  // Prefetch frequently visited routes to speed up navigation
-  useEffect(() => {
-    try {
-      // @ts-ignore optional prefetch on app router
-      router.prefetch?.('/shop');
-      router.prefetch?.('/location');
-    } catch {}
-  }, [router]);
-
   // Update price range when services are loaded
   useEffect(() => {
     if (services.length > 0) {

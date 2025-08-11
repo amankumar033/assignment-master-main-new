@@ -11,6 +11,9 @@ interface LoadingButtonProps {
   type?: 'button' | 'submit' | 'reset';
   showSpinner?: boolean;
   instantFeedback?: boolean;
+  loadingText?: string;
+  href?: string;
+  onNavigate?: (href: string) => void;
 }
 
 const LoadingButton: React.FC<LoadingButtonProps> = ({
@@ -21,7 +24,10 @@ const LoadingButton: React.FC<LoadingButtonProps> = ({
   disabled = false,
   type = 'button',
   showSpinner = true,
-  instantFeedback = true
+  instantFeedback = true,
+  loadingText,
+  href,
+  onNavigate
 }) => {
   const [isLoading, setIsLoading] = useState(false);
 
@@ -33,7 +39,11 @@ const LoadingButton: React.FC<LoadingButtonProps> = ({
     }
 
     try {
-      if (onClick) {
+      if (href && onNavigate) {
+        // Handle navigation
+        onNavigate(href);
+      } else if (onClick) {
+        // Handle regular click
         await onClick();
       }
     } catch (error) {
@@ -41,10 +51,10 @@ const LoadingButton: React.FC<LoadingButtonProps> = ({
     } finally {
       if (instantFeedback) {
         // Keep loading state for a minimum time for visual feedback
-        setTimeout(() => setIsLoading(false), 300);
+        setTimeout(() => setIsLoading(false), 200); // Reduced from 300ms to 200ms
       }
     }
-  }, [onClick, disabled, isLoading, instantFeedback]);
+  }, [onClick, disabled, isLoading, instantFeedback, href, onNavigate]);
 
   const isDisabled = disabled || isLoading;
 
@@ -56,7 +66,7 @@ const LoadingButton: React.FC<LoadingButtonProps> = ({
       className={`
         ${className}
         ${isLoading ? loadingClassName : ''}
-        transition-all duration-200 ease-out
+        transition-all duration-150 ease-out
         ${isLoading ? 'cursor-not-allowed opacity-80' : 'hover:scale-105 active:scale-95'}
         disabled:opacity-50 disabled:cursor-not-allowed
       `}
@@ -66,7 +76,7 @@ const LoadingButton: React.FC<LoadingButtonProps> = ({
           <div className="animate-spin rounded-full h-4 w-4 border-2 border-current border-t-transparent" />
         )}
         <span className={isLoading ? 'opacity-80' : ''}>
-          {children}
+          {isLoading && loadingText ? loadingText : children}
         </span>
       </div>
     </button>
