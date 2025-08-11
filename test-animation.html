@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Animation Test</title>
+    <style>
+        /* Product flying to cart animation */
+        @keyframes fly-to-cart {
+          0% {
+            transform: scale(1) translate(0, 0);
+            opacity: 1;
+          }
+          25% {
+            transform: scale(1.1) translate(calc(var(--fly-x) * 0.25), calc(var(--fly-y) * 0.25));
+            opacity: 1;
+          }
+          50% {
+            transform: scale(0.9) translate(calc(var(--fly-x) * 0.5), calc(var(--fly-y) * 0.5));
+            opacity: 0.9;
+          }
+          75% {
+            transform: scale(0.6) translate(calc(var(--fly-x) * 0.75), calc(var(--fly-y) * 0.75));
+            opacity: 0.7;
+          }
+          100% {
+            transform: scale(0.2) translate(var(--fly-x), var(--fly-y));
+            opacity: 0;
+          }
+        }
+
+        .animate-fly-to-cart {
+          animation: fly-to-cart 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+          pointer-events: none;
+          position: fixed;
+          z-index: 99999;
+        }
+
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: Arial, sans-serif;
+        }
+
+        .test-button {
+            padding: 10px 20px;
+            background: blue;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 20px;
+        }
+
+        .cart-icon {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            width: 50px;
+            height: 50px;
+            background: red;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="cart-icon">🛒</div>
+    
+    <button class="test-button" onclick="testAnimation()">Test Flying Animation</button>
+    
+    <script>
+        function testAnimation() {
+            console.log('Testing animation...');
+            
+            // Get cart position
+            const cart = document.querySelector('.cart-icon');
+            const cartRect = cart.getBoundingClientRect();
+            const cartX = cartRect.left + cartRect.width / 2;
+            const cartY = cartRect.top + cartRect.height / 2;
+            
+            // Click position (simulate button click)
+            const clickX = 100;
+            const clickY = 100;
+            
+            // Calculate fly distance
+            const flyX = cartX - clickX;
+            const flyY = cartY - clickY;
+            
+            console.log('Cart position:', cartX, cartY);
+            console.log('Click position:', clickX, clickY);
+            console.log('Fly distance:', flyX, flyY);
+            
+            // Create flying element
+            const flyingElement = document.createElement('div');
+            flyingElement.className = 'animate-fly-to-cart';
+            flyingElement.style.cssText = `
+                left: ${clickX}px;
+                top: ${clickY}px;
+                width: 100px;
+                height: 100px;
+                border-radius: 12px;
+                background: white;
+                box-shadow: 0 12px 32px rgba(0,0,0,0.4);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                --fly-x: ${flyX}px;
+                --fly-y: ${flyY}px;
+                border: 3px solid #3b82f6;
+                z-index: 99999;
+            `;
+            
+            // Add test image
+            flyingElement.innerHTML = '<div style="width: 100%; height: 100%; background: linear-gradient(45deg, #3b82f6, #1d4ed8); border-radius: 9px; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold;">TEST</div>';
+            
+            document.body.appendChild(flyingElement);
+            
+            console.log('Flying element created and added to DOM');
+            
+            // Remove element after animation
+            setTimeout(() => {
+                if (flyingElement.parentNode) {
+                    flyingElement.parentNode.removeChild(flyingElement);
+                    console.log('Flying element removed from DOM');
+                }
+            }, 800);
+        }
+    </script>
+</body>
+</html>
