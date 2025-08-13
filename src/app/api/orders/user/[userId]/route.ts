@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
+import { processImageData } from '@/lib/imageUtils';
 
 export async function GET(
   request: NextRequest,
@@ -19,9 +20,18 @@ export async function GET(
       );
     }
 
-    // Get all orders for the user from orders table
+    // Get all orders for the user from orders table with product details
     const ordersResult = await query(
-      'SELECT * FROM kriptocar.orders WHERE user_id = ? ORDER BY order_date DESC',
+      `SELECT 
+        o.*,
+        p.name as product_name,
+        p.sale_price as product_price,
+        p.image_1 as product_image,
+        p.description as product_description
+      FROM kriptocar.orders o
+      LEFT JOIN kriptocar.products p ON o.product_id = p.product_id
+      WHERE o.user_id = ? 
+      ORDER BY o.order_date DESC`,
       [userId]
     ) as any[];
 
@@ -30,15 +40,17 @@ export async function GET(
     const orders = ordersResult.map(order => ({
       order_id: order.order_id,
       user_id: order.user_id,
+      product_id: order.product_id,
+      product_name: order.product_name || 'Product not found',
+      product_price: parseFloat(order.product_price) || 0,
+      product_image: processImageData(order.product_image),
+      product_description: order.product_description,
+      quantity: parseInt(order.qauntity) || 1, // Get quantity from orders table (note: qauntity with typo)
       customer_name: order.customer_name,
       customer_email: order.customer_email,
       customer_phone: order.customer_phone,
-      shipping_address_line1: order.shipping_address_line1,
-      shipping_address_line2: order.shipping_address_line2,
-      shipping_city: order.shipping_city,
-      shipping_state: order.shipping_state,
-      shipping_postal_code: order.shipping_postal_code,
-      shipping_country: order.shipping_country,
+      shipping_address: order.shipping_address,
+      shipping_pincode: order.shipping_pincode,
       order_date: order.order_date,
       order_status: order.order_status,
       total_amount: parseFloat(order.total_amount) || 0,

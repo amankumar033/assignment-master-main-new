@@ -38,7 +38,7 @@ export async function PUT(request: NextRequest) {
         updated_at = NOW()
       WHERE user_id = ?`,
       [
-        formData.fullName || null,
+        formData.full_name || formData.fullName || null, // Support both field names
         formData.phone || null,
         formData.address || null,
         formData.city || null,
@@ -54,10 +54,23 @@ export async function PUT(request: NextRequest) {
       [user_id]
     ) as any[];
 
+    const updatedUser = updatedUsers[0];
     return NextResponse.json({
       success: true,
       message: 'Profile updated successfully',
-      user: updatedUsers[0]
+      user: {
+        user_id: updatedUser.user_id,
+        full_name: updatedUser.full_name || '',
+        name: updatedUser.full_name || '', // Keep for backward compatibility
+        email: updatedUser.email || '',
+        phone: updatedUser.phone || '',
+        address: updatedUser.address || '',
+        city: updatedUser.city || '',
+        state: updatedUser.state || '',
+        pincode: updatedUser.pincode || '',
+        created_at: updatedUser.created_at,
+        updated_at: updatedUser.updated_at
+      }
     });
 
   } catch (error) {

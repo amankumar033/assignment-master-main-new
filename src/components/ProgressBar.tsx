@@ -1,54 +1,47 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { usePathname } from 'next/navigation';
+import React from 'react';
 
-const ProgressBar = () => {
-  const [progress, setProgress] = useState(0);
-  const [isVisible, setIsVisible] = useState(false);
-  const pathname = usePathname();
+interface ProgressBarProps {
+  progress: number; // 0-100
+  message?: string;
+  showPercentage?: boolean;
+  className?: string;
+  color?: 'blue' | 'green' | 'amber' | 'red';
+}
 
-  useEffect(() => {
-    // Reset progress when route changes
-    setProgress(0);
-    setIsVisible(true);
+const ProgressBar: React.FC<ProgressBarProps> = ({
+  progress,
+  message = 'Processing...',
+  showPercentage = true,
+  className = '',
+  color = 'blue'
+}) => {
+  const colorClasses = {
+    blue: 'bg-blue-600',
+    green: 'bg-green-600',
+    amber: 'bg-amber-600',
+    red: 'bg-red-600'
+  };
 
-    // Simulate progress
-    const timer = setTimeout(() => {
-      setProgress(30);
-    }, 100);
-
-    const timer2 = setTimeout(() => {
-      setProgress(60);
-    }, 300);
-
-    const timer3 = setTimeout(() => {
-      setProgress(90);
-    }, 500);
-
-    const timer4 = setTimeout(() => {
-      setProgress(100);
-      setTimeout(() => {
-        setIsVisible(false);
-      }, 200);
-    }, 700);
-
-    return () => {
-      clearTimeout(timer);
-      clearTimeout(timer2);
-      clearTimeout(timer3);
-      clearTimeout(timer4);
-    };
-  }, [pathname]);
-
-  if (!isVisible) return null;
+  const progressColor = colorClasses[color];
 
   return (
-    <div className="fixed top-0 left-0 w-full z-50">
-      <div 
-        className="h-1 bg-blue-600 transition-all duration-300 ease-out"
-        style={{ width: `${progress}%` }}
-      />
+    <div className={`w-full ${className}`}>
+      {message && (
+        <div className="flex justify-between items-center mb-2">
+          <span className="text-sm font-medium text-gray-700">{message}</span>
+          {showPercentage && (
+            <span className="text-sm font-medium text-gray-700">{Math.round(progress)}%</span>
+          )}
+        </div>
+      )}
+      <div className="w-full bg-gray-200 rounded-full h-2">
+        <div
+          className={`${progressColor} h-2 rounded-full transition-all duration-300 ease-out`}
+          style={{ width: `${Math.min(100, Math.max(0, progress))}%` }}
+        />
+      </div>
     </div>
   );
 };

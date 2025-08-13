@@ -207,7 +207,7 @@ export default function Home() {
         >
           <div className='w-[80px] h-[80px] sm:w-[120px] sm:h-[120px] bg-amber-700 rounded-full flex flex-col items-center justify-center absolute top-[150px] sm:top-[250px] right-[50px] sm:right-[260px] z-30 transform -translate-y-1/2 rotate-20'>
             <h1 className='text-sm sm:text-xl font-bold'>From</h1>
-            <h1 className='text-lg sm:text-3xl font-bold'>$3.09</h1>
+            <h1 className='text-lg sm:text-3xl font-bold'>₹250</h1>
           </div>
           <img
             src="/wiper.png"

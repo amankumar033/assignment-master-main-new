@@ -10,7 +10,7 @@ const NavigationEndHandler: React.FC = () => {
     // End navigation when component mounts (page loads)
     const timer = setTimeout(() => {
       endNavigation();
-    }, 100);
+    }, 50);
 
     // Also end navigation when window load event fires
     const handleLoad = () => {

@@ -4,6 +4,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCart } from '@/contexts/CartContext';
+import { formatPrice } from '@/utils/priceUtils';
 import { useToast } from '@/contexts/ToastContext';
 import LoadingPage from '@/components/LoadingPage';
 import { getValidImageSrc, handleImageError } from '@/utils/imageUtils';
@@ -190,7 +191,7 @@ const Page = () => {
                           </button>
                         </div>
                       </div>
-                      <div className="col-span-2 text-center text-black">${(Number(item.price) || 0).toFixed(2)}</div>
+                      <div className="col-span-2 text-center text-black">{formatPrice(item.price)}</div>
                       <div className="col-span-3 flex justify-center">
                         <div className="flex items-center border border-gray-200 rounded">
                           <button 
@@ -224,7 +225,7 @@ const Page = () => {
                         )}
                       </div>
                       <div className="col-span-2 text-center font-bold text-black">
-                        ${((Number(item.price) || 0) * item.quantity).toFixed(2)}
+                        {formatPrice((Number(item.price) || 0) * item.quantity)}
                       </div>
                     </div>
                   );
@@ -283,17 +284,17 @@ const Page = () => {
                 <div className="space-y-3 border-t pt-4">
                   <div className="flex justify-between text-black">
                     <span>Subtotal:</span>
-                    <span>${calculateSubtotal().toFixed(2)}</span>
+                    <span>{formatPrice(calculateSubtotal())}</span>
                   </div>
                   {discount > 0 && (
                     <div className="flex justify-between text-green-600">
                       <span>Discount ({discount}%):</span>
-                      <span>-${(calculateSubtotal() * discount / 100).toFixed(2)}</span>
+                      <span>-{formatPrice(calculateSubtotal() * discount / 100)}</span>
                     </div>
                   )}
                   <div className="flex justify-between font-bold text-lg border-t pt-3 text-black">
                     <span>Total:</span>
-                    <span>${calculateTotal().toFixed(2)}</span>
+                    <span>{formatPrice(calculateTotal())}</span>
                   </div>
                 </div>
 

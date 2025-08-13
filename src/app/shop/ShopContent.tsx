@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
 import { getValidImageSrc, handleImageError } from '@/utils/imageUtils';
+import { formatPrice } from '@/utils/priceUtils';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCart } from '@/contexts/CartContext';
 
@@ -519,8 +520,8 @@ export default function ShopContent() {
                 <h3 className="text-sm font-medium text-gray-900 mb-3">Price Range</h3>
                 <div className="space-y-2">
                   <div className="flex justify-between text-sm text-gray-600">
-                    <span>${priceRange[0]}</span>
-                    <span>${priceRange[1]}</span>
+                    <span>₹{priceRange[0]}</span>
+                    <span>₹{priceRange[1]}</span>
                   </div>
                   <input
                     type="range"
@@ -660,7 +661,7 @@ export default function ShopContent() {
                         </div>
                         {/* Price */}
                         <div className="mb-3">
-                          <p className="text-base sm:text-lg font-bold text-gray-800">${(parseFloat(product.sale_price) || 0).toFixed(2)}</p>
+                          <p className="text-base sm:text-lg font-bold text-gray-800">{formatPrice(product.sale_price)}</p>
                         </div>
                       </div>
                     </Link>

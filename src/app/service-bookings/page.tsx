@@ -3,12 +3,17 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import LoadingPage from '@/components/LoadingPage';
+import { formatPrice } from '@/utils/priceUtils';
 
 type ServiceBooking = {
   service_order_id: number;
   user_id: number;
   service_id: number;
   vendor_id: number;
+  vendor_name: string;
+  vendor_email: string;
+  vendor_phone: string;
+  vendor_address: string;
   service_name: string;
   service_description: string;
   service_category: string;
@@ -189,6 +194,35 @@ const ServiceBookingsPage = () => {
                 </div>
                 
                 <div className="p-6">
+                  {/* Vendor Details */}
+                  <div className="mb-6 p-4 bg-gray-50 rounded-lg">
+                    <h4 className="font-medium text-black mb-3">Vendor Details</h4>
+                    <div className="space-y-2 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Vendor Name:</span>
+                        <span className="font-medium text-black">{booking.vendor_name || 'N/A'}</span>
+                      </div>
+                      {booking.vendor_email && (
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Contact Email:</span>
+                          <span className="text-black">{booking.vendor_email}</span>
+                        </div>
+                      )}
+                      {booking.vendor_phone && (
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Contact Phone:</span>
+                          <span className="text-black">{booking.vendor_phone}</span>
+                        </div>
+                      )}
+                      {booking.vendor_address && (
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Vendor Address:</span>
+                          <span className="text-black">{booking.vendor_address}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     {/* Service Details */}
                     <div>
@@ -196,7 +230,7 @@ const ServiceBookingsPage = () => {
                       <div className="space-y-2 text-sm">
                         <div className="flex justify-between">
                           <span className="text-gray-600">Total Amount:</span>
-                          <span className="font-medium text-black">${Number(booking.final_price).toFixed(2)}</span>
+                          <span className="font-medium text-black">{formatPrice(booking.final_price)}</span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-gray-600">Service Date:</span>

@@ -2,10 +2,10 @@
  
 "use client";
 import { useRef, useEffect } from 'react';
-import { useInstantNavigation } from '@/hooks/useInstantNavigation';
+
 
 export default function Brands() {
-  const { navigate } = useInstantNavigation();
+
   const brands = [
     { id: 1, name: 'Nike', logo: '/brands/images/1.png' },
     { id: 2, name: 'Adidas', logo: '/brands/images/2.png' },
@@ -66,7 +66,20 @@ export default function Brands() {
             <div
               key={brand.id}
               className="flex items-center justify-center bg-white shadow-md hover:shadow-lg transition-all rounded-lg p-2 sm:p-4 lg:p-6 h-16 sm:h-24 lg:h-32 w-[calc(33.333%-1rem)] sm:w-[calc(25%-1.5rem)] lg:w-[calc(14.285%-2.25rem)] cursor-pointer"
-              onClick={() => navigate('/shop')}
+                              onClick={() => {
+                  // Set a timeout to detect slow navigation
+                  const slowNavigationTimeout = setTimeout(() => {
+                    console.log(`🐌 Slow navigation detected for brands`);
+                    document.dispatchEvent(new CustomEvent('navigationStart'));
+                  }, 300);
+                  
+                  window.location.href = '/shop';
+                  
+                  // Clear timeout if navigation was fast
+                  setTimeout(() => {
+                    clearTimeout(slowNavigationTimeout);
+                  }, 500);
+                }}
             >
               <img 
                 src={brand.logo} 

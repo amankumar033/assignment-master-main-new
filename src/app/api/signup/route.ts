@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import { query } from '@/lib/db';
 import { sendWelcomeEmail } from '@/lib/email';
 import { createNotificationWithTemplate } from '@/lib/notifications';
+import { userIdGenerator } from '@/lib/userIdGenerator';
 
 export async function POST(request: Request) {
   try {
@@ -35,11 +36,8 @@ export async function POST(request: Request) {
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(formData.password, salt);
 
-    const maxUser = (await query(
-      'SELECT MAX(CAST(SUBSTRING(user_id, 4) AS UNSIGNED)) as max_num FROM users WHERE user_id LIKE "USR%"'
-    )) as any[];
-    const nextId = (maxUser?.[0]?.max_num || 0) + 1;
-    const userId = `USR${nextId.toString().padStart(6, '0')}`;
+    // Generate user_id using centralized generator with dynamic padding
+    const userId = await userIdGenerator.generateUserId();
 
     await query(
       `INSERT INTO users (

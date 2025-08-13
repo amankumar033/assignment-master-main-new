@@ -39,8 +39,9 @@ export default function Footer() {
               type="email"
               placeholder="Email address"
               className="p-2 sm:p-3 w-full sm:w-60 rounded-l-md text-black bg-white text-xs sm:text-sm"
+              suppressHydrationWarning
             />
-            <button className="bg-[#0052cc] px-3 sm:px-4 rounded-r-md">
+            <button className="bg-[#0052cc] px-3 sm:px-4 rounded-r-md" suppressHydrationWarning>
               <IoIosArrowForward className="text-white text-xl sm:text-2xl" />
             </button>
           </div>

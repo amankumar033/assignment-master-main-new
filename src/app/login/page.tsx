@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/contexts/ToastContext';
-import { useEnhancedTopLoaderNavigation } from '@/hooks/useEnhancedTopLoaderNavigation';
+
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -16,7 +16,7 @@ export default function LoginPage() {
   const router = useRouter();
   const { login } = useAuth();
   const { showToast } = useToast();
-  const { navigateWithOptimization } = useEnhancedTopLoaderNavigation();
+
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -51,8 +51,8 @@ export default function LoginPage() {
         
         showToast('success', 'Login successful! Welcome back.');
         
-        // Redirect to home page with optimized navigation
-        navigateWithOptimization('/');
+        // Redirect to home page with direct navigation
+        router.push('/');
       } else {
         console.log('❌ Login failed:', data.message);
         setError(data.message || 'Login failed');

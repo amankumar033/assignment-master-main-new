@@ -51,7 +51,7 @@ const LoadingButton: React.FC<LoadingButtonProps> = ({
     } finally {
       if (instantFeedback) {
         // Keep loading state for a minimum time for visual feedback
-        setTimeout(() => setIsLoading(false), 200); // Reduced from 300ms to 200ms
+        setTimeout(() => setIsLoading(false), 100); // Reduced from 200ms to 100ms for faster response
       }
     }
   }, [onClick, disabled, isLoading, instantFeedback, href, onNavigate]);
@@ -63,6 +63,7 @@ const LoadingButton: React.FC<LoadingButtonProps> = ({
       type={type}
       onClick={handleClick}
       disabled={isDisabled}
+      suppressHydrationWarning
       className={`
         ${className}
         ${isLoading ? loadingClassName : ''}

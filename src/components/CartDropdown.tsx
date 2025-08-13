@@ -5,34 +5,41 @@ import Image from 'next/image';
 import { useCart } from '@/contexts/CartContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { getValidImageSrc, handleImageError } from '@/utils/imageUtils';
+import { formatPrice } from '@/utils/priceUtils';
 
 type CartDropdownProps = {
   onNavigate: (href: string) => void;
+  onClose: () => void;
 };
 
-const CartDropdown: React.FC<CartDropdownProps> = ({ onNavigate }) => {
-  const { cartItems, updateQuantity, removeFromCart, clearCart, getTotalItems, loadingItems } = useCart();
+const CartDropdown: React.FC<CartDropdownProps> = ({ onNavigate, onClose }) => {
+  const { 
+    cartItems, 
+    updateQuantity, 
+    removeFromCart, 
+    clearCart, 
+    getTotalItems, 
+    loadingItems,
+    getTotalPrice,
+    getDiscountedPrice,
+    applyCoupon: applyCouponToCart,
+    removeCoupon,
+    couponCode,
+    discountPercentage
+  } = useCart();
   const { isLoggedIn } = useAuth();
 
-  const [couponCode, setCouponCode] = useState('');
-  const [discount, setDiscount] = useState(0);
+  const [localCouponCode, setLocalCouponCode] = useState('');
   const [couponMessage, setCouponMessage] = useState('');
 
-  const subtotal = useMemo(
-    () => cartItems.reduce((sum, item) => sum + Number(item.price) * item.quantity, 0),
-    [cartItems]
-  );
-
-  const total = useMemo(() => subtotal - (subtotal * discount) / 100, [subtotal, discount]);
+  const subtotal = getTotalPrice();
+  const total = getDiscountedPrice();
 
   const applyCoupon = () => {
-    const code = couponCode.trim().toLowerCase();
-    if (code === 'coupon10' || code === 'discount10') {
-      setDiscount(10);
-      setCouponMessage('Coupon applied! 10% discount');
-    } else {
-      setDiscount(0);
-      setCouponMessage('Invalid coupon code');
+    const result = applyCouponToCart(localCouponCode);
+    setCouponMessage(result.message);
+    if (result.success) {
+      setLocalCouponCode('');
     }
   };
 
@@ -97,14 +104,26 @@ const CartDropdown: React.FC<CartDropdownProps> = ({ onNavigate }) => {
     >
       <div className="p-3 bg-[#02427A] text-white font-semibold text-sm flex items-center justify-between">
         <span>My Cart ({itemCount})</span>
-        {discount > 0 && (
-          <span className="ml-2 inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full bg-white/20">
-            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4" />
+        <div className="flex items-center gap-2">
+          {discountPercentage > 0 && (
+            <span className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full bg-white/20">
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4" />
+              </svg>
+              {discountPercentage}% OFF
+            </span>
+          )}
+          {/* Close Button */}
+          <button
+            onClick={onClose}
+            className="ml-2 p-1 hover:bg-white/20 rounded transition-colors"
+            title="Close cart"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
-            10% OFF
-          </span>
-        )}
+          </button>
+        </div>
       </div>
       {isAnyLoading && <div className="h-0.5 bg-amber-500 animate-pulse" />}
 
@@ -160,7 +179,7 @@ const CartDropdown: React.FC<CartDropdownProps> = ({ onNavigate }) => {
                     </button>
                   </div>
                 </div>
-                <div className="col-span-4 md:col-span-2 text-center text-amber-700 text-sm font-semibold">${(Number(item.price) || 0).toFixed(2)}</div>
+                <div className="col-span-4 md:col-span-2 text-center text-amber-700 text-sm font-semibold">{formatPrice(item.price)}</div>
                 <div className="col-span-5 md:col-span-3 flex justify-center">
                   <div className="flex items-center border border-gray-200 rounded overflow-hidden">
                     <button
@@ -193,7 +212,7 @@ const CartDropdown: React.FC<CartDropdownProps> = ({ onNavigate }) => {
 
                 </div>
                 <div className="col-span-3 md:col-span-2 text-center font-bold text-[#02427A] text-sm">
-                  ${((Number(item.price) || 0) * item.quantity).toFixed(2)}
+                  {formatPrice((Number(item.price) || 0) * item.quantity)}
                 </div>
               </div>
             );
@@ -216,17 +235,17 @@ const CartDropdown: React.FC<CartDropdownProps> = ({ onNavigate }) => {
       {/* Order Summary (replicated) */}
       <div className="p-3 sm:p-4 border-t bg-gray-50 sticky bottom-0">
         <h2 className="text-lg font-bold mb-3 text-black">Order Summary</h2>
-        {discount > 0 && (
+        {discountPercentage > 0 && (
           <div className="mb-2 flex items-center justify-between">
             <span className="inline-flex items-center gap-1 text-green-700 bg-green-100 px-2 py-0.5 rounded text-xs">
               <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4" />
               </svg>
-              10% discount applied
+              {discountPercentage}% discount applied
             </span>
             <button
               className="text-xs text-red-600 hover:underline"
-              onClick={() => { setDiscount(0); setCouponMessage('Coupon removed'); }}
+              onClick={() => { removeCoupon(); setCouponMessage('Coupon removed'); }}
             >
               Remove
             </button>
@@ -240,8 +259,8 @@ const CartDropdown: React.FC<CartDropdownProps> = ({ onNavigate }) => {
             <input
               type="text"
               id="coupon"
-              value={couponCode}
-              onChange={(e) => setCouponCode(e.target.value)}
+                              value={localCouponCode}
+                              onChange={(e) => setLocalCouponCode(e.target.value)}
               className="flex-1 border border-gray-300 rounded-l px-2.5 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-black text-sm"
               placeholder="Enter coupon code"
             />
@@ -262,17 +281,17 @@ const CartDropdown: React.FC<CartDropdownProps> = ({ onNavigate }) => {
         <div className="space-y-2 border-t pt-3 text-sm">
           <div className="flex justify-between text-black">
             <span>Subtotal:</span>
-            <span>${subtotal.toFixed(2)}</span>
+                            <span>{formatPrice(subtotal)}</span>
           </div>
-          {discount > 0 && (
+                    {discountPercentage > 0 && (
             <div className="flex justify-between text-green-600">
-              <span>Discount ({discount}%):</span>
-              <span>-${((subtotal * discount) / 100).toFixed(2)}</span>
+              <span>Discount ({discountPercentage}%):</span>
+              <span>-{formatPrice((subtotal * discountPercentage) / 100)}</span>
             </div>
           )}
           <div className="flex justify-between font-bold text-base border-t pt-2 text-black">
             <span>Total:</span>
-            <span>${total.toFixed(2)}</span>
+                            <span>{formatPrice(total)}</span>
           </div>
         </div>
 

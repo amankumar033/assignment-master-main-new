@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { useInstantNavigation } from '@/hooks/useInstantNavigation';
+
 
 export default function Manufacturers() {
-  const { navigate } = useInstantNavigation();
+
   const manufacturers1 = [
     { id: 1, name: 'Bosch', logo: '/brands/1.png' },
     { id: 2, name: 'Brembo', logo: '/brands/2.png' },
@@ -82,7 +82,20 @@ export default function Manufacturers() {
       <div className="relative overflow-hidden">
         <div className="flex transition-transform duration-300 " style={{ transform: `translateX(-${startIndex * (100/visibleItems)}%)` }}>
           {manufacturers1.map((brand) => (
-            <div key={brand.id} className="flex-shrink-0 mr-4 cursor-pointer" onClick={() => navigate('/shop')}>
+            <div key={brand.id} className="flex-shrink-0 mr-4 cursor-pointer" onClick={() => {
+              // Set a timeout to detect slow navigation
+              const slowNavigationTimeout = setTimeout(() => {
+                console.log(`🐌 Slow navigation detected for manufacturers`);
+                document.dispatchEvent(new CustomEvent('navigationStart'));
+              }, 300);
+              
+              window.location.href = '/shop';
+              
+              // Clear timeout if navigation was fast
+              setTimeout(() => {
+                clearTimeout(slowNavigationTimeout);
+              }, 500);
+            }}>
               <div className="flex flex-col items-center">
                 <div className="w-30 h-30 rounded-full border-2 border-gray-200 p-2 flex items-center justify-center shadow-md hover:shadow-lg transition-all hover:border-2 hover:border-[#f29f05] bg-gray-100 hover:bg-white ">
                   <img 
@@ -97,7 +110,20 @@ export default function Manufacturers() {
         </div>
         <div className="flex transition-transform duration-300 mt-5" style={{ transform: `translateX(-${startIndex * (100/visibleItems)}%)` }}>
           {manufacturers2.map((brand) => (
-            <div key={brand.id} className="flex-shrink-0 mr-4 cursor-pointer" onClick={() => navigate('/shop')}>
+            <div key={brand.id} className="flex-shrink-0 mr-4 cursor-pointer" onClick={() => {
+              // Set a timeout to detect slow navigation
+              const slowNavigationTimeout = setTimeout(() => {
+                console.log(`🐌 Slow navigation detected for manufacturers`);
+                document.dispatchEvent(new CustomEvent('navigationStart'));
+              }, 300);
+              
+              window.location.href = '/shop';
+              
+              // Clear timeout if navigation was fast
+              setTimeout(() => {
+                clearTimeout(slowNavigationTimeout);
+              }, 500);
+            }}>
               <div className="flex flex-col items-center">
                 <div className="w-30 h-30 rounded-full border-2 border-gray-200 p-2 flex items-center justify-center shadow-md hover:shadow-lg transition-all hover:border-2 hover:border-[#f29f05] bg-gray-100 hover:bg-white ">
                   <img 

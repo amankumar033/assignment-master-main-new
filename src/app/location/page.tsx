@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { formatPrice } from '@/utils/priceUtils';
 
 interface Location {
   latitude: number;
@@ -572,7 +573,7 @@ const LocationPage = () => {
             <div className="w-full px-4 p-6">
               <div className="flex flex-col lg:flex-row gap-4 lg:gap-6">
                 {/* Left Column - Filters */}
-                <div className="w-full lg:w-64 lg:flex-shrink-0">
+                <div className="w-full lg:w-80 lg:flex-shrink-0">
                   {/* Mobile Filter Toggle */}
                   <div className="lg:hidden mb-4">
                     <button
@@ -594,61 +595,81 @@ const LocationPage = () => {
                   {/* Filters Content */}
                   <div className={`${activeFilter === 1 ? 'block' : 'hidden'} lg:block`}>
                     {/* Service Categories Filter */}
-                    <div className="bg-white p-4 rounded-lg shadow">
-                      <h3 className="font-bold text-lg mb-3 pb-2 border-b text-center text-black">Service Categories</h3>
-                      <ul className="space-y-2">
-                        {Array.from(new Set(services.map(s => s.category))).map(category => (
-                          <li key={getDisplayLabel(category, 'uncategorized')}>
-                            <button 
-                              onClick={() => toggleCategory(category)}
-                              className={`w-full text-left px-2 py-1 rounded text-sm transition-colors flex justify-between items-center ${
-                                selectedCategories.includes(category) 
-                                  ? 'bg-blue-100 text-blue-700 font-medium' 
-                                  : 'hover:bg-gray-100 text-gray-700'
-                              }`}
-                            >
-                              <span>{getDisplayLabel(category)}</span>
+                    <div className="bg-gray-300 p-5 rounded-t-lg text-gray-600 ">
+                      <div className="flex justify-between items-center">
+                        <h3 className="font-bold text-gray-600 text-lg">Service Categories</h3>
+                        {selectedCategories.length > 0 && (
+                          <button
+                            onClick={() => setSelectedCategories([])}
+                            className="text-sm text-red-600 underline"
+                          >
+                            Clear All
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                    <ul className="bg-white border text-gray-600  border-t-0 border-gray-200 rounded-b-lg divide-y divide-gray-200">
+                      {Array.from(new Set(services.map(s => s.category))).map(category => (
+                        <li key={getDisplayLabel(category, 'uncategorized')}>
+                          <button 
+                            onClick={() => toggleCategory(category)}
+                            className={`w-full px-5 py-4 text-left flex justify-between items-center transition-all duration-200 ${
+                              selectedCategories.includes(category) 
+                                ? 'bg-blue-100 text-blue-700 font-bold' 
+                                : 'hover:bg-gray-50'
+                            }`}
+                          >
+                            <span className="flex items-center gap-2">
+                              {getDisplayLabel(category)}
                               <span className="text-xs text-gray-500">
                                 ({services.filter(s => s.category === category).length})
                               </span>
-                            </button>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
+                            </span>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
 
                     {/* Service Types Filter */}
-                    <div className="bg-white p-4 rounded-lg shadow mt-6">
-                      <h3 className="font-bold text-lg mb-3 pb-2 border-b text-center text-black">Service Types</h3>
-                      <ul className="space-y-2">
-                        {Array.from(new Set(services.map(s => s.type))).map(type => (
-                          <li key={getDisplayLabel(type, 'other')}>
-                            <button 
-                              onClick={() => toggleType(type)}
-                              className={`w-full text-left px-2 py-1 rounded text-sm transition-colors flex justify-between items-center ${
-                                selectedTypes.includes(type) 
-                                  ? 'bg-blue-100 text-blue-700 font-medium' 
-                                  : 'hover:bg-gray-100 text-gray-700'
-                              }`}
-                            >
-                              <span>{getDisplayLabel(type)}</span>
+                    <div className="bg-gray-300 p-5 rounded-t-lg mt-6">
+                      <div className="flex justify-between items-center">
+                        <h3 className="font-bold text-gray-600  text-lg">Service Types</h3>
+                        {selectedTypes.length > 0 && (
+                          <button
+                            onClick={() => setSelectedTypes([])}
+                            className="text-sm text-red-600 underline"
+                          >
+                            Clear All
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                    <ul className="bg-white border text-gray-600  border-t-0 border-gray-200 rounded-b-lg divide-y divide-gray-200">
+                      {Array.from(new Set(services.map(s => s.type))).map(type => (
+                        <li key={getDisplayLabel(type, 'other')}>
+                          <button 
+                            onClick={() => toggleType(type)}
+                            className={`w-full px-5 py-4 text-left flex justify-between items-center transition-all duration-200 ${
+                              selectedTypes.includes(type) 
+                                ? 'bg-blue-100 text-blue-700 font-bold' 
+                                : 'hover:bg-gray-50'
+                            }`}
+                          >
+                            <span className="flex items-center gap-2">
+                              {getDisplayLabel(type)}
                               <span className="text-xs text-gray-500">
                                 ({services.filter(s => s.type === type).length})
                               </span>
-                            </button>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
+                            </span>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
 
                     {/* Price Range Filter */}
-                    <div className="bg-white p-4 rounded-lg shadow mt-6">
-                      <h3 className="font-bold text-lg mb-3 pb-2 border-b text-center text-black">Price Range</h3>
-                      <div className="space-y-2">
-                        <div className="flex justify-between text-sm text-gray-700">
-                          <span>Min: $0</span>
-                          <span>Max: ${priceRange}</span>
-                        </div>
+                    <div className="bg-white p-5 rounded-lg shadow mt-6">
+                      <h3 className="font-bold text-lg mb-4 pb-2 border-b text-center text-gray-600 ">Price Range</h3>
+                      <div className="px-3 mt-2 text-gray-600 ">
                         <input
                           type="range"
                           min="0"
@@ -659,14 +680,18 @@ const LocationPage = () => {
                             console.log('Price range changed:', newPrice);
                             setPriceRange(newPrice);
                           }}
-                          className="w-full"
+                          className="w-full mb-2 text-gray-600 "
                         />
+                        <div className="flex justify-between text-sm">
+                          <span>₹0</span>
+                          <span>₹{priceRange}</span>
+                        </div>
                       </div>
                     </div>
 
                     {/* Availability Filter */}
-                    <div className="bg-white p-4 rounded-lg shadow mt-6">
-                      <h3 className="font-bold text-lg mb-3 pb-2 border-b text-center text-black">Availability</h3>
+                    <div className="bg-white p-5 rounded-lg shadow mt-6">
+                      <h3 className="font-bold text-lg mb-4 pb-2 border-b text-center text-gray-600 ">Availability</h3>
                       <label className="flex items-center space-x-2 cursor-pointer mt-2">
                         <input
                           type="checkbox"
@@ -682,71 +707,83 @@ const LocationPage = () => {
                     </div>
 
                     {/* Distance Filter */}
-                    <div className="bg-white p-4 rounded-lg shadow mt-6">
-                      <h3 className="font-bold text-lg mb-3 pb-2 border-b text-center text-black">Distance</h3>
-                      <div className="space-y-2">
-                        <label className="flex items-center space-x-2 cursor-pointer">
+                    <div className="bg-gray-300 p-5 rounded-t-lg mt-6">
+                      <div className="flex justify-between items-center">
+                        <h3 className="font-bold text-lg text-gray-600 ">Distance</h3>
+                      </div>
+                    </div>
+                    <ul className="bg-white border border-t-0 border-gray-200 rounded-b-lg divide-y divide-gray-200">
+                      <li>
+                        <label className="flex items-center px-5 py-4 cursor-pointer hover:bg-gray-50">
                           <input 
                             type="radio" 
                             name="distance" 
                             value="5"
                             checked={selectedDistance === '5'}
                             onChange={(e) => handleDistanceChange(e.target.value)}
-                            className="text-blue-600" 
+                            className="text-blue-600 mr-3" 
                           />
                           <span className="text-sm text-gray-700">Within 5 km</span>
                         </label>
-                        <label className="flex items-center space-x-2 cursor-pointer">
+                      </li>
+                      <li>
+                        <label className="flex items-center px-5 py-4 cursor-pointer hover:bg-gray-50">
                           <input 
                             type="radio" 
                             name="distance" 
                             value="10"
                             checked={selectedDistance === '10'}
                             onChange={(e) => handleDistanceChange(e.target.value)}
-                            className="text-blue-600" 
+                            className="text-blue-600 mr-3" 
                           />
                           <span className="text-sm text-gray-700">Within 10 km</span>
                         </label>
-                        <label className="flex items-center space-x-2 cursor-pointer">
+                      </li>
+                      <li>
+                        <label className="flex items-center px-5 py-4 cursor-pointer hover:bg-gray-50">
                           <input 
                             type="radio" 
                             name="distance" 
                             value="25"
                             checked={selectedDistance === '25'}
                             onChange={(e) => handleDistanceChange(e.target.value)}
-                            className="text-blue-600" 
+                            className="text-blue-600 mr-3" 
                           />
                           <span className="text-sm text-gray-700">Within 25 km</span>
                         </label>
-                        <label className="flex items-center space-x-2 cursor-pointer">
+                      </li>
+                      <li>
+                        <label className="flex items-center px-5 py-4 cursor-pointer hover:bg-gray-50">
                           <input 
                             type="radio" 
                             name="distance" 
                             value="50"
                             checked={selectedDistance === '50'}
                             onChange={(e) => handleDistanceChange(e.target.value)}
-                            className="text-blue-600" 
+                            className="text-blue-600 mr-3" 
                           />
                           <span className="text-sm text-gray-700">Within 50 km</span>
                         </label>
-                        <label className="flex items-center space-x-2 cursor-pointer">
+                      </li>
+                      <li>
+                        <label className="flex items-center px-5 py-4 cursor-pointer hover:bg-gray-50">
                           <input 
                             type="radio" 
                             name="distance" 
                             value="any"
                             checked={selectedDistance === 'any'}
                             onChange={(e) => handleDistanceChange(e.target.value)}
-                            className="text-blue-600" 
+                            className="text-blue-600 mr-3" 
                           />
                           <span className="text-sm text-gray-700">Any distance (All services)</span>
                         </label>
-                      </div>
-                    </div>
+                      </li>
+                    </ul>
 
                     {/* Clear Filters Button */}
                     <button
                       onClick={clearAllFilters}
-                      className="w-full mt-6 py-2 bg-gray-200 hover:bg-gray-300 rounded-lg transition font-medium text-gray-700"
+                      className="w-full mt-6 py-3 bg-gray-200 hover:bg-gray-300 rounded-lg transition font-medium text-gray-700"
                     >
                       Clear All Filters
                     </button>
@@ -811,7 +848,7 @@ const LocationPage = () => {
                             </div>
 
                             {/* Price */}
-                            <p className="text-base sm:text-lg font-bold text-black mb-3 mt-auto">${Number(service.base_price).toFixed(2)}</p>
+                            <p className="text-base sm:text-lg font-bold text-black mb-3 mt-auto">{formatPrice(service.base_price)}</p>
 
                             {/* View Service Button */}
                             <button

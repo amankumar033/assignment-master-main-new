@@ -4,6 +4,7 @@ import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import LoadingPage from '@/components/LoadingPage';
+import { formatPrice } from '@/utils/priceUtils';
 
 type ServiceOrder = {
   service_order_id: number;
@@ -202,7 +203,7 @@ const ServiceConfirmationPage = () => {
                 </div>
                 <div>
                   <span className="text-sm text-gray-600">Price:</span>
-                  <p className="font-medium text-black">${Number(ServiceOrder.final_price).toFixed(2)}</p>
+                  <p className="font-medium text-black">{formatPrice(ServiceOrder.final_price)}</p>
                 </div>
               </div>
             </div>

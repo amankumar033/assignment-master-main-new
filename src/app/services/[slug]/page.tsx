@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
+
 import Link from 'next/link';
 import Image from 'next/image';
 import { getValidImageSrc, handleImageError } from '@/utils/imageUtils';
@@ -37,6 +38,7 @@ const ServiceDetailPage = () => {
   const params = useParams();
   const router = useRouter();
   const { user, isLoggedIn } = useAuth();
+
   const [service, setService] = useState<Service | null>(null);
   const [relatedServices, setRelatedServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
@@ -135,6 +137,39 @@ const ServiceDetailPage = () => {
     fetchService();
   }, [serviceId]);
 
+  // Fast navigation to related services with progress bar
+  const handleRelatedServiceClick = async (serviceId: string, event: React.MouseEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+    
+    console.log('Related service clicked:', serviceId);
+    
+    // Show immediate visual feedback
+    const target = event.currentTarget as HTMLElement;
+    target.style.transform = 'scale(0.98)';
+    target.style.transition = 'transform 0.1s ease';
+    
+    // Set a timeout to detect slow navigation
+    const slowNavigationTimeout = setTimeout(() => {
+      console.log(`🐌 Slow navigation detected for service: ${serviceId}`);
+      document.dispatchEvent(new CustomEvent('navigationStart'));
+    }, 300); // Show progress bar if navigation takes longer than 300ms
+    
+    // Navigate with direct router
+    router.push(`/services/${serviceId}`);
+    
+    // Clear timeout if navigation was fast
+    setTimeout(() => {
+      clearTimeout(slowNavigationTimeout);
+    }, 500);
+    
+    // Reset transform after navigation
+    setTimeout(() => {
+      target.style.transform = '';
+      target.style.transition = '';
+    }, 100);
+  };
+
   // Book service functionality - redirect to booking page
   const handleBookService = () => {
     if (!isLoggedIn) {
@@ -214,7 +249,7 @@ const ServiceDetailPage = () => {
         <div className="text-center">
           <h1 className="text-2xl font-bold text-black mb-4">Service Not Found</h1>
           <p className="text-black mb-6">{error || 'The service you are looking for does not exist.'}</p>
-          <Link href="/location" className="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700 transition">
+          <Link href="/location" className="bg-[var(--global-palette10)] text-white px-6 py-2 rounded-md">
             Back to Services
           </Link>
         </div>
@@ -240,7 +275,7 @@ const ServiceDetailPage = () => {
         <nav className="flex mb-8" aria-label="Breadcrumb">
           <ol className="inline-flex items-center space-x-1 md:space-x-2">
             <li className="inline-flex items-center">
-              <Link href="/" className="inline-flex items-center text-sm font-medium text-black hover:text-blue-600">
+              <Link href="/" className="inline-flex items-center text-sm font-medium text-black">
                 <svg className="w-3 h-3 mr-2.5" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
                   <path d="m19.707 9.293-2-2-7-7a1 1 0 0 0-1.414 0l-7 7-2 2a1 1 0 0 0 1.414 1.414L2 10.414V18a2 2 0 0 0 2 2h3a1 1 0 0 0 1-1v-4a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v4a1 1 0 0 0 1 1h3a2 2 0 0 0 2-2v-7.586l.293.293a1 1 0 0 0 1.414-1.414Z"/>
                 </svg>
@@ -252,7 +287,7 @@ const ServiceDetailPage = () => {
                 <svg className="w-3 h-3 text-black mx-1" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 6 10">
                   <path stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="m1 9 4-4-4-4"/>
                 </svg>
-                <Link href="/location" className="ml-1 text-sm font-medium text-black hover:text-blue-600 md:ml-2">
+                <Link href="/location" className="ml-1 text-sm font-medium text-black md:ml-2">
                   Services
                 </Link>
               </div>
@@ -268,72 +303,116 @@ const ServiceDetailPage = () => {
           </ol>
         </nav>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Service Image */}
-          <div className="relative">
-            <div className="aspect-square bg-white rounded-lg overflow-hidden shadow-lg">
-              <div className="w-full h-full bg-gradient-to-br from-blue-50 to-blue-100 flex items-center justify-center">
-                <svg className="w-32 h-32 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="relative lg:col-span-1">
+            <div className="aspect-square max-w-md mx-auto bg-white rounded-xl overflow-hidden shadow-xl border border-gray-100">
+              <div className="w-full h-full bg-gray-50 flex items-center justify-center relative">
+                <svg className="w-24 h-24 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                 </svg>
               </div>
             </div>
             {service.distance && (
-              <div className="absolute top-4 left-4 bg-green-500 text-white text-xs px-2 py-1 rounded">
-                {service.distance} km away
+              <div className="absolute top-3 left-3 bg-green-500 text-white text-xs px-2 py-1 rounded-full font-medium shadow-lg">
+                📍 {service.distance} km
+              </div>
+            )}
+            {!service.is_available && (
+              <div className="absolute top-3 right-3 bg-red-500 text-white text-xs px-2 py-1 rounded-full font-medium shadow-lg">
+                ⚠️ Unavailable
               </div>
             )}
           </div>
 
           {/* Service Details */}
-          <div className="space-y-6">
+          <div className="lg:col-span-2 space-y-6">
             {/* Service Status */}
             {!service.is_available && (
-              <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                <p className="text-red-600 font-medium">⚠️ This service is currently unavailable</p>
+              <div className="bg-red-50 border border-red-200 rounded-xl p-4 shadow-sm">
+                <div className="flex items-center">
+                  <svg className="w-5 h-5 text-red-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                  </svg>
+                  <p className="text-red-600 font-medium">This service is currently unavailable</p>
+                </div>
               </div>
             )}
 
             {/* Service Name */}
-            <h1 className="text-3xl font-bold text-black">{service.name}</h1>
-
-            {/* Rating */}
-            <div className="flex items-center space-x-2">
-              <div className="flex items-center">
-                {renderStars(4.5)} {/* Default rating for services */}
+            <div>
+              <h1 className="text-3xl font-bold text-black mb-2">{service.name}</h1>
+              <div className="flex items-center space-x-4">
+                <div className="flex items-center">
+                  {renderStars(4.5)} {/* Default rating for services */}
+                  <span className="text-black ml-2 font-medium">(4.5/5)</span>
+                </div>
+                <span className="text-gray-400">•</span>
+                <span className="text-sm text-gray-600">{formatDuration(service.duration_minutes)}</span>
               </div>
-              <span className="text-black">(4.5/5)</span>
             </div>
 
             {/* Price */}
-            <div className="space-y-2">
-              <div className="flex items-center space-x-4">
-                <span className="text-3xl font-bold text-black">
+            <div className="bg-white rounded-xl p-6 border border-gray-200">
+              <div className="flex items-baseline space-x-2">
+                <span className="text-4xl font-bold text-[var(--global-palette10)]">
                   {formatPrice(service.base_price)}
                 </span>
-                <span className="text-lg text-gray-500">base price</span>
+                <span className="text-lg text-gray-600">base price</span>
               </div>
+              <p className="text-sm text-gray-500 mt-1">Final price may vary based on requirements</p>
             </div>
 
             {/* Service Info */}
-            <div className="space-y-4">
+            <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+              <h3 className="text-lg font-semibold text-black mb-4">Service Details</h3>
               <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <span className="text-sm font-medium text-black">Category</span>
-                  <p className="text-black">{service.category}</p>
+                <div className="flex items-center space-x-3">
+                  <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+                    <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                    </svg>
+                  </div>
+                  <div>
+                    <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Category</span>
+                    <p className="text-black font-medium">{service.category}</p>
+                  </div>
                 </div>
-                <div>
-                  <span className="text-sm font-medium text-black">Type</span>
-                  <p className="text-black">{service.type}</p>
+                <div className="flex items-center space-x-3">
+                  <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
+                    <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Type</span>
+                    <p className="text-black font-medium">{service.type}</p>
+                  </div>
                 </div>
-                <div>
-                  <span className="text-sm font-medium text-black">Duration</span>
-                  <p className="text-black">{formatDuration(service.duration_minutes)}</p>
+                <div className="flex items-center space-x-3">
+                  <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
+                    <svg className="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Duration</span>
+                    <p className="text-black font-medium">{formatDuration(service.duration_minutes)}</p>
+                  </div>
                 </div>
-                <div>
-                  <span className="text-sm font-medium text-black">Availability</span>
-                  <p className="text-black">{service.is_available ? 'Available' : 'Unavailable'}</p>
+                <div className="flex items-center space-x-3">
+                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${service.is_available ? 'bg-green-100' : 'bg-red-100'}`}>
+                    <svg className={`w-4 h-4 ${service.is_available ? 'text-green-600' : 'text-red-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Status</span>
+                    <p className={`font-medium ${service.is_available ? 'text-green-600' : 'text-red-600'}`}>
+                      {service.is_available ? 'Available' : 'Unavailable'}
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>
@@ -357,18 +436,26 @@ const ServiceDetailPage = () => {
 
             {/* Book Service Section */}
             {service.is_available && (
-              <div className="space-y-4">
-                <button
-                  onClick={handleBookService}
-                  disabled={!isLoggedIn}
-                  className={`w-full py-3 px-6 rounded-lg font-medium transition ${
-                    !isLoggedIn
-                      ? 'bg-gray-300 text-black cursor-not-allowed'
-                      : 'bg-blue-600 text-white hover:bg-blue-700'
-                  }`}
-                >
-                  {isLoggedIn ? 'Book This Service' : 'Login to Book Service'}
-                </button>
+              <div className="bg-white rounded-xl p-4 border border-gray-200">
+                <div className="text-center">
+                  <h3 className="text-lg font-bold mb-1 text-black">Ready to Book?</h3>
+                  <p className="mb-3 text-sm text-gray-600">Get this service scheduled at your convenience</p>
+                  <button
+                    onClick={handleBookService}
+                    disabled={!isLoggedIn}
+                    className={`w-full py-3 px-4 rounded-lg font-semibold text-base ${
+                      !isLoggedIn
+                        ? 'bg-gray-400 text-white cursor-not-allowed'
+                        : 'bg-[var(--global-palette10)] text-white'
+                    }`}
+                  >
+                    {isLoggedIn ? (
+                      'Book This Service'
+                    ) : (
+                      'Login to Book Service'
+                    )}
+                  </button>
+                </div>
               </div>
             )}
 
@@ -431,10 +518,13 @@ const ServiceDetailPage = () => {
             <h2 className="text-2xl font-bold text-black mb-8">Related Services</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
               {relatedServices.map((relatedService) => (
-                <Link key={relatedService.service_id} href={`/services/${relatedService.service_id}`}>
-                  <div className="bg-white rounded-lg shadow overflow-hidden hover:shadow-lg transition cursor-pointer">
-                    <div className="relative h-48 w-full bg-gradient-to-br from-blue-50 to-blue-100 flex items-center justify-center">
-                      <svg className="w-16 h-16 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div 
+                  key={relatedService.service_id} 
+                  className="bg-white rounded-lg shadow overflow-hidden cursor-pointer"
+                  onClick={(e) => handleRelatedServiceClick(relatedService.service_id.toString(), e)}
+                >
+                    <div className="relative h-48 w-full bg-gray-100 flex items-center justify-center">
+                      <svg className="w-16 h-16 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                       </svg>
@@ -467,17 +557,16 @@ const ServiceDetailPage = () => {
                       {/* View Service Button */}
                       <button
                         disabled={!relatedService.is_available}
-                        className={`w-full py-2 rounded-md ${
+                        className={`w-full py-2 rounded-md font-medium ${
                           relatedService.is_available 
-                            ? 'bg-blue-600 hover:bg-blue-700 text-white' 
+                            ? 'bg-[var(--global-palette10)] text-white' 
                             : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                        } transition font-medium`}
+                        }`}
                       >
                         {relatedService.is_available ? 'View Details' : 'Currently Unavailable'}
                       </button>
                     </div>
                   </div>
-                </Link>
               ))}
             </div>
           </div>

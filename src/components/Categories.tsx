@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from 'react';
 import Manufacturers from './Manufactures';
-import { useInstantNavigation } from '@/hooks/useInstantNavigation';
+
 
 interface Category {
   category_id: number;
@@ -21,7 +21,7 @@ interface AdvertisementImage {
 }
 
 const Categories = () => {
-  const { navigate } = useInstantNavigation();
+
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -77,10 +77,12 @@ const Categories = () => {
       }
     };
 
-    fetchCategories();
+    // Small delay to prioritize navigation
+    const timer = setTimeout(fetchCategories, 10); // Reduced from 50ms to 10ms
+    return () => clearTimeout(timer);
   }, []);
 
-  // Fetch advertisements
+  // Fetch advertisements - Non-blocking
   useEffect(() => {
     const fetchAds = async () => {
       try {
@@ -95,7 +97,10 @@ const Categories = () => {
         setAdsLoading(false);
       }
     };
-    fetchAds();
+    
+    // Delay to prioritize navigation
+    const timer = setTimeout(fetchAds, 20); // Reduced from 100ms to 20ms
+    return () => clearTimeout(timer);
   }, []);
 
   // Render all categories; overflow will be horizontally scrollable
@@ -185,11 +190,11 @@ const Categories = () => {
       clearInterval(autoScrollInterval.current);
       autoScrollInterval.current = null;
     }
-    
-    // Resume auto-scroll after 5 seconds of no interaction
-    setTimeout(() => {
-      setIsAutoScrolling(true);
-    }, 5000);
+  };
+
+  // Resume auto-scroll immediately when cursor leaves
+  const resumeAutoScroll = () => {
+    setIsAutoScrolling(true);
   };
 
   // Manual navigation with infinite scroll
@@ -271,7 +276,9 @@ const Categories = () => {
               ref={categoriesContainerRef} 
               className="categories-container"
               onMouseEnter={pauseAutoScroll}
+              onMouseLeave={resumeAutoScroll}
               onTouchStart={pauseAutoScroll}
+              onTouchEnd={resumeAutoScroll}
             >
               {/* First set of categories */}
               {categories.map((category) => (
@@ -280,7 +287,18 @@ const Categories = () => {
                   className="category-circle cursor-pointer"
                   onClick={() => {
                     pauseAutoScroll();
-                    navigate(`/shop?category=${category.slug}`);
+                    // Set a timeout to detect slow navigation
+                    const slowNavigationTimeout = setTimeout(() => {
+                      console.log(`🐌 Slow navigation detected for category: ${category.slug}`);
+                      document.dispatchEvent(new CustomEvent('navigationStart'));
+                    }, 300);
+                    
+                    window.location.href = `/shop?category=${category.slug}`;
+                    
+                    // Clear timeout if navigation was fast
+                    setTimeout(() => {
+                      clearTimeout(slowNavigationTimeout);
+                    }, 500);
                   }}
                 >
                   <div className="circle">
@@ -305,7 +323,18 @@ const Categories = () => {
                   className="category-circle cursor-pointer"
                   onClick={() => {
                     pauseAutoScroll();
-                    navigate(`/shop?category=${category.slug}`);
+                    // Set a timeout to detect slow navigation
+                    const slowNavigationTimeout = setTimeout(() => {
+                      console.log(`🐌 Slow navigation detected for category: ${category.slug}`);
+                      document.dispatchEvent(new CustomEvent('navigationStart'));
+                    }, 300);
+                    
+                    window.location.href = `/shop?category=${category.slug}`;
+                    
+                    // Clear timeout if navigation was fast
+                    setTimeout(() => {
+                      clearTimeout(slowNavigationTimeout);
+                    }, 500);
                   }}
                 >
                   <div className="circle">

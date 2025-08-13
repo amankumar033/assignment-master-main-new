@@ -27,10 +27,20 @@ async function createTestUser() {
     const bcrypt = require('bcryptjs');
     const hashedPassword = await bcrypt.hash('test123', 10);
     
-    // Generate next user ID
-    const [maxUser] = await connection.execute('SELECT MAX(CAST(SUBSTRING(user_id, 4) AS UNSIGNED)) as max_num FROM users WHERE user_id LIKE "USR%"');
-    const nextId = (maxUser[0].max_num || 0) + 1;
-    const newUserId = `USR${nextId.toString().padStart(6, '0')}`;
+    // Generate next user ID using dynamic padding (max two zeros)
+    const [allIds] = await connection.execute('SELECT user_id FROM users ORDER BY user_id');
+    const numbers = (allIds as any[])
+      .map((row: any) => row.user_id)
+      .filter((id: string) => /^USR\d+$/.test(id))
+      .map((id: string) => parseInt(id.slice(3).replace(/^0+/, '') || '0'))
+      .filter((n: number) => n > 0)
+      .sort((a: number, b: number) => a - b);
+    let nextNum = 1;
+    for (let i = 1; i <= Math.max(...numbers, 0) + 10; i++) {
+      if (!numbers.includes(i)) { nextNum = i; break; }
+    }
+    const pad = nextNum >= 100 ? 0 : nextNum >= 10 ? 1 : 2;
+    const newUserId = `USR${nextNum.toString().padStart(pad, '0')}`;
     
     await connection.execute(`
       INSERT INTO users (user_id, full_name, email, password, phone, is_active) 

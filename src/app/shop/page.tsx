@@ -1,13 +1,16 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
 import { getValidImageSrc, handleImageError } from '@/utils/imageUtils';
+import { formatPrice } from '@/utils/priceUtils';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCart } from '@/contexts/CartContext';
-import { useImmediateNavigation } from '@/hooks/useImmediateNavigation';
+
+
+import ProductSkeleton from '@/components/ProductSkeleton';
 
 type Category = {
   category_id: string;
@@ -61,11 +64,9 @@ export default function ShopPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { addToCart, cartItems, loading: cartLoading, error: cartError, loadingItems } = useCart();
-  const { navigateImmediately } = useImmediateNavigation();
+
   const [startIndex, setStartIndex] = useState(0);
   const [visibleItems, setVisibleItems] = useState(6);
-  const [autoScrollInterval, setAutoScrollInterval] = useState<NodeJS.Timeout | null>(null);
-  const [isAutoScrolling, setIsAutoScrolling] = useState(true);
   const [activeFilter, setActiveFilter] = useState<number | null>(null);
   
   // Data states
@@ -80,6 +81,8 @@ export default function ShopPage() {
   const [error, setError] = useState<string | null>(null);
   const [openListCategoryId, setOpenListCategoryId] = useState<string | null>(null);
   const contentRefs = useRef<Record<string, HTMLDivElement | null>>({});
+
+    const [isNavigating, setIsNavigating] = useState(false);
   
   // Filter states
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
@@ -97,6 +100,10 @@ export default function ShopPage() {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [filtersInitialized, setFiltersInitialized] = useState(false);
   const fetchCounterRef = useRef(0);
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [productsPerPage] = useState(16); // 4x4 grid
 
   // Brands accordion states
   const [brandsFromApi, setBrandsFromApi] = useState<string[]>([]);
@@ -166,7 +173,39 @@ export default function ShopPage() {
     }
   };
 
-  
+  // Ultra-fast product navigation with progress bar
+  const handleProductClick = useCallback(async (productSlug: string, event: React.MouseEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+    
+    console.log('Product clicked:', productSlug);
+    
+    // Show immediate visual feedback
+    const target = event.currentTarget as HTMLElement;
+    target.style.transform = 'scale(0.98)';
+    target.style.transition = 'transform 0.1s ease';
+    
+    // Set a timeout to detect slow navigation
+    const slowNavigationTimeout = setTimeout(() => {
+      console.log(`🐌 Slow navigation detected for product: ${productSlug}`);
+      setIsNavigating(true);
+      document.dispatchEvent(new CustomEvent('navigationStart'));
+    }, 300); // Show progress bar if navigation takes longer than 300ms
+    
+    // Use direct navigation
+    router.push(`/products/${productSlug}`);
+    
+    // Reset transform after navigation
+    setTimeout(() => {
+      target.style.transform = '';
+      target.style.transition = '';
+    }, 100);
+    
+    // Clear timeout if navigation was fast (we can't measure this directly, so we'll use a reasonable timeout)
+    setTimeout(() => {
+      clearTimeout(slowNavigationTimeout);
+    }, 500);
+  }, [router]);
 
   // Fetch categories
   const fetchCategories = async () => {
@@ -231,10 +270,12 @@ export default function ShopPage() {
   // Store original stock values to track changes
   const [originalStockValues, setOriginalStockValues] = useState<{ [key: string]: number }>({});
 
-  // Fetch products with filters - Optimized for speed
+  // Fetch products with filters
   const fetchProducts = async () => {
     try {
       setLoading(true);
+      // Show progress bar for product loading
+      document.dispatchEvent(new CustomEvent('navigationStart'));
       const thisFetchId = ++fetchCounterRef.current;
       const params = new URLSearchParams();
       
@@ -243,7 +284,7 @@ export default function ShopPage() {
         params.append('search', searchQuery.trim());
       }
       
-      // Add filter parameters - Optimized for speed
+      // Add filter parameters
       if (selectedCategories.length > 0) {
         params.append('category', selectedCategories[0]);
       }
@@ -265,19 +306,7 @@ export default function ShopPage() {
 
       const apiUrl = `/api/products/all?${params.toString()}`;
       
-      // Use AbortController for faster cancellation
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
-      
-      const response = await fetch(apiUrl, {
-        signal: controller.signal,
-        headers: {
-          'Cache-Control': 'no-cache',
-          'Pragma': 'no-cache'
-        }
-      });
-      
-      clearTimeout(timeoutId);
+      const response = await fetch(apiUrl);
       const data = await response.json();
       
       if (data.success) {
@@ -297,26 +326,54 @@ export default function ShopPage() {
         setError('Failed to fetch products');
       }
     } catch (error: any) {
-      if (error.name === 'AbortError') {
-        console.log('Request was aborted');
-        return;
-      }
       console.error('Error fetching products:', error);
       setError('Failed to fetch products');
     } finally {
       setLoading(false);
+      // Hide progress bar when products finish loading
+      document.dispatchEvent(new CustomEvent('navigationComplete'));
     }
   };
 
   // Prefetch frequent routes and load data on component mount
   useEffect(() => {
-    try {
-      // @ts-ignore optional prefetch on app router
-      router.prefetch?.('/shop');
-      router.prefetch?.('/location');
-    } catch {}
-    fetchCategories();
-    fetchAllFeaturedProducts();
+    // Show progress bar for initial page load
+    if (loading) {
+      document.dispatchEvent(new CustomEvent('navigationStart'));
+    }
+    
+    // Immediate UI setup - don't block navigation
+    const setupUI = () => {
+      try {
+        // @ts-ignore optional prefetch on app router
+        router.prefetch?.('/shop');
+        router.prefetch?.('/location');
+      } catch {}
+    };
+    
+    // Load data in background - non-blocking
+    const loadData = async () => {
+      try {
+        await Promise.all([
+          fetchCategories(),
+          fetchAllFeaturedProducts()
+        ]);
+        // Hide progress bar when initial data loading is complete
+        document.dispatchEvent(new CustomEvent('navigationComplete'));
+      } catch (error) {
+        console.error('Background data loading error:', error);
+        // Hide progress bar even if there's an error
+        document.dispatchEvent(new CustomEvent('navigationComplete'));
+      }
+    };
+    
+    // Setup UI immediately
+    setupUI();
+    
+    // Load data in background with small delay to prioritize navigation
+    const dataTimer = setTimeout(loadData, 20); // Reduced from 100ms to 20ms
+    
+    return () => clearTimeout(dataTimer);
   }, []);
 
   // Keep brands list stable based on baseline; refresh when baseline changes (set inside fetch)
@@ -339,59 +396,69 @@ export default function ShopPage() {
     }
   };
 
-  // Prefetch subcategories for all categories after categories load (best-effort, limited concurrency)
+  // Prefetch subcategories for all categories after categories load (best-effort, limited concurrency) - Non-blocking
   useEffect(() => {
     if (categories.length === 0) return;
     let isCancelled = false;
 
-    const concurrency = 4;
-    const queue = [...categories.map(c => c.category_id)];
+    // Delay prefetching to prioritize navigation
+    const prefetchTimer = setTimeout(() => {
+      const concurrency = 2; // Reduced concurrency
+      const queue = [...categories.map(c => c.category_id)];
 
-    const runNext = async () => {
-      if (isCancelled) return;
-      const id = queue.shift();
-      if (!id) return;
-      if (!subcategoriesByCategory[id]) {
-        await fetchSubcategories(id);
-      }
-      if (!isCancelled && queue.length > 0) {
-        await runNext();
-      }
-    };
+      const runNext = async () => {
+        if (isCancelled) return;
+        const id = queue.shift();
+        if (!id) return;
+        if (!subcategoriesByCategory[id]) {
+          await fetchSubcategories(id);
+        }
+        if (!isCancelled && queue.length > 0) {
+          // Add delay between requests to prevent blocking
+          setTimeout(() => runNext(), 50);
+        }
+      };
 
-    const workers = Array.from({ length: Math.min(concurrency, queue.length) }, () => runNext());
-    Promise.all(workers).catch(() => {});
+      const workers = Array.from({ length: Math.min(concurrency, queue.length) }, () => runNext());
+      Promise.all(workers).catch(() => {});
+    }, 500); // Delay prefetching
 
     return () => {
       isCancelled = true;
+      clearTimeout(prefetchTimer);
     };
   }, [categories]);
 
-  // Prefetch sub-brands for all brands after brands list is derived (best-effort, limited concurrency)
+  // Prefetch sub-brands for all brands after brands list is derived (best-effort, limited concurrency) - Non-blocking
   useEffect(() => {
     if (brandsFromApi.length === 0) return;
     let isCancelled = false;
 
-    const concurrency = 4;
-    const queue = [...brandsFromApi];
+    // Delay prefetching to prioritize navigation
+    const prefetchTimer = setTimeout(() => {
+      const concurrency = 2; // Reduced concurrency
+      const queue = [...brandsFromApi];
 
-    const runNext = async () => {
-      if (isCancelled) return;
-      const name = queue.shift();
-      if (!name) return;
-      if (!subBrandsByBrand[name]) {
-        await fetchSubBrands(name);
-      }
-      if (!isCancelled && queue.length > 0) {
-        await runNext();
-      }
-    };
+      const runNext = async () => {
+        if (isCancelled) return;
+        const name = queue.shift();
+        if (!name) return;
+        if (!subBrandsByBrand[name]) {
+          await fetchSubBrands(name);
+        }
+        if (!isCancelled && queue.length > 0) {
+          // Add delay between requests to prevent blocking
+          setTimeout(() => runNext(), 50);
+        }
+      };
 
-    const workers = Array.from({ length: Math.min(concurrency, queue.length) }, () => runNext());
-    Promise.all(workers).catch(() => {});
+      const workers = Array.from({ length: Math.min(concurrency, queue.length) }, () => runNext());
+      Promise.all(workers).catch(() => {});
+    }, 1000); // Longer delay for sub-brands
 
     return () => {
       isCancelled = true;
+      clearTimeout(prefetchTimer);
     };
   }, [brandsFromApi]);
 
@@ -505,23 +572,21 @@ export default function ShopPage() {
     }
   }, [cartItems, originalStockValues]);
 
-  // Refetch products when filters change (after URL applied) - Optimized for immediate response
+  // Refetch products when filters change (after URL applied)
   useEffect(() => {
     if (!filtersInitialized) return;
     
-    // Immediate fetch for better UX
     const timeoutId = setTimeout(() => {
       fetchProducts();
-    }, 50); // Very short delay to allow URL to update first
+    }, 300);
 
     return () => clearTimeout(timeoutId);
-  }, [filtersInitialized, selectedCategories, selectedSubcategories, priceRange, selectedRatings, inStockOnly, searchQuery]);
+  }, [filtersInitialized, selectedCategories, selectedSubcategories, selectedBrands, selectedSubBrands, selectedRatings, priceRange, inStockOnly, searchQuery]);
 
-  // Sync selected filters to URL via Next router (no reload) - Optimized for immediate response
+  // Sync selected filters to URL via Next router (no reload)
   useEffect(() => {
     if (!filtersInitialized) return;
     
-    // Debounce URL updates to prevent excessive navigation
     const timeoutId = setTimeout(() => {
       const params = new URLSearchParams();
       if (selectedCategories[0]) params.set('category', selectedCategories[0]);
@@ -536,9 +601,8 @@ export default function ShopPage() {
       const newQuery = params.toString();
       if (newQuery === searchParams?.toString()) return;
       
-      // Use immediate navigation for better UX
-      navigateImmediately(`/shop${newQuery ? `?${newQuery}` : ''}`, { replace: true, scroll: false });
-    }, 100); // Reduced debounce time for faster response
+      router.push(`/shop${newQuery ? `?${newQuery}` : ''}`);
+    }, 100);
 
     return () => clearTimeout(timeoutId);
   }, [filtersInitialized, selectedCategories, selectedSubcategories, selectedBrands, selectedSubBrands, priceRange, selectedRatings, inStockOnly, searchQuery, router, searchParams]);
@@ -551,37 +615,7 @@ export default function ShopPage() {
   );
   const ratings = [1, 2, 3, 4, 5];
 
-  // Auto-scroll categories
-  useEffect(() => {
-    if (!isAutoScrolling || categories.length <= visibleItems) return;
 
-    const interval = setInterval(() => {
-      setStartIndex((prevIndex) => {
-        const nextIndex = prevIndex + 1;
-        return nextIndex >= categories.length - visibleItems + 1 ? 0 : nextIndex;
-      });
-    }, 3000); // Auto-scroll every 3 seconds
-
-    setAutoScrollInterval(interval);
-
-    return () => {
-      if (interval) clearInterval(interval);
-    };
-  }, [categories.length, visibleItems, isAutoScrolling]);
-
-  // Pause auto-scroll on user interaction
-  const pauseAutoScroll = () => {
-    setIsAutoScrolling(false);
-    if (autoScrollInterval) {
-      clearInterval(autoScrollInterval);
-      setAutoScrollInterval(null);
-    }
-    
-    // Resume auto-scroll after 5 seconds of no interaction
-    setTimeout(() => {
-      setIsAutoScrolling(true);
-    }, 5000);
-  };
 
   // Update visible items based on screen size
   useEffect(() => {
@@ -601,7 +635,6 @@ export default function ShopPage() {
   }, []);
 
   const nextSlide = () => {
-    pauseAutoScroll();
     setStartIndex((prevIndex) => {
       const nextIndex = prevIndex + 1;
       return nextIndex >= categories.length - visibleItems + 1 ? 0 : nextIndex;
@@ -609,7 +642,6 @@ export default function ShopPage() {
   };
 
   const prevSlide = () => {
-    pauseAutoScroll();
     setStartIndex((prevIndex) => {
       const prevIndexNew = prevIndex - 1;
       return prevIndexNew < 0 ? categories.length - visibleItems : prevIndexNew;
@@ -628,7 +660,7 @@ export default function ShopPage() {
     );
   };
 
-  // Filter products (client-side filtering for multiple selections)
+  // Filter and sort products (unavailable/out-of-stock last)
   const filteredProducts = products.filter(product => {
     // Convert string values to numbers for comparison
     const salePrice = parseFloat(product.sale_price) || 0;
@@ -649,26 +681,39 @@ export default function ShopPage() {
     const priceMatch = salePrice >= priceRange[0] && salePrice <= priceRange[1];
     const stockMatch = !inStockOnly || stockQuantity > 0;
     
-    // Debug: Log which products are being filtered out and why
     // If subcategories selected, additionally match by product subcategory if available
     const subcategoryMatch = selectedSubcategories.length === 0 || selectedSubcategories.includes(product.subcategory_slug || '');
     // If subbrands selected, match by product sub_brand_name
     const subBrandMatch = selectedSubBrands.length === 0 || selectedSubBrands.includes((product as any).sub_brand_name || '');
     const passes = categoryMatch && subcategoryMatch && subBrandMatch && brandMatch && ratingMatch && priceMatch && stockMatch;
-    if (!passes) {
-      console.log(`Product "${product.name}" filtered out:`, {
-        categoryMatch,
-        brandMatch,
-        ratingMatch,
-        priceMatch: `${salePrice} >= ${priceRange[0]} && ${salePrice} <= ${priceRange[1]}`,
-        stockMatch,
-        salePrice,
-        priceRange
-      });
-    }
     
     return passes;
+  }).sort((a, b) => {
+    // Sort products: available first, then unavailable, then out-of-stock
+    const statusA = getProductStatus(a);
+    const statusB = getProductStatus(b);
+    
+    // Available products first
+    if (statusA.status === 'available' && statusB.status !== 'available') return -1;
+    if (statusA.status !== 'available' && statusB.status === 'available') return 1;
+    
+    // Then unavailable, then out-of-stock
+    if (statusA.status === 'unavailable' && statusB.status === 'out-of-stock') return -1;
+    if (statusA.status === 'out-of-stock' && statusB.status === 'unavailable') return 1;
+    
+    return 0;
   });
+
+  // Get paginated products
+  const paginatedProducts = filteredProducts.slice((currentPage - 1) * productsPerPage, currentPage * productsPerPage);
+
+  // Calculate total pages
+  const totalPages = Math.ceil(filteredProducts.length / productsPerPage);
+
+  // Reset to first page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, selectedCategories, selectedSubcategories, selectedBrands, selectedSubBrands, selectedConditions, selectedMaterials, selectedRatings, priceRange, inStockOnly]);
 
   // Debug: Log final counts
   console.log(`Products: ${products.length} fetched, ${filteredProducts.length} displayed`);
@@ -690,13 +735,38 @@ export default function ShopPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 p-6">
-      {/* Breadcrumb Navigation */}
+          <div className="min-h-screen bg-gray-100 p-6">
+        {/* Progress Bar */}
+        {(isNavigating || loading) && (
+          <div className="fixed top-0 left-0 w-full z-[1700]">
+            <div className="h-1 bg-gradient-to-r from-[#D27208] to-orange-500 animate-pulse" style={{ width: '100%' }} />
+          </div>
+        )}
+        
+        {/* Breadcrumb Navigation */}
       <div className="container mx-auto px-4 mb-3">
         <nav className="flex" aria-label="Breadcrumb">
           <ol className="inline-flex items-center space-x-1 md:space-x-2">
             <li className="inline-flex items-center">
-              <Link href="/" className="inline-flex items-center text-sm font-medium text-gray-700">
+              <Link 
+                href="/" 
+                className="inline-flex items-center text-sm font-medium text-gray-700"
+                onClick={(e) => {
+                  e.preventDefault();
+                  // Set a timeout to detect slow navigation
+                  const slowNavigationTimeout = setTimeout(() => {
+                    console.log(`🐌 Slow navigation detected for home`);
+                    document.dispatchEvent(new CustomEvent('navigationStart'));
+                  }, 300);
+                  
+                  router.push('/');
+                  
+                  // Clear timeout if navigation was fast
+                  setTimeout(() => {
+                    clearTimeout(slowNavigationTimeout);
+                  }, 500);
+                }}
+              >
                 <svg className="w-3 h-3 mr-2.5" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
                   <path d="m19.707 9.293-2-2-7-7a1 1 0 0 0-1.414 0l-7 7-2 2a1 1 0 0 0 1.414 1.414L2 10.414V18a2 2 0 0 0 2 2h3a1 1 0 0 0 1-1v-4a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v4a1 1 0 0 0 1 1h3a2 2 0 0 0 2-2v-7.586l.293.293a1 1 0 0 0 1.414-1.414Z"/>
                 </svg>
@@ -740,6 +810,11 @@ export default function ShopPage() {
                     url.searchParams.delete('search');
                     window.history.replaceState({}, '', url.toString());
                   }
+                  
+                  // Trigger product reload with progress bar
+                  if (loading) {
+                    document.dispatchEvent(new CustomEvent('navigationStart'));
+                  }
                 }}
                 className="text-blue-600 text-sm font-medium"
               >
@@ -755,65 +830,42 @@ export default function ShopPage() {
 
       {/* Categories Carousel */}
       <div className="container mx-auto px-4">
-        {/* Header with arrows */}
+        {/* Header */}
         <div className="flex justify-between items-center mb-3">
-          <h2 className="text-xl sm:text-2xl font-bold text-gray-800">Shop</h2>
-          <div className="flex space-x-2">
-            <button 
-              onClick={prevSlide}
-              className="p-1 sm:p-2 rounded-full text-black"
-              aria-label="Previous"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 sm:h-6 sm:w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-              </svg>
-            </button>
-            <button 
-              onClick={nextSlide}
-              className="p-1 sm:p-2 rounded-full text-black"
-              aria-label="Next"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 sm:h-6 sm:w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
-            </button>
+          <div className="flex items-center gap-3">
+            <h2 className="text-xl sm:text-2xl font-bold text-gray-800">Shop</h2>
           </div>
         </div>
 
         {/* Carousel Container */}
         <div className="relative overflow-hidden">
-          {/* Navigation Arrows */}
-          {categories.length > visibleItems && (
-            <>
+          {/* Right-side navigation arrows (icon-only) */}
+          {categories.length > 0 && (
+            <div className="absolute top-[8px]  -translate-y-1/2 right-0 z-10 flex items-center gap-3 p-2">
               <button
+                type="button"
                 onClick={prevSlide}
-                className="absolute left-2 top-1/2 transform -translate-y-1/2 z-10 bg-white/80 hover:bg-white text-gray-700 hover:text-gray-900 rounded-full p-2 shadow-lg transition-all duration-200 hover:scale-110"
                 aria-label="Previous categories"
+                className="p-2 text-gray-700 hover:text-black focus:outline-none"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 sm:h-6 sm:w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
                 </svg>
               </button>
               <button
+                type="button"
                 onClick={nextSlide}
-                className="absolute right-2 top-1/2 transform -translate-y-1/2 z-10 bg-white/80 hover:bg-white text-gray-700 hover:text-gray-900 rounded-full p-2 shadow-lg transition-all duration-200 hover:scale-110"
                 aria-label="Next categories"
+                className="p-2 text-gray-700 hover:text-black focus:outline-none"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 sm:h-6 sm:w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
                 </svg>
               </button>
-            </>
-          )}
-
-          {/* Auto-scroll indicator */}
-          {isAutoScrolling && categories.length > visibleItems && (
-            <div className="absolute top-2 right-2 z-10">
-              <div className="bg-blue-500 text-white text-xs px-2 py-1 rounded-full animate-pulse">
-                Auto-scroll
-              </div>
             </div>
           )}
+
+
 
           <div 
             className="flex transition-transform duration-500 gap-2 sm:gap-4 py-4"
@@ -823,15 +875,12 @@ export default function ShopPage() {
               <div key={category.category_id} className="relative">
                 <button
                   onClick={() => {
-                    // Pause auto-scroll on category selection
-                    pauseAutoScroll();
-                    
                     // Immediate visual feedback
                     const newCategory = selectedCategories[0] === category.slug ? [] : [category.slug];
                     setSelectedCategories(newCategory);
                     
                     // Show loading state immediately
-                    setLoading(true);
+                    setLoading(true); // Resume after 3 seconds
                   }}
                   className={`flex-shrink-0 w-40 sm:w-58 gap-3 sm:gap-5 h-16 sm:h-22 bg-white overflow-hidden flex items-center p-3 sm:p-5 py-4 sm:py-7 border rounded-lg cursor-pointer transition-all duration-200 ${selectedCategories[0] === category.slug ? 'ring-2 ring-blue-500 bg-blue-50' : 'hover:bg-gray-50'}`}
                 >
@@ -860,7 +909,6 @@ export default function ShopPage() {
                 <button
                   key={i}
                   onClick={() => {
-                    pauseAutoScroll();
                     setStartIndex(i * visibleItems);
                   }}
                   className={`w-2 h-2 rounded-full transition-all duration-200 ${
@@ -1033,10 +1081,7 @@ export default function ShopPage() {
                             <span className="text-sm font-medium flex-1">{subcategory.name}</span>
                              <span className="text-xs text-gray-500 mr-2">({allFeaturedProductsRef.current.filter(p => (p.subcategory_slug || '') === subcategory.slug).length})</span>
                             
-                            {/* Arrow indicator */}
-                            <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                            </svg>
+
                           </button>
                         ))}
                       </div>
@@ -1150,8 +1195,8 @@ export default function ShopPage() {
                 className="w-full mb-2"
               />
               <div className="flex justify-between text-sm">
-                <span>${priceRange[0]}</span>
-                <span>${priceRange[1]}</span>
+                                    <span>₹{priceRange[0]}</span>
+                    <span>₹{priceRange[1]}</span>
               </div>
             </div>
           </div>
@@ -1232,7 +1277,7 @@ export default function ShopPage() {
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-2">
             <h2 className="text-xl sm:text-2xl font-bold text-gray-800">Products</h2>
             <div className="text-sm text-gray-500">
-              {loading ? 'Loading...' : `Showing ${filteredProducts.length} of ${products.length} products`}
+              {loading ? 'Loading...' : `Showing ${paginatedProducts.length} of ${filteredProducts.length} products (${totalPages} pages)`}
             </div>
           </div>
 
@@ -1262,12 +1307,21 @@ export default function ShopPage() {
           )}
 
           {/* Products Grid */}
-          {!loading && (
+          {loading ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
+              {[...Array(8)].map((_, index) => (
+                <ProductSkeleton key={index} />
+              ))}
+            </div>
+          ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
-            {filteredProducts.map(product => (
+            {paginatedProducts.map(product => (
   <div key={product.product_id} className="bg-white rounded-lg shadow overflow-hidden flex flex-col h-full">
     {/* Product Image and Name as Link */}
-    <Link href={`/products/${product.slug}`} className="flex flex-col flex-grow" onClick={() => console.log('Product clicked:', product.slug)}> 
+    <div 
+      className="flex flex-col flex-grow cursor-pointer hover:scale-105 transition-transform duration-200"
+      onClick={(e) => handleProductClick(product.slug, e)}
+    > 
       <div className="relative h-40 sm:h-48 w-full">
         <Image
                           src={getValidImageSrc(product.image_1)}
@@ -1303,10 +1357,10 @@ export default function ShopPage() {
         </div>
         {/* Price */}
         <div className="mb-3">
-          <p className="text-base sm:text-lg font-bold text-gray-800">${(parseFloat(product.sale_price) || 0).toFixed(2)}</p>
+                          <p className="text-base sm:text-lg font-bold text-gray-800">{formatPrice(product.sale_price)}</p>
         </div>
       </div>
-    </Link>
+    </div>
     {/* Add to Cart Button (outside Link) */}
     <div className="p-3 sm:p-4 pt-0 mt-auto">
       {(() => {
@@ -1348,6 +1402,84 @@ export default function ShopPage() {
   </div>
 ))}
           </div>
+          )}
+
+          {/* Pagination Controls */}
+          {!loading && totalPages > 1 && (
+            <div className="flex justify-center items-center mt-8 space-x-2">
+              {/* Previous Page */}
+              <button
+                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                disabled={currentPage === 1}
+                className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 ${
+                  currentPage === 1
+                    ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                    : 'bg-blue-600 text-white hover:bg-blue-700 hover:scale-105'
+                }`}
+              >
+                <span className="flex items-center gap-1">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                  </svg>
+                  Previous
+                </span>
+              </button>
+
+              {/* Page Numbers */}
+              <div className="flex space-x-1">
+                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                  let pageNum;
+                  if (totalPages <= 5) {
+                    pageNum = i + 1;
+                  } else if (currentPage <= 3) {
+                    pageNum = i + 1;
+                  } else if (currentPage >= totalPages - 2) {
+                    pageNum = totalPages - 4 + i;
+                  } else {
+                    pageNum = currentPage - 2 + i;
+                  }
+
+                  return (
+                    <button
+                      key={pageNum}
+                      onClick={() => setCurrentPage(pageNum)}
+                      className={`px-3 py-2 rounded-lg font-medium transition-all duration-200 ${
+                        currentPage === pageNum
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                      }`}
+                    >
+                      {pageNum}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Next Page */}
+              <button
+                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                disabled={currentPage === totalPages}
+                className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 ${
+                  currentPage === totalPages
+                    ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                    : 'bg-blue-600 text-white hover:bg-blue-700 hover:scale-105'
+                }`}
+              >
+                <span className="flex items-center gap-1">
+                  Next
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </span>
+              </button>
+            </div>
+          )}
+
+          {/* Page Info */}
+          {!loading && totalPages > 1 && (
+            <div className="text-center mt-4 text-sm text-gray-600">
+              Page {currentPage} of {totalPages} • Showing {((currentPage - 1) * productsPerPage) + 1} to {Math.min(currentPage * productsPerPage, filteredProducts.length)} of {filteredProducts.length} products
+            </div>
           )}
 
           {/* No Products Found Message */}

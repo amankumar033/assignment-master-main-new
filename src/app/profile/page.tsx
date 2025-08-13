@@ -2,7 +2,9 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/contexts/ToastContext';
+import { formatPrice } from '@/utils/priceUtils';
 import Link from 'next/link';
+import ConfirmationModal from '@/components/ConfirmationModal';
 
 type UserProfile = {
   user_id: string | number; // Support both string and number formats
@@ -20,6 +22,12 @@ type UserProfile = {
 type Order = {
   order_id: number;
   user_id: number;
+  product_id: string;
+  product_name: string;
+  product_price: number;
+  product_image: string;
+  product_description: string;
+  quantity: number;
   customer_name: string;
   customer_email: string;
   customer_phone: string;
@@ -45,6 +53,10 @@ type ServiceBooking = {
   user_id: number;
   service_id: number;
   vendor_id: number;
+  vendor_name: string;
+  vendor_email: string;
+  vendor_phone: string;
+  vendor_address: string;
   service_name: string;
   service_description: string;
   service_category: string;
@@ -102,6 +114,7 @@ const ProfilePage = () => {
   // Cancel order/booking loading states
   const [cancellingOrderId, setCancellingOrderId] = useState<string | null>(null);
   const [cancellingBookingId, setCancellingBookingId] = useState<string | null>(null);
+  const [showCancelConfirm, setShowCancelConfirm] = useState<string | null>(null);
 
   // Timeout for loading state
   useEffect(() => {
@@ -241,7 +254,7 @@ const ProfilePage = () => {
       console.log('Fetching recent service bookings for user:', user.user_id);
       
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+      const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
       
       const response = await fetch(`/api/service-orders/user/${user.user_id}`, {
         signal: controller.signal
@@ -317,7 +330,7 @@ const ProfilePage = () => {
       setError(null);
       
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout for save operation
+      const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 second timeout for save operation
       
       const response = await fetch('/api/user/profile/update', {
         method: 'PUT',
@@ -403,7 +416,7 @@ const ProfilePage = () => {
       setError(null);
       
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
+      const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 second timeout
       
       const response = await fetch('/api/user/change-password', {
         method: 'PUT',
@@ -467,7 +480,7 @@ const ProfilePage = () => {
       setError(null);
       
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 20000); // 20 second timeout for delete operation
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout for delete operation
       
       const response = await fetch('/api/user/delete-account', {
         method: 'DELETE',
@@ -538,30 +551,106 @@ const ProfilePage = () => {
     try {
       setCancellingOrderId(orderId);
       showToast('info', 'Cancelling order...');
-      // TODO: Implement actual cancel order API call
-      await new Promise(resolve => setTimeout(resolve, 2000)); // Simulate API call
-      showToast('success', 'Order cancelled successfully!');
-      alert('Order cancellation functionality will be implemented here');
+      
+      const response = await fetch(`/api/orders/${orderId}/cancel`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          new_status: 'Cancelled',
+          updated_by: user?.user_id
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        // Update the order status in the local state
+        setRecentOrders(prevOrders => 
+          prevOrders.map(order => 
+            order.order_id.toString() === orderId 
+              ? { ...order, order_status: 'Cancelled' }
+              : order
+          )
+        );
+        showToast('success', 'Order cancelled successfully!');
+      } else {
+        showToast('error', data.message || 'Failed to cancel order');
+      }
     } catch (error) {
       console.error('Error cancelling order:', error);
       showToast('error', 'Failed to cancel order. Please try again.');
-    } finally {
-      setCancellingOrderId(null);
-    }
-  };
+      } finally {
+    setCancellingOrderId(null);
+    setShowCancelConfirm(null);
+  }
+};
+
+const openCancelConfirmation = (orderId: string) => {
+  setShowCancelConfirm(orderId);
+};
+
+const closeCancelConfirmation = () => {
+  setShowCancelConfirm(null);
+};
 
   // Handle cancel booking
   const handleCancelBooking = async (bookingId: string) => {
+    if (!user?.user_id) {
+      showToast('error', 'User not authenticated');
+      return;
+    }
+
     try {
       setCancellingBookingId(bookingId);
       showToast('info', 'Cancelling booking...');
-      // TODO: Implement actual cancel booking API call
-      await new Promise(resolve => setTimeout(resolve, 2000)); // Simulate API call
-      showToast('success', 'Booking cancelled successfully!');
-      alert('Booking cancellation functionality will be implemented here');
+      
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+      
+      const response = await fetch('/api/service-cancel', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          service_order_id: bookingId,
+          user_id: user.user_id.toString()
+        }),
+        signal: controller.signal
+      });
+
+      clearTimeout(timeoutId);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      
+      if (data.success) {
+        showToast('success', 'Service cancelled successfully!');
+        // Refresh the service bookings to show updated status
+        fetchRecentServiceBookings();
+      } else {
+        setError(data.message || 'Failed to cancel service');
+        showToast('error', data.message || 'Failed to cancel service');
+      }
     } catch (error) {
-      console.error('Error cancelling booking:', error);
-      showToast('error', 'Failed to cancel booking. Please try again.');
+      console.error('Error cancelling service:', error);
+      if (error instanceof Error) {
+        if (error.name === 'AbortError') {
+          setError('Request timed out. Please try again.');
+          showToast('error', 'Request timed out. Please try again.');
+        } else {
+          setError('Failed to cancel service. Please check your connection.');
+          showToast('error', 'Failed to cancel service. Please check your connection.');
+        }
+      } else {
+        setError('Failed to cancel service');
+        showToast('error', 'Failed to cancel service.');
+      }
     } finally {
       setCancellingBookingId(null);
     }
@@ -667,7 +756,21 @@ const ProfilePage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
+    <>
+      {/* Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={!!showCancelConfirm}
+        title="Cancel Order"
+        message="Are you sure you want to cancel this order? This action cannot be undone and will notify the dealer."
+        confirmText="Yes, Cancel Order"
+        cancelText="Keep Order"
+        onConfirm={() => handleCancelOrder(showCancelConfirm!)}
+        onCancel={closeCancelConfirmation}
+        type="danger"
+        isLoading={!!cancellingOrderId}
+      />
+
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
       {/* Header */}
       <div className="bg-white shadow-lg border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -1196,22 +1299,41 @@ const ProfilePage = () => {
                   ) : (
                     <div className="space-y-6">
                       {recentOrders.map((order) => (
-                        <div key={order.order_id} className="bg-white rounded-lg shadow overflow-hidden border border-gray-200">
-                          <div className="px-6 py-4 border-b border-gray-200">
-                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
-                              <div>
-                                <h3 className="text-lg font-semibold text-black">
-                                  Order #{order.order_id}
-                                </h3>
-                                <p className="text-sm text-gray-600">
-                                  Placed on {new Date(order.order_date).toLocaleDateString()}
-                                </p>
+                        <div key={order.order_id} className="bg-white rounded-xl shadow-lg overflow-hidden border border-gray-100 hover:shadow-xl transition-shadow duration-300">
+                          {/* Header with Order Info and Status */}
+                          <div className="px-6 py-5 border-b border-gray-100 bg-gradient-to-r from-green-50 to-emerald-50">
+                            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between">
+                              <div className="flex items-start space-x-4">
+                                <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                                  <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                  </svg>
+                                </div>
+                                <div>
+                                  <h3 className="text-xl font-bold text-gray-900 mb-1">
+                                    Order #{order.order_id}
+                                  </h3>
+                                  <div className="flex items-center space-x-4 text-sm text-gray-600">
+                                    <span className="flex items-center">
+                                      <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                      </svg>
+                                      {new Date(order.order_date).toLocaleDateString()}
+                                    </span>
+                                    <span className="flex items-center">
+                                      <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                                      </svg>
+                                      {order.product_name}
+                                    </span>
+                                  </div>
+                                </div>
                               </div>
-                              <div className="mt-2 sm:mt-0 flex flex-wrap gap-2">
-                                <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(order.order_status)}`}>
+                              <div className="mt-4 lg:mt-0 flex flex-wrap gap-3">
+                                <span className={`px-4 py-2 rounded-full text-sm font-semibold ${getStatusColor(order.order_status)}`}>
                                   {order.order_status}
                                 </span>
-                                <span className={`px-3 py-1 rounded-full text-sm font-medium ${getPaymentStatusColor(order.payment_status)}`}>
+                                <span className={`px-4 py-2 rounded-full text-sm font-semibold ${getPaymentStatusColor(order.payment_status)}`}>
                                   {order.payment_status}
                                 </span>
                               </div>
@@ -1219,69 +1341,188 @@ const ProfilePage = () => {
                           </div>
                           
                           <div className="p-6">
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                              {/* Order Details */}
-                              <div>
-                                <h4 className="font-medium text-black mb-3">Order Details</h4>
-                                <div className="space-y-2 text-sm">
-                                  <div className="flex justify-between">
-                                    <span className="text-gray-600">Total Amount:</span>
-                                    <span className="font-medium text-black">${(Number(order.total_amount) || 0).toFixed(2)}</span>
+                            {/* Order Summary Cards */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                              <div className="bg-white rounded-lg p-4 border border-gray-200 shadow-sm">
+                                <div className="flex items-center">
+                                  <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center mr-3">
+                                    <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+                                    </svg>
                                   </div>
-                                  <div className="flex justify-between">
-                                    <span className="text-gray-600">Payment Method:</span>
-                                    <span className="text-black capitalize">
-                                      {order.payment_method === 'cod' ? 'Cash on Delivery' : order.payment_method}
-                                    </span>
+                                                                     <div>
+                                     <p className="text-xs text-gray-600 font-medium">Total Amount</p>
+                                     <p className="text-lg font-bold text-gray-600">{formatPrice(order.total_amount)}</p>
+                                   </div>
+                                </div>
+                              </div>
+                              
+                              <div className="bg-white rounded-lg p-4 border border-gray-200 shadow-sm">
+                                <div className="flex items-center">
+                                  <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center mr-3">
+                                    <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                                    </svg>
                                   </div>
-                                  {(Number(order.discount_amount) || 0) > 0 && (
-                                    <div className="flex justify-between">
-                                      <span className="text-gray-600">Discount:</span>
-                                      <span className="text-green-600">-${(Number(order.discount_amount) || 0).toFixed(2)}</span>
+                                                                     <div>
+                                     <p className="text-xs text-gray-600 font-medium">Quantity</p>
+                                     <p className="text-lg font-bold text-gray-600">{order.quantity}</p>
+                                   </div>
+                                </div>
+                              </div>
+                              
+                              <div className="bg-white rounded-lg p-4 border border-gray-200 shadow-sm">
+                                <div className="flex items-center">
+                                  <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center mr-3">
+                                    <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                                    </svg>
+                                  </div>
+                                                                     <div>
+                                     <p className="text-xs text-gray-600 font-medium">Payment Method</p>
+                                     <p className="text-lg font-bold text-gray-600 capitalize">
+                                       {order.payment_method === 'cod' ? 'Cash on Delivery' : order.payment_method}
+                                     </p>
+                                   </div>
+                                </div>
+                              </div>
+                              
+                              <div className="bg-white rounded-lg p-4 border border-gray-200 shadow-sm">
+                                <div className="flex items-center">
+                                  <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center mr-3">
+                                    <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                    </svg>
+                                  </div>
+                                  <div>
+                                    <p className="text-xs text-gray-600 font-medium">Order Date</p>
+                                    <p className="text-lg font-bold text-gray-900">{new Date(order.order_date).toLocaleDateString()}</p>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Product and Order Details */}
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                              {/* Product Information */}
+                              <div className="bg-gray-50 rounded-lg p-5 border border-gray-100">
+                                <div className="flex items-center mb-4">
+                                  <div className="w-6 h-6 bg-gray-200 rounded-full flex items-center justify-center mr-3">
+                                    <svg className="w-3 h-3 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                                    </svg>
+                                  </div>
+                                  <h4 className="text-lg font-semibold text-gray-900">Product Information</h4>
+                                </div>
+                                <div className="flex items-center space-x-4 mb-4">
+                                  {order.product_image ? (
+                                    <img 
+                                      src={order.product_image} 
+                                      alt={order.product_name}
+                                      className="w-16 h-16 object-cover rounded-lg border"
+                                      onError={(e) => {
+                                        e.currentTarget.style.display = 'none';
+                                      }}
+                                    />
+                                  ) : (
+                                    <div className="w-16 h-16 bg-gray-200 rounded-lg border flex items-center justify-center">
+                                      <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                      </svg>
                                     </div>
                                   )}
+                                  <div className="flex-1">
+                                    <h5 className="font-semibold text-gray-900 text-lg mb-1">{order.product_name}</h5>
+                                    <p className="text-sm text-gray-600 mb-2">{order.product_description}</p>
+                                    <div className="flex justify-between items-center">
+                                      <span className="text-sm text-gray-600 bg-gray-100 px-2 py-1 rounded">
+                                        Qty: {order.quantity}
+                                      </span>
+                                      <span className="font-semibold text-gray-900">
+                                        {formatPrice(order.product_price)} each
+                                      </span>
+                                    </div>
+                                  </div>
                                 </div>
+                                {(Number(order.discount_amount) || 0) > 0 && (
+                                  <div className="p-3 bg-green-50 rounded-lg border border-green-100">
+                                    <p className="text-sm font-medium text-gray-600 mb-1">Discount Applied</p>
+                                    <p className="text-sm text-green-800">-{formatPrice(order.discount_amount)}</p>
+                                  </div>
+                                )}
                               </div>
 
-                              {/* Shipping Address */}
-                              <div>
-                                <h4 className="font-medium text-black mb-3">Shipping Address</h4>
-                                <div className="text-sm text-gray-600 space-y-1">
-                                  <p>{order.shipping_address_line1}</p>
-                                  {order.shipping_address_line2 && <p>{order.shipping_address_line2}</p>}
-                                  <p>{order.shipping_city}, {order.shipping_state} {order.shipping_postal_code}</p>
-                                  <p>{order.shipping_country}</p>
+                              {/* Shipping Information */}
+                              <div className="bg-gray-50 rounded-lg p-5 border border-gray-100">
+                                <div className="flex items-center mb-4">
+                                  <div className="w-6 h-6 bg-gray-200 rounded-full flex items-center justify-center mr-3">
+                                    <svg className="w-3 h-3 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                                    </svg>
+                                  </div>
+                                  <h4 className="text-lg font-semibold text-gray-900">Shipping Information</h4>
+                                </div>
+                                <div className="space-y-3">
+                                  <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                                    <span className="text-sm text-gray-600">Address</span>
+                                    <span className="text-gray-900 text-right max-w-xs">{order.shipping_address_line1}</span>
+                                  </div>
+                                  {order.shipping_address_line2 && (
+                                    <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                                      <span className="text-sm text-gray-600">Address Line 2</span>
+                                      <span className="text-gray-900 text-right max-w-xs">{order.shipping_address_line2}</span>
+                                    </div>
+                                  )}
+                                  <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                                    <span className="text-sm text-gray-600">City</span>
+                                    <span className="font-medium text-gray-900">{order.shipping_city}</span>
+                                  </div>
+                                  <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                                    <span className="text-sm text-gray-600">State</span>
+                                    <span className="font-medium text-gray-900">{order.shipping_state}</span>
+                                  </div>
+                                  <div className="flex justify-between items-center py-2">
+                                    <span className="text-sm text-gray-600">Postal Code</span>
+                                    <span className="font-medium text-gray-900">{order.shipping_postal_code}</span>
+                                  </div>
                                 </div>
                               </div>
+                            </div>
 
-                              {/* Actions */}
-                              <div>
-                                <h4 className="font-medium text-black mb-3">Actions</h4>
-                                <div className="space-y-2">
-                                  <Link
-                                    href={`/order-confirmation/${order.order_id}`}
-                                    className="block w-full bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700 transition text-center text-sm"
-                                  >
-                                    View Details
-                                  </Link>
-                                                                      {order.order_status.toLowerCase() === 'processing' && (
-                                      <button 
-                                        className="block w-full bg-gray-600 text-white py-2 px-4 rounded hover:bg-gray-700 transition text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                                        onClick={() => handleCancelOrder(order.order_id.toString())}
-                                        disabled={cancellingOrderId === order.order_id.toString()}
-                                      >
-                                        {cancellingOrderId === order.order_id.toString() ? (
-                                          <div className="flex items-center justify-center space-x-2">
-                                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                                            <span>Cancelling...</span>
-                                          </div>
-                                        ) : (
-                                          'Cancel Order'
-                                        )}
-                                      </button>
-                                    )}
-                                </div>
-                              </div>
+                            {/* Actions */}
+                            <div className="mt-6 flex flex-col sm:flex-row gap-3">
+                              <Link
+                                href={`/order-confirmation/${order.order_id}`}
+                                className="flex-1 bg-blue-600 text-white py-3 px-6 rounded-lg hover:bg-blue-700 transition-colors duration-200 text-center font-medium flex items-center justify-center"
+                              >
+                                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                </svg>
+                                View Details
+                              </Link>
+                              {(order.order_status.toLowerCase() === 'pending' || order.order_status.toLowerCase() === 'processing') && (
+                                <button 
+                                  className="flex-1 bg-red-600 text-white py-3 px-6 rounded-lg hover:bg-red-700 transition-colors duration-200 font-medium flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+                                  onClick={() => openCancelConfirmation(order.order_id.toString())}
+                                  disabled={cancellingOrderId === order.order_id.toString()}
+                                >
+                                  {cancellingOrderId === order.order_id.toString() ? (
+                                    <>
+                                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                                      <span>Cancelling...</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                      </svg>
+                                      Cancel Order
+                                    </>
+                                  )}
+                                </button>
+                              )}
                             </div>
                           </div>
                         </div>
@@ -1340,22 +1581,41 @@ const ProfilePage = () => {
                   ) : (
                     <div className="space-y-6">
                       {recentServiceBookings.map((booking) => (
-                        <div key={booking.service_order_id} className="bg-white rounded-lg shadow overflow-hidden border border-gray-200">
-                          <div className="px-6 py-4 border-b border-gray-200">
-                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
-                              <div>
-                                <h3 className="text-lg font-semibold text-black">
-                                  {booking.service_name}
-                                </h3>
-                                <p className="text-sm text-gray-600">
-                                  Booked on {formatDate(booking.booking_date)} • Order #{booking.service_order_id}
-                                </p>
+                        <div key={booking.service_order_id} className="bg-white rounded-xl shadow-lg overflow-hidden border border-gray-100 hover:shadow-xl transition-shadow duration-300">
+                          {/* Header with Service Info and Status */}
+                          <div className="px-6 py-5 border-b border-gray-100 bg-gradient-to-r from-blue-50 to-indigo-50">
+                            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between">
+                              <div className="flex items-start space-x-4">
+                                <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                                  <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                                  </svg>
+                                </div>
+                                <div>
+                                  <h3 className="text-xl font-bold text-gray-900 mb-1">
+                                    {booking.service_name}
+                                  </h3>
+                                  <div className="flex items-center space-x-4 text-sm text-gray-600">
+                                    <span className="flex items-center">
+                                      <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                      </svg>
+                                      {formatDate(booking.booking_date)}
+                                    </span>
+                                    <span className="flex items-center">
+                                      <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                      </svg>
+                                      #{booking.service_order_id}
+                                    </span>
+                                  </div>
+                                </div>
                               </div>
-                              <div className="mt-2 sm:mt-0 flex flex-wrap gap-2">
-                                <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(booking.service_status)}`}>
+                              <div className="mt-4 lg:mt-0 flex flex-wrap gap-3">
+                                <span className={`px-4 py-2 rounded-full text-sm font-semibold ${getStatusColor(booking.service_status)}`}>
                                   {booking.service_status}
                                 </span>
-                                <span className={`px-3 py-1 rounded-full text-sm font-medium ${getPaymentStatusColor(booking.payment_status)}`}>
+                                <span className={`px-4 py-2 rounded-full text-sm font-semibold ${getPaymentStatusColor(booking.payment_status)}`}>
                                   {booking.payment_status}
                                 </span>
                               </div>
@@ -1363,83 +1623,175 @@ const ProfilePage = () => {
                           </div>
                           
                           <div className="p-6">
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                              {/* Service Details */}
-                              <div>
-                                <h4 className="font-medium text-black mb-3">Service Details</h4>
-                                <div className="space-y-2 text-sm">
-                                  <div className="flex justify-between">
-                                    <span className="text-gray-600">Total Amount:</span>
-                                    <span className="font-medium text-black">${Number(booking.final_price).toFixed(2)}</span>
+                            {/* Service Summary Cards */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                              <div className="bg-white rounded-lg p-4 border border-gray-200 shadow-sm">
+                                <div className="flex items-center">
+                                  <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center mr-3">
+                                    <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+                                    </svg>
                                   </div>
-                                  <div className="flex justify-between">
-                                    <span className="text-gray-600">Service Date:</span>
-                                    <span className="text-black">{formatDate(booking.service_date)}</span>
-                                  </div>
-                                  <div className="flex justify-between">
-                                    <span className="text-gray-600">Service Time:</span>
-                                    <span className="text-black">{new Date(`2000-01-01T${booking.service_time}`).toLocaleTimeString('en-US', {
-                                      hour: '2-digit',
-                                      minute: '2-digit',
-                                      hour12: true
-                                    })}</span>
-                                  </div>
-                                  <div className="flex justify-between">
-                                    <span className="text-gray-600">Duration:</span>
-                                    <span className="text-black">{booking.duration_minutes} minutes</span>
-                                  </div>
-                                  <div className="flex justify-between">
-                                    <span className="text-gray-600">Payment Method:</span>
-                                    <span className="text-black capitalize">
-                                      {booking.payment_method === 'cod' ? 'Cash on Delivery' : booking.payment_method}
-                                    </span>
+                                  <div>
+                                    <p className="text-xs text-gray-600 font-medium">Total Amount</p>
+                                    <p className="text-lg font-bold text-gray-900">{formatPrice(booking.final_price)}</p>
                                   </div>
                                 </div>
                               </div>
+                              
+                              <div className="bg-white rounded-lg p-4 border border-gray-200 shadow-sm">
+                                <div className="flex items-center">
+                                  <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center mr-3">
+                                    <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                    </svg>
+                                  </div>
+                                  <div>
+                                    <p className="text-xs text-gray-600 font-medium">Service Date</p>
+                                    <p className="text-lg font-bold text-gray-900">{formatDate(booking.service_date)}</p>
+                                  </div>
+                                </div>
+                              </div>
+                              
+                              <div className="bg-white rounded-lg p-4 border border-gray-200 shadow-sm">
+                                <div className="flex items-center">
+                                  <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center mr-3">
+                                    <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                  </div>
+                                  <div>
+                                    <p className="text-xs text-gray-600 font-medium">Service Time</p>
+                                    <p className="text-lg font-bold text-gray-900">{new Date(`2000-01-01T${booking.service_time}`).toLocaleTimeString('en-US', {
+                                      hour: '2-digit',
+                                      minute: '2-digit',
+                                      hour12: true
+                                    })}</p>
+                                  </div>
+                                </div>
+                              </div>
+                              
+                              <div className="bg-white rounded-lg p-4 border border-gray-200 shadow-sm">
+                                <div className="flex items-center">
+                                  <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center mr-3">
+                                    <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                  </div>
+                                  <div>
+                                    <p className="text-xs text-gray-600 font-medium">Duration</p>
+                                    <p className="text-lg font-bold text-gray-900">{booking.duration_minutes} min</p>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
 
-                              {/* Service Address */}
-                              <div>
-                                <h4 className="font-medium text-black mb-3">Service Address</h4>
-                                <div className="text-sm text-gray-600 space-y-1">
-                                  <p>{booking.service_address}</p>
-                                  <p>Pincode: {booking.service_pincode}</p>
-                                  {booking.additional_notes && (
-                                    <div className="mt-2">
-                                      <p className="font-medium text-black">Additional Notes:</p>
-                                      <p>{booking.additional_notes}</p>
+                            {/* Vendor and Service Details */}
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                              {/* Vendor Information */}
+                              <div className="bg-gray-50 rounded-lg p-5 border border-gray-100">
+                                <div className="flex items-center mb-4">
+                                  <div className="w-6 h-6 bg-gray-200 rounded-full flex items-center justify-center mr-3">
+                                    <svg className="w-3 h-3 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                                    </svg>
+                                  </div>
+                                  <h4 className="text-lg font-semibold text-gray-900">Vendor Information</h4>
+                                </div>
+                                <div className="space-y-3">
+                                  <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                                    <span className="text-sm text-gray-600">Vendor Name</span>
+                                    <span className="font-medium text-gray-900">{booking.vendor_name || 'N/A'}</span>
+                                  </div>
+                                  {booking.vendor_email && (
+                                    <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                                      <span className="text-sm text-gray-600">Contact Email</span>
+                                      <span className="text-gray-900">{booking.vendor_email}</span>
+                                    </div>
+                                  )}
+                                  {booking.vendor_phone && (
+                                    <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                                      <span className="text-sm text-gray-600">Contact Phone</span>
+                                      <span className="text-gray-900">{booking.vendor_phone}</span>
+                                    </div>
+                                  )}
+                                  {booking.vendor_address && (
+                                    <div className="flex justify-between items-center py-2">
+                                      <span className="text-sm text-gray-600">Address</span>
+                                      <span className="text-gray-900 text-right max-w-xs">{booking.vendor_address}</span>
                                     </div>
                                   )}
                                 </div>
                               </div>
 
-                              {/* Actions */}
-                              <div>
-                                <h4 className="font-medium text-black mb-3">Actions</h4>
-                                <div className="space-y-2">
-                                  <Link
-                                    href={`/service-confirmation/${booking.service_order_id}`}
-                                    className="block w-full bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700 transition text-center text-sm"
-                                  >
-                                    View Details
-                                  </Link>
-                                  {['pending','scheduled'].includes(booking.service_status.toLowerCase()) && (
-                                    <button 
-                                      className="block w-full bg-gray-600 text-white py-2 px-4 rounded hover:bg-gray-700 transition text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                                      onClick={() => handleCancelBooking(booking.service_order_id.toString())}
-                                      disabled={cancellingBookingId === booking.service_order_id.toString()}
-                                    >
-                                      {cancellingBookingId === booking.service_order_id.toString() ? (
-                                        <div className="flex items-center justify-center space-x-2">
-                                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                                          <span>Cancelling...</span>
-                                        </div>
-                                      ) : (
-                                        'Cancel Booking'
-                                      )}
-                                    </button>
-                                  )}
+                              {/* Service Details */}
+                              <div className="bg-gray-50 rounded-lg p-5 border border-gray-100">
+                                <div className="flex items-center mb-4">
+                                  <div className="w-6 h-6 bg-gray-200 rounded-full flex items-center justify-center mr-3">
+                                    <svg className="w-3 h-3 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                                    </svg>
+                                  </div>
+                                  <h4 className="text-lg font-semibold text-gray-900">Service Details</h4>
                                 </div>
+                                <div className="space-y-3">
+                                  <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                                    <span className="text-sm text-gray-600">Payment Method</span>
+                                    <span className="font-medium text-gray-900 capitalize">
+                                      {booking.payment_method === 'cod' ? 'Cash on Delivery' : booking.payment_method}
+                                    </span>
+                                  </div>
+                                  <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                                    <span className="text-sm text-gray-600">Service Address</span>
+                                    <span className="text-gray-900 text-right max-w-xs">{booking.service_address}</span>
+                                  </div>
+                                  <div className="flex justify-between items-center py-2">
+                                    <span className="text-sm text-gray-600">Pincode</span>
+                                    <span className="font-medium text-gray-900">{booking.service_pincode}</span>
+                                  </div>
+                                </div>
+                                {booking.additional_notes && (
+                                  <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-100">
+                                    <p className="text-sm font-medium text-blue-900 mb-1">Additional Notes</p>
+                                    <p className="text-sm text-blue-800">{booking.additional_notes}</p>
+                                  </div>
+                                )}
                               </div>
+                            </div>
+
+                            {/* Actions */}
+                            <div className="mt-6 flex flex-col sm:flex-row gap-3">
+                              <Link
+                                href={`/service-confirmation/${booking.service_order_id}`}
+                                className="flex-1 bg-blue-600 text-white py-3 px-6 rounded-lg hover:bg-blue-700 transition-colors duration-200 text-center font-medium flex items-center justify-center"
+                              >
+                                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                </svg>
+                                View Details
+                              </Link>
+                              {['pending','scheduled'].includes(booking.service_status.toLowerCase()) && (
+                                <button 
+                                  className="flex-1 bg-red-600 text-white py-3 px-6 rounded-lg hover:bg-red-700 transition-colors duration-200 font-medium flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+                                  onClick={() => handleCancelBooking(booking.service_order_id.toString())}
+                                  disabled={cancellingBookingId === booking.service_order_id.toString()}
+                                >
+                                  {cancellingBookingId === booking.service_order_id.toString() ? (
+                                    <>
+                                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                                      <span>Cancelling...</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                      </svg>
+                                      Cancel Booking
+                                    </>
+                                  )}
+                                </button>
+                              )}
                             </div>
                           </div>
                         </div>
@@ -1595,6 +1947,7 @@ const ProfilePage = () => {
         </div>
       )}
     </div>
+    </>
   );
 };
 

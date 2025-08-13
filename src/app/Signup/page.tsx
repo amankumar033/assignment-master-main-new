@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/contexts/ToastContext';
-import { useEnhancedTopLoaderNavigation } from '@/hooks/useEnhancedTopLoaderNavigation';
+
 
 export default function SignupPage() {
   const [formData, setFormData] = useState({
@@ -25,7 +25,7 @@ export default function SignupPage() {
   const router = useRouter();
   const { login } = useAuth();
   const { showToast } = useToast();
-  const { navigateWithOptimization } = useEnhancedTopLoaderNavigation();
+
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -103,16 +103,16 @@ export default function SignupPage() {
           if (loginResponse.ok && loginData.success) {
             login(loginData.user, loginData.token);
             showToast('success', 'Welcome! You are now logged in.');
-            navigateWithOptimization('/');
+            router.push('/');
           } else {
             // If auto-login fails, redirect to login page
             showToast('info', 'Account created! Please log in to continue.');
-            navigateWithOptimization('/login');
+            router.push('/login');
           }
         } catch (loginError) {
           console.error('Auto-login failed:', loginError);
           showToast('info', 'Account created! Please log in to continue.');
-          navigateWithOptimization('/login');
+          router.push('/login');
         }
       } else {
         console.log('❌ Signup failed:', data.message);

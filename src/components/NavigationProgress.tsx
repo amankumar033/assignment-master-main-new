@@ -12,11 +12,11 @@ const NavigationProgress = () => {
     // Complete navigation when pathname changes (page has loaded)
     if (!isLoading) return;
     setProgress(100);
-    // keep the bar visible longer to ensure visual success and page loading
+    // Faster completion for better UX
     const t = setTimeout(() => {
       setIsLoading(false);
       setProgress(0);
-    }, 800); // Increased from 300ms to 800ms
+    }, 150); // Reduced from 800ms to 150ms for faster navigation
     return () => clearTimeout(t);
   }, [pathname, isLoading]);
 
@@ -52,7 +52,7 @@ const NavigationProgress = () => {
       const t = setTimeout(() => {
         setIsLoading(false);
         setProgress(0);
-      }, 300);
+      }, 100); // Reduced from 300ms to 100ms
       return () => clearTimeout(t);
     };
 

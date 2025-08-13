@@ -70,8 +70,110 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Generate unique service order ID using the improved generator
-    const uniqueServiceOrderId = await serviceOrderIdGenerator.generateServiceOrderId();
+    // Generate unique service order ID using user-based logic
+    const mysql = require('mysql2/promise');
+    const connection = await mysql.createConnection({
+      host: process.env.DB_HOST || 'localhost',
+      user: process.env.DB_USER || 'root',
+      password: process.env.DB_PASSWORD || '',
+      database: process.env.DB_NAME || 'kriptocar'
+    });
+
+    // Start transaction for service order ID generation
+    await connection.beginTransaction();
+    
+    let uniqueServiceOrderId: string;
+    
+    try {
+      // Extract user number from user_id (e.g., USR003 -> 003)
+      const userNumber = user_id.replace(/\D/g, '');
+      if (!userNumber) {
+        await connection.rollback();
+        return NextResponse.json(
+          { success: false, message: 'Invalid user_id format' },
+          { status: 400 }
+        );
+      }
+
+      // Get existing service orders for this user
+      const [existingUserServiceOrders] = await connection.execute(
+        'SELECT service_order_id FROM kriptocar.service_orders WHERE user_id = ? ORDER BY service_order_id FOR UPDATE',
+        [user_id]
+      );
+
+      // Extract existing service order numbers for this user
+      const existingServiceOrderNumbers = existingUserServiceOrders
+        .map((row: any) => row.service_order_id)
+        .filter((id: string) => id.startsWith(`SRVD${userNumber}`))
+        .map((id: string) => {
+          const match = id.match(new RegExp(`SRVD${userNumber}(\\d+)`));
+          return match ? parseInt(match[1]) : 0;
+        })
+        .sort((a: number, b: number) => a - b);
+
+      // Find the next available service order number using range-based approach
+      let nextServiceOrderNumber = 1;
+      const rangeSize = 10; // Each range has 10 numbers (1-10, 11-20, etc.)
+      
+      if (existingServiceOrderNumbers.length > 0) {
+        // Find the first available number in the sequence
+        for (let i = 1; i <= Math.max(...existingServiceOrderNumbers) + rangeSize; i++) {
+          if (!existingServiceOrderNumbers.includes(i)) {
+            nextServiceOrderNumber = i;
+            break;
+          }
+        }
+      }
+
+      // Generate unique service order ID
+      const proposedServiceOrderId = `SRVD${userNumber}${nextServiceOrderNumber}`;
+      
+      // Double-check this ID doesn't exist (in case of race conditions)
+      const [existingServiceOrder] = await connection.execute(
+        'SELECT service_order_id FROM kriptocar.service_orders WHERE service_order_id = ?',
+        [proposedServiceOrderId]
+      );
+      
+      uniqueServiceOrderId = proposedServiceOrderId;
+      
+      if (existingServiceOrder.length > 0) {
+        // If ID exists, find the next available one in the sequence
+        let attemptNumber = nextServiceOrderNumber + 1;
+        let maxAttempts = 100;
+        
+        while (attemptNumber < nextServiceOrderNumber + maxAttempts) {
+          const alternativeId = `SRVD${userNumber}${attemptNumber}`;
+          const [checkExisting] = await connection.execute(
+            'SELECT service_order_id FROM kriptocar.service_orders WHERE service_order_id = ?',
+            [alternativeId]
+          );
+          
+          if (checkExisting.length === 0) {
+            uniqueServiceOrderId = alternativeId;
+            console.log(`Generated service order ID: ${alternativeId} (alternative)`);
+            break;
+          }
+          attemptNumber++;
+        }
+        
+        if (attemptNumber >= nextServiceOrderNumber + maxAttempts) {
+          await connection.rollback();
+          return NextResponse.json(
+            { success: false, message: 'Failed to generate unique service order ID' },
+            { status: 500 }
+          );
+        }
+      } else {
+        console.log(`Generated service order ID: ${proposedServiceOrderId}`);
+      }
+
+      await connection.commit();
+      await connection.end();
+    } catch (error) {
+      await connection.rollback();
+      await connection.end();
+      throw error;
+    }
 
     // Check if vendor_id exists in vendors table
     const vendorCheck = await query(
@@ -134,63 +236,66 @@ export async function POST(request: NextRequest) {
 
     console.log('✅ Service order created successfully with ID:', serviceOrderId);
 
-    // Create notifications for admin and vendor
-    try {
-      const serviceOrderData = {
-        customer_name: customerName,
-        customer_email: customerEmail,
-        service_name: service_name,
-                  service_category: service_category,
+    // Handle notifications and emails asynchronously (non-blocking)
+    setTimeout(async () => {
+      try {
+        // Create notifications for admin and vendor
+        const serviceOrderData = {
+          customer_name: customerName,
+          customer_email: customerEmail,
+          service_name: service_name,
+          service_category: service_category,
           service_type: service_type,
           final_price: Number(final_price), // Convert to number to fix toFixed() error
           service_date: service_date,
-        service_time: service_time,
-        service_status: 'Pending',
-        payment_status: 'Pending',
-        service_address: service_address,
-        service_pincode: service_pincode,
-        additional_notes: additional_notes || null
-      };
+          service_time: service_time,
+          service_status: 'Pending',
+          payment_status: 'Pending',
+          service_address: service_address,
+          service_pincode: service_pincode,
+          additional_notes: additional_notes || null
+        };
 
-      // Pass vendor details (if available) into notification flow to ensure email sending
-      const vendorDetails = (vendorCheck && vendorCheck[0]) ? { name: vendorCheck[0].vendor_name, email: vendorCheck[0].contact_email } : undefined;
-      await createServiceOrderNotifications(serviceOrderData, uniqueServiceOrderId, vendor_id, vendorDetails);
-      console.log('✅ Service order notifications created successfully');
-    } catch (notificationError) {
-      console.error('❌ Error creating service order notifications:', notificationError);
-      // Don't fail the service booking if notifications fail
-    }
-
-    // Send confirmation email to customer
-    try {
-      const emailData = {
-        service_order_id: uniqueServiceOrderId,
-        customer_name: customerName,
-        customer_email: customerEmail,
-        service_name: service_name,
-        service_category: service_category,
-        service_type: service_type,
-        final_price: Number(final_price),
-        service_date: service_date,
-        service_time: service_time,
-        service_status: 'Pending',
-        payment_status: 'Pending',
-        service_address: service_address,
-        service_pincode: service_pincode,
-        additional_notes: additional_notes || null,
-        payment_method: payment_method || 'cod'
-      };
-
-      const emailSent = await sendServiceOrderConfirmationEmail(emailData);
-      if (emailSent) {
-        console.log('✅ Service order confirmation email sent successfully');
-      } else {
-        console.log('⚠️ Failed to send service order confirmation email');
+        // Pass vendor details (if available) into notification flow to ensure email sending
+        const vendorDetails = (vendorCheck && vendorCheck[0]) ? { name: vendorCheck[0].vendor_name, email: vendorCheck[0].contact_email } : undefined;
+        await createServiceOrderNotifications(serviceOrderData, uniqueServiceOrderId, vendor_id, vendorDetails);
+        console.log('✅ Service order notifications created successfully');
+      } catch (notificationError) {
+        console.error('❌ Error creating service order notifications:', notificationError);
+        // Don't fail the service booking if notifications fail
       }
-    } catch (emailError) {
-      console.error('❌ Error sending service order confirmation email:', emailError);
-      // Don't fail the service booking if email fails
-    }
+
+      // Send confirmation email to customer
+      try {
+        const emailData = {
+          service_order_id: uniqueServiceOrderId,
+          customer_name: customerName,
+          customer_email: customerEmail,
+          service_name: service_name,
+          service_category: service_category,
+          service_type: service_type,
+          final_price: Number(final_price),
+          service_date: service_date,
+          service_time: service_time,
+          service_status: 'Pending',
+          payment_status: 'Pending',
+          service_address: service_address,
+          service_pincode: service_pincode,
+          additional_notes: additional_notes || null,
+          payment_method: payment_method || 'cod'
+        };
+
+        const emailSent = await sendServiceOrderConfirmationEmail(emailData);
+        if (emailSent) {
+          console.log('✅ Service order confirmation email sent successfully');
+        } else {
+          console.log('⚠️ Failed to send service order confirmation email');
+        }
+      } catch (emailError) {
+        console.error('❌ Error sending service order confirmation email:', emailError);
+        // Don't fail the service booking if email fails
+      }
+    }, 100); // Small delay to ensure order is committed first
 
     return NextResponse.json({
       success: true,
@@ -223,4 +328,4 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
-} 
+}

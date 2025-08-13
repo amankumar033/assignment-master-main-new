@@ -8,6 +8,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useCart } from '@/contexts/CartContext';
 import { useToast } from '@/contexts/ToastContext';
 import { getValidImageSrc, handleImageError } from '@/utils/imageUtils';
+import { formatPrice } from '@/utils/priceUtils';
 
 
 const Deals = () => {
@@ -375,11 +376,11 @@ const Deals = () => {
                       <div className="flex items-center mb-2 gap-1">
                         {product.original_price && product.original_price > 0 && (
                           <span className="font-bold text-lg text-black line-through">
-                            ${Number(product.original_price).toFixed(2)}
+                            {formatPrice(product.original_price)}
                           </span>
                         )}
                         <span className="font-bold text-xl text-black mr-2">
-                          ${Number(product.sale_price || 0).toFixed(2)}
+                          {formatPrice(product.sale_price || 0)}
                         </span>
                       </div>
 

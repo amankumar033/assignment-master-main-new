@@ -159,6 +159,7 @@ const buildDescriptionFromMetadata = (
     const parts: string[] = [];
 
     if (metadata && typeof metadata === 'object') {
+      // Basic order information
       if (metadata.order_id) parts.push(`Order ID: ${metadata.order_id}.`);
       if (metadata.service_order_id) parts.push(`Service Order ID: ${metadata.service_order_id}.`);
       if (metadata.customer_name) parts.push(`Customer: ${metadata.customer_name}.`);
@@ -168,14 +169,49 @@ const buildDescriptionFromMetadata = (
       if (metadata.order_status) parts.push(`Status: ${metadata.order_status}.`);
       if (metadata.payment_status) parts.push(`Payment: ${metadata.payment_status}.`);
       if (metadata.service_name) parts.push(`Service: ${metadata.service_name}.`);
-      if (metadata.items && Array.isArray(metadata.items)) parts.push(`Items: ${metadata.items.length}.`);
+      
+      // Enhanced multiple product/order information
+      if (metadata.is_multiple_orders && metadata.total_orders && metadata.total_orders > 1) {
+        parts.push(`Multiple Orders: ${metadata.total_orders} orders.`);
+      }
+      if (metadata.is_multiple_products && metadata.total_items && metadata.total_items > 1) {
+        parts.push(`Multiple Products: ${metadata.total_items} items.`);
+      }
+      if (metadata.order_ids && Array.isArray(metadata.order_ids) && metadata.order_ids.length > 1) {
+        parts.push(`Order IDs: ${metadata.order_ids.map((id: string) => `#${id}`).join(', ')}.`);
+      }
+      if (metadata.product_details && Array.isArray(metadata.product_details) && metadata.product_details.length > 0) {
+        const productSummary = metadata.product_details.map((product: any) => 
+          `${product.product_name} (Qty: ${product.quantity})`
+        ).join(', ');
+        parts.push(`Products: ${productSummary}.`);
+      }
+      if (metadata.items && Array.isArray(metadata.items)) {
+        if (metadata.items.length > 1) {
+          const itemSummary = metadata.items.map((item: any) => 
+            `${item.name || item.product_name} (Qty: ${item.quantity})`
+          ).join(', ');
+          parts.push(`Items: ${itemSummary}.`);
+        } else {
+          parts.push(`Items: ${metadata.items.length}.`);
+        }
+      }
+      
+      // Address information
       if (metadata.shipping_address || metadata.service_address) {
         const addr = metadata.shipping_address || metadata.service_address;
         const pin = metadata.shipping_pincode || metadata.service_pincode;
         parts.push(`Address: ${addr}${pin ? `, ${pin}` : ''}.`);
       }
+      
+      // Date information
       if (metadata.order_date) parts.push(`Date: ${metadata.order_date}.`);
       if (metadata.booking_date) parts.push(`Booked: ${metadata.booking_date}.`);
+      
+      // Dealer information
+      if (metadata.dealer_details) {
+        parts.push(`Dealer: ${metadata.dealer_details.dealer_name}.`);
+      }
     }
 
     const summary = parts.join(' ');
@@ -330,7 +366,14 @@ export const createOrderNotifications = async (
 
   const currentTime = new Date().toISOString().slice(0, 19).replace('T', ' ');
   
-  // Prepare order metadata
+  // Determine if this is multiple orders or single order with multiple products
+  // If we have multiple products and the system is designed to create separate orders for each product,
+  // we should treat this as multiple orders even if order_ids array is not populated yet
+  const hasMultipleProducts = orderData.items && orderData.items.length > 1;
+  const isMultipleOrders = (orderData.order_ids && orderData.order_ids.length > 1) || 
+                          (hasMultipleProducts && orderData.is_multiple_products);
+  
+  // Prepare order metadata with enhanced details for multiple products/orders
   const orderMetadata = {
     order_id: orderId,
     customer_name: orderData.customer_name,
@@ -341,21 +384,45 @@ export const createOrderNotifications = async (
     order_date: currentTime,
     items: orderData.items || [],
     shipping_address: orderData.shipping_address,
-    shipping_pincode: orderData.shipping_pincode
+    shipping_pincode: orderData.shipping_pincode,
+    // Enhanced metadata for multiple products/orders
+    total_orders: isMultipleOrders ? (orderData.order_ids ? orderData.order_ids.length : orderData.items.length) : 1,
+    total_items: orderData.total_items || (orderData.items ? orderData.items.reduce((sum: number, item: any) => sum + (item.quantity || 1), 0) : 1),
+    order_ids: isMultipleOrders ? (orderData.order_ids && orderData.order_ids.length > 1 ? orderData.order_ids : [orderId]) : [orderId],
+    product_details: orderData.product_details || (orderData.items ? orderData.items.map((item: any) => ({
+      product_id: item.product_id,
+      product_name: item.name,
+      quantity: item.quantity,
+      unit_price: item.price,
+      total_price: (item.price || 0) * (item.quantity || 1)
+    })) : []),
+    dealer_details: orderData.dealer_name ? {
+      dealer_name: orderData.dealer_name,
+      dealer_id: dealerId
+    } : null,
+    is_multiple_orders: isMultipleOrders,
+    is_multiple_products: hasMultipleProducts
   };
 
   console.log('📋 Order metadata prepared:', orderMetadata);
 
-  // Create admin notification
+  // Create admin notification with enhanced description for multiple products/orders
   console.log('👨‍💼 Creating admin notification...');
-  const adminDescription = `A new order #${orderId} has been created by ${orderData.customer_name} for $${toTwoDecimals(orderData.total_amount)}. ` +
+  
+  // Enhanced admin notification description with user ID and dealer details
+  const userInfo = orderData.user_id ? `[User ID: ${orderData.user_id}]` : '';
+  const dealerInfo = orderData.dealer_name ? `Dealer: ${orderData.dealer_name} (ID: ${orderData.dealer_id || 'N/A'})` : 'Dealer: Not assigned';
+  
+  const adminDescription = `A new order #${orderId} has been created by ${orderData.customer_name} ${userInfo} for $${toTwoDecimals(orderData.total_amount)}. ` +
     `Status: ${orderData.order_status}. Payment: ${orderData.payment_status}. ` +
-    `Ship to: ${orderData.shipping_address}, ${orderData.shipping_pincode}.`;
+    `Ship to: ${orderData.shipping_address}, ${orderData.shipping_pincode}. ` +
+    `Product: ${orderData.items && orderData.items.length > 0 ? orderData.items[0].name : 'N/A'} (Qty: ${orderData.items && orderData.items.length > 0 ? orderData.items[0].quantity : 1}). ` +
+    `${dealerInfo}.`;
 
   const adminSuccess = await createNotification({
     type: 'order_placed',
-    title: 'New Order Created',
-    message: 'New order received',
+    title: `New Order #${orderId} - ${orderData.customer_name}`,
+    message: `Order placed for ${orderData.items && orderData.items.length > 0 ? orderData.items[0].name : 'product'} - $${toTwoDecimals(orderData.total_amount)}`,
     description: adminDescription,
     for_admin: true,
     for_dealer: false,
@@ -373,12 +440,12 @@ export const createOrderNotifications = async (
   if (dealerId) {
     console.log('🏪 Creating dealer notification for dealer:', dealerId);
     
-    // First check if the dealer exists and get their details
-    try {
-      const dealerCheck = await query(
-        'SELECT dealer_id, name, email FROM kriptocar.dealers WHERE dealer_id = ?',
-        [dealerId]
-      ) as any[];
+          // First check if the dealer exists and get their details
+      try {
+        const dealerCheck = await query(
+          'SELECT dealer_id, business_name, email FROM kriptocar.dealers WHERE dealer_id = ?',
+          [dealerId]
+        ) as any[];
       
       if (dealerCheck.length === 0) {
         console.log('⚠️ Dealer ID does not exist in dealers table, skipping dealer notification');
@@ -386,17 +453,21 @@ export const createOrderNotifications = async (
       }
       
       const dealer = dealerCheck[0];
-      console.log('📧 Dealer details found:', { name: dealer.name, email: dealer.email });
+      console.log('📧 Dealer details found:', { name: dealer.business_name, email: dealer.email });
       
-      // Create dealer notification
-      const dealerDescription = `Order #${orderId} placed for your products by ${orderData.customer_name} for $${toTwoDecimals(orderData.total_amount)}. ` +
+      // Enhanced dealer notification description with customer details
+      const customerInfo = orderData.user_id ? `[Customer ID: ${orderData.user_id}]` : '';
+      
+      const dealerDescription = `Order #${orderId} placed for your products by ${orderData.customer_name} ${customerInfo} for $${toTwoDecimals(orderData.total_amount)}. ` +
         `Status: ${orderData.order_status}. Payment: ${orderData.payment_status}. ` +
-        `Ship to: ${orderData.shipping_address}, ${orderData.shipping_pincode}.`;
+        `Ship to: ${orderData.shipping_address}, ${orderData.shipping_pincode}. ` +
+        `Product: ${orderData.items && orderData.items.length > 0 ? orderData.items[0].name : 'N/A'} (Qty: ${orderData.items && orderData.items.length > 0 ? orderData.items[0].quantity : 1}). ` +
+        `Customer Contact: ${orderData.customer_email}${orderData.customer_phone ? `, ${orderData.customer_phone}` : ''}.`;
 
       const dealerSuccess = await createNotification({
         type: 'order_placed',
-        title: 'New Order for Your Products',
-        message: 'New order for your products',
+        title: `New Order #${orderId} - ${orderData.customer_name}`,
+        message: `Order for ${orderData.items && orderData.items.length > 0 ? orderData.items[0].name : 'your product'} - $${toTwoDecimals(orderData.total_amount)}`,
         description: dealerDescription,
         for_admin: false,
         for_dealer: true,
@@ -417,7 +488,7 @@ export const createOrderNotifications = async (
         try {
           const dealerEmailData = {
             order_id: orderId,
-            dealer_name: dealer.name,
+            dealer_name: dealer.business_name,
             dealer_email: dealer.email,
             customer_name: orderData.customer_name,
             customer_email: orderData.customer_email,
@@ -428,7 +499,15 @@ export const createOrderNotifications = async (
             payment_status: orderData.payment_status,
             shipping_address: orderData.shipping_address,
             shipping_pincode: orderData.shipping_pincode,
-            items: orderData.items || []
+            items: orderData.items || [],
+            // Enhanced data for multiple products/orders
+            orders: orderData.orders || [],
+            total_orders: orderMetadata.total_orders,
+            total_items: orderMetadata.total_items,
+            order_ids: orderMetadata.order_ids,
+            product_details: orderMetadata.product_details,
+            is_multiple_orders: orderMetadata.is_multiple_orders,
+            is_multiple_products: orderMetadata.is_multiple_products
           };
 
           console.log('📧 Attempting to send dealer order notification email to:', dealer.email);
@@ -459,6 +538,184 @@ export const createOrderNotifications = async (
   console.log('🏁 Order notification creation completed');
 };
 
+// Function to create notifications for multiple orders (each product gets its own order ID)
+export const createMultipleOrderNotifications = async (
+  orderData: any,
+  dealerId: string | null
+): Promise<void> => {
+  console.log('🔔 Creating multiple order notifications for:', {
+    customerName: orderData.customer_name,
+    totalAmount: orderData.total_amount,
+    totalItems: orderData.total_items
+  });
+
+  const currentTime = new Date().toISOString().slice(0, 19).replace('T', ' ');
+  
+  // Generate individual order IDs for each product if not provided
+  const orderIds = orderData.order_ids || [];
+  const items = orderData.items || [];
+  
+  // If we have items but no order IDs, we need to generate them
+  if (items.length > 0 && orderIds.length === 0) {
+    console.log('⚠️ No order IDs provided, but items exist. This should be handled by the calling function.');
+  }
+  
+  // Prepare comprehensive metadata for multiple orders
+  const orderMetadata = {
+    primary_order_id: orderData.order_id || orderIds[0],
+    customer_name: orderData.customer_name,
+    customer_email: orderData.customer_email,
+    total_amount: orderData.total_amount,
+    order_status: orderData.order_status,
+    payment_status: orderData.payment_status,
+    order_date: currentTime,
+    items: items,
+    shipping_address: orderData.shipping_address,
+    shipping_pincode: orderData.shipping_pincode,
+    // Enhanced metadata for multiple orders
+    total_orders: orderIds.length,
+    total_items: orderData.total_items,
+    order_ids: orderIds,
+    product_details: orderData.product_details || items.map((item: any) => ({
+      product_id: item.product_id,
+      product_name: item.name,
+      quantity: item.quantity,
+      unit_price: item.price,
+      total_price: (item.price || 0) * (item.quantity || 1)
+    })),
+    dealer_details: orderData.dealer_name ? {
+      dealer_name: orderData.dealer_name,
+      dealer_id: dealerId
+    } : null,
+    is_multiple_orders: orderIds.length > 1,
+    is_multiple_products: items.length > 1
+  };
+
+  console.log('📋 Multiple order metadata prepared:', orderMetadata);
+
+  // Create single admin notification for all orders
+  console.log('👨‍💼 Creating admin notification for multiple orders...');
+  
+  let adminDescription = `Multiple orders have been created by ${orderData.customer_name} for $${toTwoDecimals(orderData.total_amount)}. ` +
+    `Status: ${orderData.order_status}. Payment: ${orderData.payment_status}. ` +
+    `Ship to: ${orderData.shipping_address}, ${orderData.shipping_pincode}. ` +
+    `Total Orders: ${orderIds.length}. Total Items: ${orderData.total_items}. ` +
+    `Order IDs: ${orderIds.map((id: string) => `#${id}`).join(', ')}. ` +
+    `Products: ${orderData.product_details ? orderData.product_details.map((product: any) => `${product.product_name} (Qty: ${product.quantity})`).join(', ') : 'N/A'}.`;
+
+  const adminSuccess = await createNotification({
+    type: 'orders_placed',
+    title: 'Multiple Orders Created',
+    message: 'Multiple orders received',
+    description: adminDescription,
+    for_admin: true,
+    for_dealer: false,
+    for_vendor: false,
+    metadata: orderMetadata
+  });
+
+  if (adminSuccess) {
+    console.log('✅ Admin notification for multiple orders created successfully');
+  } else {
+    console.log('❌ Failed to create admin notification for multiple orders');
+  }
+
+  // Create dealer notification if dealer exists
+  if (dealerId) {
+    console.log('🏪 Creating dealer notification for multiple orders...');
+    
+    try {
+      const dealerCheck = await query(
+        'SELECT dealer_id, business_name, email FROM kriptocar.dealers WHERE dealer_id = ?',
+        [dealerId]
+      ) as any[];
+    
+      if (dealerCheck.length === 0) {
+        console.log('⚠️ Dealer ID does not exist in dealers table, skipping dealer notification');
+        return;
+      }
+      
+      const dealer = dealerCheck[0];
+      console.log('📧 Dealer details found:', { name: dealer.business_name, email: dealer.email });
+      
+      // Create dealer notification for multiple orders
+      const dealerDescription = `Multiple orders have been placed for your products by ${orderData.customer_name} for $${toTwoDecimals(orderData.total_amount)}. ` +
+        `Status: ${orderData.order_status}. Payment: ${orderData.payment_status}. ` +
+        `Ship to: ${orderData.shipping_address}, ${orderData.shipping_pincode}. ` +
+        `Total Orders: ${orderIds.length}. Total Items: ${orderData.total_items}. ` +
+        `Order IDs: ${orderIds.map((id: string) => `#${id}`).join(', ')}. ` +
+        `Products: ${orderData.product_details ? orderData.product_details.map((product: any) => `${product.product_name} (Qty: ${product.quantity})`).join(', ') : 'N/A'}.`;
+
+      const dealerSuccess = await createNotification({
+        type: 'orders_placed',
+        title: 'Multiple Orders for Your Products',
+        message: 'Multiple orders for your products',
+        description: dealerDescription,
+        for_admin: false,
+        for_dealer: true,
+        for_vendor: false,
+        dealer_id: dealerId,
+        metadata: orderMetadata
+      });
+
+      if (dealerSuccess) {
+        console.log('✅ Dealer notification for multiple orders created successfully');
+      } else {
+        console.log('❌ Failed to create dealer notification for multiple orders');
+      }
+
+      // Send email to dealer if email exists
+      if (dealer.email) {
+        console.log('📧 Sending multiple order notification email to dealer:', dealer.email);
+        try {
+          const dealerEmailData = {
+            order_id: orderData.order_id || orderIds[0],
+            dealer_name: dealer.business_name,
+            dealer_email: dealer.email,
+            customer_name: orderData.customer_name,
+            customer_email: orderData.customer_email,
+            customer_phone: orderData.customer_phone,
+            total_amount: orderData.total_amount,
+            order_date: orderData.order_date || currentTime,
+            order_status: orderData.order_status,
+            payment_status: orderData.payment_status,
+            shipping_address: orderData.shipping_address,
+            shipping_pincode: orderData.shipping_pincode,
+            items: items,
+            // Enhanced data for multiple orders
+            orders: orderData.orders || [],
+            total_orders: orderIds.length,
+            total_items: orderData.total_items,
+            order_ids: orderIds,
+            product_details: orderData.product_details,
+            is_multiple_orders: true,
+            is_multiple_products: items.length > 1
+          };
+
+          console.log('📧 Attempting to send dealer multiple order notification email to:', dealer.email);
+          const emailSent = await sendDealerOrderNotificationEmail(dealerEmailData);
+          if (emailSent) {
+            console.log('✅ Dealer multiple order notification email sent successfully to:', dealer.email);
+          } else {
+            console.log('❌ Failed to send dealer multiple order notification email to:', dealer.email);
+          }
+        } catch (emailError) {
+          console.error('❌ Error sending dealer multiple order notification email:', emailError);
+        }
+      } else {
+        console.log('⚠️ Dealer email not found, skipping email notification');
+      }
+    } catch (error) {
+      console.error('❌ Error checking dealer or creating dealer notification:', error);
+      console.log('⚠️ Skipping dealer notification due to error');
+    }
+  } else {
+    console.log('ℹ️ No dealer ID provided, skipping dealer notification');
+  }
+
+  console.log('🏁 Multiple order notification creation completed');
+};
+
 export const createServiceOrderNotifications = async (
   serviceOrderData: any,
   serviceOrderId: string,
@@ -475,7 +732,7 @@ export const createServiceOrderNotifications = async (
 
   const currentTime = new Date().toISOString().slice(0, 19).replace('T', ' ');
   
-  // Prepare service order metadata
+  // Prepare service order metadata with enhanced details
   const serviceOrderMetadata = {
     service_order_id: serviceOrderId,
     customer_name: serviceOrderData.customer_name,
@@ -491,7 +748,19 @@ export const createServiceOrderNotifications = async (
     booking_date: currentTime,
     service_address: serviceOrderData.service_address,
     service_pincode: serviceOrderData.service_pincode,
-    additional_notes: serviceOrderData.additional_notes
+    additional_notes: serviceOrderData.additional_notes,
+    // Enhanced metadata for service orders
+    vendor_id: vendorId,
+    vendor_name: vendorDetails?.name || null,
+    service_duration: serviceOrderData.duration_minutes || null,
+    service_details: {
+      service_name: serviceOrderData.service_name,
+      service_category: serviceOrderData.service_category,
+      service_type: serviceOrderData.service_type,
+      duration_minutes: serviceOrderData.duration_minutes,
+      base_price: serviceOrderData.base_price,
+      final_price: serviceOrderData.final_price
+    }
   };
 
   console.log('📋 Service order metadata prepared:', serviceOrderMetadata);
@@ -499,13 +768,28 @@ export const createServiceOrderNotifications = async (
   // Create admin notification
   console.log('👨‍💼 Creating admin notification for service order...');
   const finalPrice = Number(serviceOrderData.final_price);
-  const adminTemplate: RecipientTemplate = NOTIFICATION_TEMPLATES.service_order_created?.admin || {
-    title: 'New Service Order Created',
-    message: 'New service order received',
-    description: (data: any) =>
-      `A new service order has been created by ${data.customer_name} for ${data.service_name} at $${toTwoDecimals(data.final_price)}. ` +
-      `Service order ID: ${data.service_order_id}. Service scheduled for ${data.service_date} at ${data.service_time}. ` +
-      `Customer address: ${data.service_address}, ${data.service_pincode}.`
+  // Enhanced admin service order notification template
+  const customerInfo = serviceOrderData.user_id ? `[Customer ID: ${serviceOrderData.user_id}]` : '';
+  const vendorInfo = vendorDetails?.name ? `Vendor: ${vendorDetails.name} (ID: ${vendorId})` : 'Vendor: Not assigned';
+  const serviceDetails = `${serviceOrderData.service_category || 'N/A'} - ${serviceOrderData.service_type || 'N/A'}`;
+  
+  const adminTemplate: RecipientTemplate = {
+    title: `New Service Order #${serviceOrderId} - ${serviceOrderData.customer_name}`,
+    message: `Service booking for ${serviceOrderData.service_name} - $${toTwoDecimals(finalPrice)}`,
+    description: (data: any) => {
+      let description = `A new service order #${data.service_order_id} has been created by ${data.customer_name} ${customerInfo} for ${data.service_name} at $${toTwoDecimals(data.final_price)}. ` +
+        `Service scheduled for ${data.service_date} at ${data.service_time}. ` +
+        `Service Details: ${serviceDetails}. Duration: ${data.duration_minutes || 'N/A'} minutes. ` +
+        `Customer address: ${data.service_address}, ${data.service_pincode}. ` +
+        `${vendorInfo}.`;
+      
+      // Add additional notes if available
+      if (data.additional_notes && data.additional_notes.trim()) {
+        description += ` Additional Notes: ${data.additional_notes}.`;
+      }
+      
+      return description;
+    }
   };
   const adminSuccess = await createNotification({
     type: 'service_order_created',
@@ -519,7 +803,12 @@ export const createServiceOrderNotifications = async (
       service_date: serviceOrderData.service_date,
       service_time: serviceOrderData.service_time,
       service_address: serviceOrderData.service_address,
-      service_pincode: serviceOrderData.service_pincode
+      service_pincode: serviceOrderData.service_pincode,
+      service_category: serviceOrderData.service_category,
+      service_type: serviceOrderData.service_type,
+      duration_minutes: serviceOrderData.duration_minutes,
+      vendor_name: vendorDetails?.name,
+      additional_notes: serviceOrderData.additional_notes
     }),
     for_admin: 1,
     for_dealer: 0,
@@ -585,13 +874,27 @@ export const createServiceOrderNotifications = async (
     }
     
     // Create vendor notification regardless of vendor lookup outcome
-  const vendorTemplate: RecipientTemplate = NOTIFICATION_TEMPLATES.service_order_created?.vendor || {
-    title: 'New Service Order for Your Service',
-    message: 'New service order received',
-    description: (data: any) =>
-      `A new service order has been booked for your service "${data.service_name}" by ${data.customer_name} for $${toTwoDecimals(data.final_price)}. ` +
-      `Service order ID: ${data.service_order_id}. Service scheduled for ${data.service_date} at ${data.service_time}. ` +
-      `Customer address: ${data.service_address}, ${data.service_pincode}. Additional notes: ${data.additional_notes || 'None'}.`
+  // Enhanced vendor notification template with meaningful information
+  const customerInfo = serviceOrderData.user_id ? `[Customer ID: ${serviceOrderData.user_id}]` : '';
+  const serviceDetails = `${serviceOrderData.service_category || 'N/A'} - ${serviceOrderData.service_type || 'N/A'}`;
+  
+  const vendorTemplate: RecipientTemplate = {
+    title: `New Service Order #${serviceOrderId} - ${serviceOrderData.customer_name}`,
+    message: `Service booking for ${serviceOrderData.service_name} - $${toTwoDecimals(finalPrice)}`,
+    description: (data: any) => {
+      let description = `A new service order #${data.service_order_id} has been booked for your service "${data.service_name}" by ${data.customer_name} ${customerInfo} for $${toTwoDecimals(data.final_price)}. ` +
+        `Service scheduled for ${data.service_date} at ${data.service_time}. ` +
+        `Service Details: ${serviceDetails}. Duration: ${data.duration_minutes || 'N/A'} minutes. ` +
+        `Customer address: ${data.service_address}, ${data.service_pincode}. ` +
+        `Customer Contact: ${data.customer_email}${data.customer_phone ? `, ${data.customer_phone}` : ''}.`;
+      
+      // Add additional notes if available
+      if (data.additional_notes && data.additional_notes.trim()) {
+        description += ` Additional Notes: ${data.additional_notes}.`;
+      }
+      
+      return description;
+    }
   };
     const vendorSuccess = await createNotification({
       type: 'service_order_created',
@@ -606,6 +909,9 @@ export const createServiceOrderNotifications = async (
         service_time: serviceOrderData.service_time,
         service_address: serviceOrderData.service_address,
         service_pincode: serviceOrderData.service_pincode,
+        service_category: serviceOrderData.service_category,
+        service_type: serviceOrderData.service_type,
+        duration_minutes: serviceOrderData.duration_minutes,
         additional_notes: serviceOrderData.additional_notes
       }),
       for_admin: 0,
@@ -666,4 +972,165 @@ export const createServiceOrderNotifications = async (
   }
 
   console.log('🏁 Service order notification creation completed');
+};
+
+// Create notifications for order cancellation
+export const createOrderCancellationNotifications = async (
+  orderData: any,
+  orderId: string,
+  dealerId?: string
+) => {
+  console.log('🚀 Creating order cancellation notifications...');
+  console.log('📋 Order data:', { orderId, dealerId, customer: orderData.customer_name });
+
+  // Prepare metadata for notifications
+  const orderMetadata = {
+    order_id: orderId,
+    customer_name: orderData.customer_name,
+    customer_email: orderData.customer_email,
+    total_amount: orderData.total_amount,
+    items_count: orderData.items?.length || 1,
+    order_date: orderData.order_date,
+    cancellation_date: new Date().toISOString()
+  };
+
+  // Create admin notification
+  const adminTemplate: RecipientTemplate = {
+    title: 'Order Cancelled',
+    message: 'Order has been cancelled',
+    description: (data: any) =>
+      `Order ${data.order_id} has been cancelled by ${data.customer_name}. ` +
+      `Order was placed on ${data.order_date} for $${data.total_amount.toFixed(2)}. ` +
+      `Cancellation date: ${data.cancellation_date}.`
+  };
+
+  const adminSuccess = await createNotification({
+    type: 'order_cancelled',
+    title: adminTemplate.title,
+    message: adminTemplate.message,
+    description: adminTemplate.description(orderMetadata),
+    for_admin: 1,
+    for_dealer: 0,
+    for_vendor: 0,
+    metadata: orderMetadata
+  });
+
+  if (adminSuccess) {
+    console.log('✅ Admin cancellation notification created successfully');
+  } else {
+    console.log('❌ Failed to create admin cancellation notification');
+  }
+
+  // Create customer notification
+  const customerTemplate: RecipientTemplate = {
+    title: 'Order Cancellation Confirmed',
+    message: 'Your order has been cancelled',
+    description: (data: any) =>
+      `Your order ${data.order_id} has been successfully cancelled. ` +
+      `Order was placed on ${data.order_date} for $${data.total_amount.toFixed(2)}. ` +
+      `Cancellation date: ${data.cancellation_date}. ` +
+      `If you have any questions, please contact our support team.`
+  };
+
+  const customerSuccess = await createNotification({
+    type: 'order_cancelled',
+    title: customerTemplate.title,
+    message: customerTemplate.message,
+    description: customerTemplate.description(orderMetadata),
+    for_admin: 0,
+    for_dealer: 0,
+    for_vendor: 0,
+    user_id: orderData.customer_id || null,
+    metadata: orderMetadata
+  });
+
+  if (customerSuccess) {
+    console.log('✅ Customer cancellation notification created successfully');
+  } else {
+    console.log('❌ Failed to create customer cancellation notification');
+  }
+
+  // Create dealer notification if dealer ID is provided
+  if (dealerId) {
+    console.log('🏪 Creating dealer cancellation notification for dealer:', dealerId);
+    
+    // First check if the dealer exists and get their details
+    try {
+      const dealerCheck = await query(
+        'SELECT dealer_id, business_name, email FROM kriptocar.dealers WHERE dealer_id = ?',
+        [dealerId]
+      ) as any[];
+      
+      if (dealerCheck.length === 0) {
+        console.log('⚠️ Dealer not found, skipping dealer notification');
+      } else {
+        const dealer = dealerCheck[0];
+        console.log('📧 Dealer details found:', { name: dealer.business_name, email: dealer.email });
+        
+        // Create dealer notification
+        const dealerTemplate: RecipientTemplate = {
+          title: 'Order Cancelled by Customer',
+          message: 'Customer cancelled their order',
+          description: (data: any) =>
+            `Order ${data.order_id} has been cancelled by ${data.customer_name}. ` +
+            `Order was placed on ${data.order_date} for $${data.total_amount.toFixed(2)}. ` +
+            `Cancellation date: ${data.cancellation_date}. ` +
+            `Customer email: ${data.customer_email}.`
+        };
+
+        const dealerSuccess = await createNotification({
+          type: 'order_cancelled',
+          title: dealerTemplate.title,
+          message: dealerTemplate.message,
+          description: dealerTemplate.description(orderMetadata),
+          for_admin: 0,
+          for_dealer: 1,
+          dealer_id: dealerId,
+          metadata: orderMetadata
+        });
+
+        if (dealerSuccess) {
+          console.log('✅ Dealer cancellation notification created successfully');
+        } else {
+          console.log('❌ Failed to create dealer cancellation notification');
+        }
+
+        // Send email to dealer
+        if (dealer.email) {
+          console.log('📧 Sending cancellation email to dealer:', dealer.email);
+          try {
+            const dealerEmailData = {
+              order_id: orderId,
+              dealer_name: dealer.business_name,
+              dealer_email: dealer.email,
+              customer_name: orderData.customer_name,
+              customer_email: orderData.customer_email,
+              customer_phone: orderData.customer_phone || 'Not provided',
+              total_amount: orderData.total_amount,
+              order_date: orderData.order_date,
+              cancellation_date: new Date().toISOString(),
+              items: orderData.items || []
+            };
+
+            const emailSent = await sendDealerOrderCancellationEmail(dealerEmailData);
+            if (emailSent) {
+              console.log('✅ Dealer cancellation email sent successfully');
+            } else {
+              console.log('❌ Failed to send dealer cancellation email');
+            }
+          } catch (emailError) {
+            console.error('❌ Error sending dealer cancellation email:', emailError);
+          }
+        } else {
+          console.log('⚠️ Dealer email not available, skipping email');
+        }
+      }
+    } catch (dealerError) {
+      console.error('❌ Error looking up dealer for cancellation notification:', dealerError);
+    }
+  } else {
+    console.log('ℹ️ No dealer ID provided, skipping dealer cancellation notification');
+  }
+
+  console.log('🏁 Order cancellation notification creation completed');
 };

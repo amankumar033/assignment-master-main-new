@@ -6,8 +6,6 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useCart } from '@/contexts/CartContext';
 import { useToast } from '@/contexts/ToastContext';
 import EnhancedLink from './EnhancedLink';
-import NavigationProgress from './NavigationProgress';
-import { useInstantNavigation } from '@/hooks/useInstantNavigation';
 import LoadingButton from './LoadingButton';
 import CartDropdown from './CartDropdown';
 
@@ -17,7 +15,6 @@ const Navbar = () => {
   const { user, isLoggedIn, logout } = useAuth();
   const { cartItems, getTotalItems, loading: cartLoading } = useCart();
   const { showToast } = useToast();
-  const { navigate } = useInstantNavigation();
   const [isCartOpen, setIsCartOpen] = useState<boolean>(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -28,7 +25,8 @@ const Navbar = () => {
     e.preventDefault();
     if (searchQuery.trim()) {
       console.log(`Searching for: ${searchQuery.trim()}`);
-      navigate(`/shop?search=${encodeURIComponent(searchQuery.trim())}`);
+      // Use smart navigation for search
+      handleNavigation(`/shop?search=${encodeURIComponent(searchQuery.trim())}`);
     }
   };
 
@@ -42,15 +40,12 @@ const Navbar = () => {
 
   const handleLogout = async () => {
     try {
-      // Show progress bar immediately (optional UI feedback)
-      document.dispatchEvent(new CustomEvent('navigationStart'));
-
       // Instant client-side logout
       await logout();
 
-      // Toast and progress end
+      // Toast and redirect with smart navigation
       showToast('success', 'Successfully logged out!');
-      document.dispatchEvent(new CustomEvent('navigationComplete'));
+      handleNavigation('/');
     } catch (error) {
       console.error('Logout error:', error);
       showToast('error', 'Logout failed. Please try again.');
@@ -58,13 +53,48 @@ const Navbar = () => {
   };
 
   const handleNavigation = (href: string) => {
-    console.log(`Navigating to: ${href}`);
-    navigate(href);
+    console.log(`🚀 Starting navigation to: ${href}`);
+    const startTime = performance.now();
+    
+    // Set a timeout to detect slow navigation
+    const slowNavigationTimeout = setTimeout(() => {
+      console.log(`🐌 Slow navigation detected for: ${href}`);
+      document.dispatchEvent(new CustomEvent('navigationStart'));
+    }, 300); // Show progress bar if navigation takes longer than 300ms
+    
+    // Direct router navigation for instant response
+    router.push(href);
+    
+    const endTime = performance.now();
+    const navigationTime = endTime - startTime;
+    console.log(`⚡ Navigation initiated in ${navigationTime}ms`);
+    
+    // Clear timeout if navigation was fast
+    if (navigationTime < 300) {
+      clearTimeout(slowNavigationTimeout);
+    } else {
+      // If slow navigation was detected, set up completion detection
+      const handleNavigationComplete = () => {
+        console.log(`✅ Navigation completed for: ${href}`);
+        document.dispatchEvent(new CustomEvent('navigationComplete'));
+        // Clean up event listeners
+        window.removeEventListener('load', handleNavigationComplete);
+        window.removeEventListener('popstate', handleNavigationComplete);
+      };
+      
+      // Listen for navigation completion
+      window.addEventListener('load', handleNavigationComplete);
+      window.addEventListener('popstate', handleNavigationComplete);
+      
+      // Fallback: hide progress bar after 3 seconds
+      setTimeout(() => {
+        document.dispatchEvent(new CustomEvent('navigationComplete'));
+      }, 3000);
+    }
   };
 
   return (
     <>
-      <NavigationProgress />
       <div className="font-sans relative z-50" style={{ fontFamily: 'Inter, Arial, Helvetica, sans-serif' }}>
         {/* Top Blue Bar */}
       <div className="bg-[#02427A] text-white py-2 px-4 lg:px-20">
@@ -114,7 +144,10 @@ const Navbar = () => {
             
             {/* Currency Selector */}
             <div className="relative">
-              <select className="bg-transparent text-white border-none outline-none cursor-pointer text-sm underline">
+              <select 
+                className="bg-transparent text-white border-none outline-none cursor-pointer text-sm underline"
+                suppressHydrationWarning
+              >
                 <option value="INR">₹ INR</option>
                 <option value="USD">$ USD</option>
                 <option value="EUR">€ EUR</option>
@@ -123,7 +156,10 @@ const Navbar = () => {
 
             {/* Language Selector */}
             <div className="relative">
-              <select className="bg-transparent text-white border-none outline-none cursor-pointer text-sm underline">
+              <select 
+                className="bg-transparent text-white border-none outline-none cursor-pointer text-sm underline"
+                suppressHydrationWarning
+              >
                 <option value="en">En</option>
                 <option value="hi">हिंदी</option>
                 <option value="kn">ಕನ್ನಡ</option>
@@ -155,17 +191,19 @@ const Navbar = () => {
 
         {/* Search Bar */}
           <div className="flex-1 max-w-2xl mx-8">
-            <form onSubmit={handleSearch} className="flex">
+            <form onSubmit={handleSearch} className="flex" suppressHydrationWarning>
             <input
               type="text"
                 placeholder="Enter a keyword or product SKU"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
                 className="flex-1 px-4 py-3 text-black rounded-l-lg outline-none bg-white"
+                suppressHydrationWarning
             />
             <button 
               type="submit"
                 className="bg-red-600 hover:bg-red-700 px-6 py-3 rounded-r-lg transition-colors"
+                suppressHydrationWarning
             >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -183,6 +221,7 @@ const Navbar = () => {
                 onClick={() => handleNavigation('/profile')}
                   className="flex items-center space-x-2 cursor-pointer hover:text-yellow-400 transition-colors"
                   showSpinner={false}
+                  instantFeedback={false}
                 >
                   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
@@ -193,6 +232,7 @@ const Navbar = () => {
                   onClick={handleLogout}
                   className="flex items-center space-x-2 cursor-pointer hover:text-yellow-400 transition-colors"
                   showSpinner={false}
+                  instantFeedback={false}
                 >
                   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7" />
@@ -202,9 +242,13 @@ const Navbar = () => {
               </div>
             ) : (
               <LoadingButton 
-                onClick={() => handleNavigation('/login')}
+                onClick={() => {
+                  console.log('🔐 Login button clicked');
+                  handleNavigation('/login');
+                }}
                 className="flex items-center space-x-2 cursor-pointer hover:text-yellow-400 transition-colors"
                 showSpinner={false}
+                instantFeedback={false}
               >
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
@@ -248,7 +292,7 @@ const Navbar = () => {
                 <span className="ml-1 text-sm text-gray-300">({cartItemCount} items)</span>
               </LoadingButton>
               {isCartOpen && (
-                <CartDropdown onNavigate={handleNavigation} />
+                <CartDropdown onNavigate={handleNavigation} onClose={() => setIsCartOpen(false)} />
               )}
             </div>
           </div>
@@ -267,6 +311,7 @@ const Navbar = () => {
                 onClick={() => handleNavigation('/shop')}
                 className="block px-6 py-2 font-bold transition-all duration-300 hover:text-[#D27208] relative z-10"
                 showSpinner={false}
+                instantFeedback={false}
               >
                 Shop by categories
               </LoadingButton>
@@ -281,6 +326,7 @@ const Navbar = () => {
                   onClick={() => handleNavigation('/shop')}
                   className="block px-6 py-2 font-bold cursor-pointer transition-all duration-300 hover:text-[#D27208] relative z-10"
                   showSpinner={false}
+                  instantFeedback={false}
                 >
                   Shop by brand
                                   </LoadingButton>
@@ -359,9 +405,13 @@ const Navbar = () => {
         <div className="lg:hidden bg-[#D27208] text-white px-4 py-4">
           <div className="space-y-4">
             <LoadingButton 
-              onClick={() => handleNavigation('/login')}
+              onClick={() => {
+                console.log('🔐 Mobile login button clicked');
+                handleNavigation('/login');
+              }}
               className="block py-2 hover:text-yellow-200 transition-colors w-full text-left"
               showSpinner={false}
+              instantFeedback={false}
             >
               Login
             </LoadingButton>
@@ -369,6 +419,7 @@ const Navbar = () => {
               onClick={() => handleNavigation('/shop')}
               className="block py-2 hover:text-yellow-200 transition-colors w-full text-left"
               showSpinner={false}
+              instantFeedback={false}
             >
               Shop by categories
                     </LoadingButton>
@@ -380,6 +431,7 @@ const Navbar = () => {
               onClick={() => handleNavigation('/shop')}
               className="block py-2 hover:text-yellow-200 transition-colors w-full text-left"
               showSpinner={false}
+              instantFeedback={false}
             >
               Shop
                   </LoadingButton>
@@ -387,6 +439,7 @@ const Navbar = () => {
               onClick={() => handleNavigation('/location')}
               className="block py-2 hover:text-yellow-200 transition-colors w-full text-left"
               showSpinner={false}
+              instantFeedback={false}
             >
               Services
             </LoadingButton>

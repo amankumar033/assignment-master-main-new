@@ -4,6 +4,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCart } from '@/contexts/CartContext';
 
+
 import Link from 'next/link';
 import Image from 'next/image';
 import { getValidImageSrc, handleImageError } from '@/utils/imageUtils';
@@ -45,6 +46,7 @@ const ProductDetailPage = () => {
   const router = useRouter();
   const { user, isLoggedIn } = useAuth();
   const { cartItems, addToCart } = useCart();
+
 
   const [product, setProduct] = useState<Product | null>(null);
   const [relatedProducts, setRelatedProducts] = useState<Product[]>([]);
@@ -224,6 +226,39 @@ const ProductDetailPage = () => {
     }
   }, [cartItems, product?.product_id, originalStock]);
 
+  // Smart navigation to related products
+  const handleRelatedProductClick = async (productSlug: string, event: React.MouseEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+    
+    console.log('Related product clicked:', productSlug);
+    
+    // Show immediate visual feedback
+    const target = event.currentTarget as HTMLElement;
+    target.style.transform = 'scale(0.98)';
+    target.style.transition = 'transform 0.1s ease';
+    
+    // Set a timeout to detect slow navigation
+    const slowNavigationTimeout = setTimeout(() => {
+      console.log(`🐌 Slow navigation detected for related product: ${productSlug}`);
+      document.dispatchEvent(new CustomEvent('navigationStart'));
+    }, 300); // Show progress bar if navigation takes longer than 300ms
+    
+    // Navigate
+    router.push(`/products/${productSlug}`);
+    
+    // Reset transform after navigation
+    setTimeout(() => {
+      target.style.transform = '';
+      target.style.transition = '';
+    }, 100);
+    
+    // Clear timeout if navigation was fast
+    setTimeout(() => {
+      clearTimeout(slowNavigationTimeout);
+    }, 500);
+  };
+
   // Add to cart functionality
   const handleAddToCart = () => {
     if (!product) return;
@@ -231,7 +266,8 @@ const ProductDetailPage = () => {
       product_id: product.product_id,
       name: product.name,
       price: product.sale_price,
-      image: product.image_1
+      image: product.image_1,
+      quantity: quantity // Add the selected quantity
     });
   };
 
@@ -528,8 +564,11 @@ const ProductDetailPage = () => {
             <h2 className="text-2xl font-bold text-black mb-8">Related Products</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
               {relatedProducts.map((relatedProduct) => (
-                <Link key={relatedProduct.product_id} href={`/products/${relatedProduct.product_id}`}>
-                  <div className="bg-white rounded-lg shadow overflow-hidden hover:shadow-lg transition cursor-pointer">
+                <div 
+                  key={relatedProduct.product_id} 
+                  className="bg-white rounded-lg shadow overflow-hidden hover:shadow-lg transition cursor-pointer hover:scale-105 transform duration-200"
+                  onClick={(e) => handleRelatedProductClick(relatedProduct.product_id, e)}
+                >
                     <div className="relative h-48 w-full">
                       <Image
                         src={getValidImageSrc(relatedProduct.image_1)}
@@ -546,7 +585,6 @@ const ProductDetailPage = () => {
                       <p className="text-lg font-bold text-black">{formatPrice(relatedProduct.sale_price)}</p>
                     </div>
                   </div>
-                </Link>
               ))}
             </div>
           </div>

@@ -17,33 +17,17 @@ export async function GET(
       );
     }
 
-    // Get service order details
+    // Get service order details with vendor information
     const orders = await query(
       `SELECT 
-        service_order_id,
-        user_id,
-        service_id,
-        vendor_id,
-        service_name,
-        service_description,
-        service_category,
-        service_type,
-        base_price,
-        final_price,
-        duration_minutes,
-        booking_date,
-        service_date,
-        service_time,
-        service_status,
-        service_pincode,
-        service_address,
-        additional_notes,
-        payment_method,
-        payment_status,
-        transaction_id,
-        was_available
-      FROM kriptocar.service_orders 
-      WHERE service_order_id = ?`,
+        so.*,
+        v.vendor_name,
+        v.contact_email as vendor_email,
+        v.contact_phone as vendor_phone,
+        v.business_address as vendor_address
+      FROM kriptocar.service_orders so
+      LEFT JOIN kriptocar.vendors v ON so.vendor_id = v.vendor_id
+      WHERE so.service_order_id = ?`,
       [orderId]
     ) as any[];
 

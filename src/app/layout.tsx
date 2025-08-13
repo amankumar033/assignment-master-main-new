@@ -7,12 +7,11 @@ export const metadata: Metadata = {
 }
 
 import Navbar from '@/components/Navbar';
-import { NavigationProvider } from '@/contexts/NavigationContext';
-import NavigationLoading from '@/components/NavigationLoading';
-import NavigationEndHandler from '@/components/NavigationEndHandler';
+
+
 import Footer from '@/components/Footer';
 import TopLoader from '@/components/TopLoader';
-import PerformanceOptimizer from '@/components/PerformanceOptimizer';
+
 import { AuthProvider } from '@/contexts/AuthContext';
 import { CartProvider } from '@/contexts/CartContext';
 import { ToastProvider } from '@/contexts/ToastContext';
@@ -25,19 +24,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <AuthProvider>
           <ToastProvider>
             <CartProvider>
-              <NavigationProvider>
-                <PerformanceOptimizer>
-                  <TopLoader />
-                  <NavigationLoading delay={0} minDuration={160} />
-                  <Navbar />
-                  <main className="pt-0"> 
-                    {children}
-                  </main>
-                  <Footer />
-                  <ToastContainer />
-                  <NavigationEndHandler />
-                </PerformanceOptimizer>
-              </NavigationProvider>
+              <TopLoader />
+              <Navbar />
+              <main className="pt-0"> 
+                {children}
+              </main>
+              <Footer />
+              <ToastContainer />
             </CartProvider>
           </ToastProvider>
         </AuthProvider>

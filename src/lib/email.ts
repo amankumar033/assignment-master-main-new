@@ -1,5 +1,15 @@
 import nodemailer from 'nodemailer';
 
+// Helper function to format INR prices for email templates
+const formatINRPrice = (price: number): string => {
+  return new Intl.NumberFormat('en-IN', {
+    style: 'currency',
+    currency: 'INR',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(price);
+};
+
 // Create transporter function to avoid module-level environment variable issues
 const createTransporter = () => {
   return nodemailer.createTransport({
@@ -28,6 +38,9 @@ export const sendEmail = async (options: EmailOptions): Promise<boolean> => {
       return false;
     }
 
+    console.log('📧 Preparing to send email to:', options.to);
+    console.log('📧 Email subject:', options.subject);
+
     const transporter = createTransporter();
     const mailOptions = {
       from: process.env.EMAIL_USER,
@@ -39,9 +52,11 @@ export const sendEmail = async (options: EmailOptions): Promise<boolean> => {
 
     const info = await transporter.sendMail(mailOptions);
     console.log('✅ Email sent successfully:', info.messageId);
+    console.log('📧 Email sent to:', options.to);
     return true;
   } catch (error) {
     console.error('❌ Error sending email:', error);
+    console.error('❌ Email details - To:', options.to, 'Subject:', options.subject);
     return false;
   }
 };
@@ -143,27 +158,254 @@ export interface OrderData {
   items: OrderItem[];
 }
 
-export const sendOrderConfirmationEmail = async (orderData: OrderData): Promise<boolean> => {
-  const subject = `Order Confirmation #${orderData.order_id} - KriptoCar`;
+// Send order confirmation email to dealer
+export const sendOrderConfirmationEmail = async (orderData: {
+  dealer_name: string;
+  dealer_email: string;
+  customer_name: string;
+  customer_email: string;
+  customer_phone: string;
+  shipping_address: string;
+  shipping_pincode: string;
+  orders: Array<{
+    order_id: string;
+    product_id: string;
+    product_name: string;
+    product_price: number;
+    quantity: number;
+    total_price: number;
+  }>;
+  total_amount: number;
+  tax_amount: number;
+  shipping_cost: number;
+  discount_amount: number;
+  payment_method: string;
+  payment_status: string;
+  transaction_id?: string;
+}): Promise<boolean> => {
+  const subject = `New Order Received - KriptoCar`;
   
-  const itemsHtml = orderData.items.map(item => `
+  const itemsHtml = orderData.orders.map(order => `
     <tr>
       <td style="padding: 10px; border-bottom: 1px solid #eee;">
         <div style="display: flex; align-items: center;">
-          <img src="${item.image || '/engine/engine1.png'}" alt="${item.name}" style="width: 50px; height: 50px; object-fit: cover; border-radius: 5px; margin-right: 15px;">
           <div>
-            <div style="font-weight: bold; color: #333;">${item.name}</div>
-            <div style="color: #666; font-size: 14px;">Quantity: ${item.quantity}</div>
+            <div style="font-weight: bold; color: #333;">${order.product_name}</div>
+            <div style="color: #666; font-size: 14px;">Product ID: ${order.product_id}</div>
+            <div style="color: #666; font-size: 14px;">Quantity: ${order.quantity}</div>
+            <div style="color: #666; font-size: 14px;">Unit Price: ${formatINRPrice(order.product_price)}</div>
+            <div style="color: #666; font-size: 14px;">Order ID: #${order.order_id}</div>
           </div>
         </div>
       </td>
       <td style="padding: 10px; border-bottom: 1px solid #eee; text-align: right; font-weight: bold;">
-        $${(item.price * item.quantity).toFixed(2)}
+        ${formatINRPrice(order.total_price)}
       </td>
     </tr>
   `).join('');
 
-  const subtotal = orderData.items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+  const subtotal = orderData.orders.reduce((sum, order) => sum + order.total_price, 0);
+  
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>New Order Received - KriptoCar</title>
+      <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: linear-gradient(135deg, #034c8c 0%, #1e40af 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+        .content { background: #f8f9fa; padding: 30px; border-radius: 0 0 10px 10px; }
+        .order-info { background: white; padding: 20px; border-radius: 10px; margin: 20px 0; }
+        .order-table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+        .order-table th { background: #f5f5f5; padding: 12px; text-align: left; font-weight: bold; }
+        .order-table td { padding: 12px; border-bottom: 1px solid #eee; }
+        .total-row { font-weight: bold; background: #f8f9fa; }
+        .button { display: inline-block; background: #034c8c; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; margin: 20px 0; }
+        .footer { text-align: center; margin-top: 30px; color: #666; font-size: 14px; }
+        .status-badge { display: inline-block; background: #28a745; color: white; padding: 5px 15px; border-radius: 20px; font-size: 12px; font-weight: bold; }
+        .new-order-highlight { background: #e3f2fd; padding: 15px; border-radius: 8px; border-left: 4px solid #2196f3; margin: 20px 0; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h1>🛒 New Order Received!</h1>
+          <p>You have received a new order from KriptoCar</p>
+        </div>
+        
+        <div class="content">
+          <h2>Hello ${orderData.dealer_name}</h2>
+          
+          <div class="new-order-highlight">
+            <h3>🎉 New Order Alert!</h3>
+            <p>You have received a new order through KriptoCar. Please review the details below and process the order accordingly.</p>
+          </div>
+          
+          <div class="order-info">
+            <h3>Order Details</h3>
+            <p><strong>Order IDs:</strong> ${orderData.orders.map(o => `#${o.order_id}`).join(', ')}</p>
+            <p><strong>Total Orders:</strong> ${orderData.orders.length} ${orderData.orders.length === 1 ? 'order' : 'orders'}</p>
+            <p><strong>Order Date:</strong> ${new Date().toLocaleDateString()}</p>
+            <p><strong>Payment Method:</strong> ${orderData.payment_method}</p>
+            <p><strong>Payment Status:</strong> <span class="status-badge">${orderData.payment_status}</span></p>
+            ${orderData.transaction_id ? `<p><strong>Transaction ID:</strong> ${orderData.transaction_id}</p>` : ''}
+            <p><strong>Total Items:</strong> ${orderData.orders.reduce((sum, order) => sum + order.quantity, 0)} items</p>
+          </div>
+          
+          ${orderData.orders.length > 1 ? `
+          <div class="order-info">
+            <h3>Individual Order Breakdown</h3>
+            ${orderData.orders.map((order, index) => `
+              <div style="border: 1px solid #e0e0e0; border-radius: 8px; padding: 15px; margin-bottom: 10px; background: #fafafa;">
+                <h4 style="margin: 0 0 10px 0; color: #034c8c;">Order #${order.order_id}</h4>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 14px;">
+                  <div><strong>Product:</strong> ${order.product_name}</div>
+                  <div><strong>Product ID:</strong> ${order.product_id}</div>
+                  <div><strong>Quantity:</strong> ${order.quantity}</div>
+                  <div><strong>Unit Price:</strong> ${formatINRPrice(order.product_price)}</div>
+                  <div><strong>Total Price:</strong> ${formatINRPrice(order.total_price)}</div>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+          ` : ''}
+          
+          <div class="order-info">
+            <h3>Customer Information</h3>
+            <p><strong>Customer Name:</strong> ${orderData.customer_name}</p>
+            <p><strong>Customer Email:</strong> ${orderData.customer_email}</p>
+            <p><strong>Customer Phone:</strong> ${orderData.customer_phone}</p>
+            <p><strong>Shipping Address:</strong> ${orderData.shipping_address}</p>
+            <p><strong>Pincode:</strong> ${orderData.shipping_pincode}</p>
+          </div>
+          
+          <h3>Order Items</h3>
+          <table class="order-table">
+            <thead>
+              <tr>
+                <th>Product Details</th>
+                <th style="text-align: right;">Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${itemsHtml}
+            </tbody>
+            <tfoot>
+              <tr>
+                <td style="padding: 10px; text-align: right;"><strong>Subtotal:</strong></td>
+                <td style="padding: 10px; text-align: right;"><strong>${formatINRPrice(subtotal)}</strong></td>
+              </tr>
+              ${orderData.tax_amount > 0 ? `
+                <tr>
+                  <td style="padding: 10px; text-align: right;">Tax:</td>
+                  <td style="padding: 10px; text-align: right;">${formatINRPrice(orderData.tax_amount)}</td>
+                </tr>
+              ` : ''}
+              ${orderData.shipping_cost > 0 ? `
+                <tr>
+                  <td style="padding: 10px; text-align: right;">Shipping:</td>
+                  <td style="padding: 10px; text-align: right;">${formatINRPrice(orderData.shipping_cost)}</td>
+                </tr>
+              ` : ''}
+              ${orderData.discount_amount > 0 ? `
+                <tr>
+                  <td style="padding: 10px; text-align: right;">Discount:</td>
+                  <td style="padding: 10px; text-align: right;">-${formatINRPrice(orderData.discount_amount)}</td>
+                </tr>
+              ` : ''}
+              <tr class="total-row">
+                <td style="padding: 15px; text-align: right; font-size: 18px;"><strong>Total:</strong></td>
+                <td style="padding: 15px; text-align: right; font-size: 18px;"><strong>${formatINRPrice(orderData.total_amount)}</strong></td>
+              </tr>
+            </tfoot>
+          </table>
+          
+          <div style="text-align: center;">
+            <a href="${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/dealer/dashboard" class="button">
+              View Order in Dashboard
+            </a>
+          </div>
+          
+          <p><strong>Next Steps:</strong></p>
+          <ul>
+            <li>Review the order details and confirm availability</li>
+            <li>Process the order within 24 hours</li>
+            <li>Update the order status in your dashboard</li>
+            <li>Contact the customer if there are any issues</li>
+            <li>Ensure timely delivery to maintain customer satisfaction</li>
+          </ul>
+          
+          <p>Thank you for being a trusted dealer with KriptoCar!</p>
+          
+          <p>Best regards,<br>The KriptoCar Team</p>
+        </div>
+        
+        <div class="footer">
+          <p>© 2024 KriptoCar. All rights reserved.</p>
+          <p>This email was sent to ${orderData.dealer_email}</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  return await sendEmail({
+    to: orderData.dealer_email,
+    subject,
+    html,
+  });
+};
+
+// Send order confirmation email to customer
+export const sendCustomerOrderConfirmationEmail = async (orderData: {
+  customer_name: string;
+  customer_email: string;
+  customer_phone: string;
+  shipping_address: string;
+  shipping_pincode: string;
+  orders: Array<{
+    order_id: string;
+    product_id: string;
+    product_name: string;
+    product_price: number;
+    quantity: number;
+    total_price: number;
+    dealer_name: string;
+  }>;
+  total_amount: number;
+  tax_amount: number;
+  shipping_cost: number;
+  discount_amount: number;
+  payment_method: string;
+  payment_status: string;
+  transaction_id?: string;
+}): Promise<boolean> => {
+  const subject = `Order Confirmation - KriptoCar`;
+  
+  const itemsHtml = orderData.orders.map(order => `
+    <tr>
+      <td style="padding: 10px; border-bottom: 1px solid #eee;">
+        <div style="display: flex; align-items: center;">
+          <div>
+            <div style="font-weight: bold; color: #333;">${order.product_name}</div>
+            <div style="color: #666; font-size: 14px;">Dealer: ${order.dealer_name}</div>
+            <div style="color: #666; font-size: 14px;">Product ID: ${order.product_id}</div>
+            <div style="color: #666; font-size: 14px;">Quantity: ${order.quantity}</div>
+            <div style="color: #666; font-size: 14px;">Unit Price: ${formatINRPrice(order.product_price)}</div>
+            <div style="color: #666; font-size: 14px;">Order ID: #${order.order_id}</div>
+          </div>
+        </div>
+      </td>
+      <td style="padding: 10px; border-bottom: 1px solid #eee; text-align: right; font-weight: bold;">
+        ${formatINRPrice(order.total_price)}
+      </td>
+    </tr>
+  `).join('');
+
+  const subtotal = orderData.orders.reduce((sum, order) => sum + order.total_price, 0);
   
   const html = `
     <!DOCTYPE html>
@@ -201,13 +443,33 @@ export const sendOrderConfirmationEmail = async (orderData: OrderData): Promise<
           
           <div class="order-info">
             <h3>Order Details</h3>
-            <p><strong>Order ID:</strong> #${orderData.order_id}</p>
-            <p><strong>Order Date:</strong> ${new Date(orderData.order_date).toLocaleDateString()}</p>
-            <p><strong>Status:</strong> <span class="status-badge">${orderData.order_status}</span></p>
+            <p><strong>Order IDs:</strong> ${orderData.orders.map(o => `#${o.order_id}`).join(', ')}</p>
+            <p><strong>Total Orders:</strong> ${orderData.orders.length} ${orderData.orders.length === 1 ? 'order' : 'orders'}</p>
+            <p><strong>Order Date:</strong> ${new Date().toLocaleDateString()}</p>
             <p><strong>Payment Method:</strong> ${orderData.payment_method}</p>
             <p><strong>Payment Status:</strong> <span class="status-badge">${orderData.payment_status}</span></p>
             ${orderData.transaction_id ? `<p><strong>Transaction ID:</strong> ${orderData.transaction_id}</p>` : ''}
+            <p><strong>Total Items:</strong> ${orderData.orders.reduce((sum, order) => sum + order.quantity, 0)} items</p>
           </div>
+          
+          ${orderData.orders.length > 1 ? `
+          <div class="order-info">
+            <h3>Individual Order Breakdown</h3>
+            ${orderData.orders.map((order, index) => `
+              <div style="border: 1px solid #e0e0e0; border-radius: 8px; padding: 15px; margin-bottom: 10px; background: #fafafa;">
+                <h4 style="margin: 0 0 10px 0; color: #034c8c;">Order #${order.order_id}</h4>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 14px;">
+                  <div><strong>Product:</strong> ${order.product_name}</div>
+                  <div><strong>Dealer:</strong> ${order.dealer_name}</div>
+                  <div><strong>Product ID:</strong> ${order.product_id}</div>
+                  <div><strong>Quantity:</strong> ${order.quantity}</div>
+                  <div><strong>Unit Price:</strong> ${formatINRPrice(order.product_price)}</div>
+                  <div><strong>Total Price:</strong> ${formatINRPrice(order.total_price)}</div>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+          ` : ''}
           
           <div class="order-info">
             <h3>Shipping Information</h3>
@@ -220,7 +482,7 @@ export const sendOrderConfirmationEmail = async (orderData: OrderData): Promise<
           <table class="order-table">
             <thead>
               <tr>
-                <th>Product</th>
+                <th>Product Details</th>
                 <th style="text-align: right;">Total</th>
               </tr>
             </thead>
@@ -230,29 +492,29 @@ export const sendOrderConfirmationEmail = async (orderData: OrderData): Promise<
             <tfoot>
               <tr>
                 <td style="padding: 10px; text-align: right;"><strong>Subtotal:</strong></td>
-                <td style="padding: 10px; text-align: right;"><strong>$${subtotal.toFixed(2)}</strong></td>
+                <td style="padding: 10px; text-align: right;"><strong>${formatINRPrice(subtotal)}</strong></td>
               </tr>
               ${orderData.tax_amount > 0 ? `
                 <tr>
                   <td style="padding: 10px; text-align: right;">Tax:</td>
-                  <td style="padding: 10px; text-align: right;">$${orderData.tax_amount.toFixed(2)}</td>
+                  <td style="padding: 10px; text-align: right;">${formatINRPrice(orderData.tax_amount)}</td>
                 </tr>
               ` : ''}
               ${orderData.shipping_cost > 0 ? `
                 <tr>
                   <td style="padding: 10px; text-align: right;">Shipping:</td>
-                  <td style="padding: 10px; text-align: right;">$${orderData.shipping_cost.toFixed(2)}</td>
+                  <td style="padding: 10px; text-align: right;">${formatINRPrice(orderData.shipping_cost)}</td>
                 </tr>
               ` : ''}
               ${orderData.discount_amount > 0 ? `
                 <tr>
                   <td style="padding: 10px; text-align: right;">Discount:</td>
-                  <td style="padding: 10px; text-align: right;">-$${orderData.discount_amount.toFixed(2)}</td>
+                  <td style="padding: 10px; text-align: right;">-${formatINRPrice(orderData.discount_amount)}</td>
                 </tr>
               ` : ''}
               <tr class="total-row">
                 <td style="padding: 15px; text-align: right; font-size: 18px;"><strong>Total:</strong></td>
-                <td style="padding: 15px; text-align: right; font-size: 18px;"><strong>$${orderData.total_amount.toFixed(2)}</strong></td>
+                <td style="padding: 15px; text-align: right; font-size: 18px;"><strong>${formatINRPrice(orderData.total_amount)}</strong></td>
               </tr>
             </tfoot>
           </table>
@@ -352,7 +614,7 @@ export const sendServiceOrderConfirmationEmail = async (serviceOrderData: Servic
             <p><strong>Status:</strong> <span class="status-badge">${serviceOrderData.service_status}</span></p>
             <p><strong>Payment Method:</strong> ${serviceOrderData.payment_method}</p>
             <p><strong>Payment Status:</strong> <span class="status-badge">${serviceOrderData.payment_status}</span></p>
-            <p><strong>Total Amount:</strong> $${serviceOrderData.final_price.toFixed(2)}</p>
+            <p><strong>Total Amount:</strong> $${(Number(serviceOrderData.final_price) || 0).toFixed(2)}</p>
           </div>
           
           <div class="service-info">
@@ -856,5 +1118,310 @@ export const sendVendorAcceptanceConfirmationEmail = async (vendorData: {
     to: vendorData.vendor_email,
     subject,
     html,
+  });
+};
+
+// Send order cancellation email to customer
+export const sendOrderCancellationEmail = async (customerData: {
+  order_id: string;
+  customer_name: string;
+  customer_email: string;
+  product_name: string;
+  total_amount: number;
+  order_date: string;
+  cancellation_date: string;
+}): Promise<boolean> => {
+  const subject = `Order Cancellation Confirmed #${customerData.order_id} - KriptoCar`;
+  
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Order Cancellation Confirmed - KriptoCar</title>
+      <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: linear-gradient(135deg, #dc3545 0%, #c82333 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+        .content { background: #f8f9fa; padding: 30px; border-radius: 0 0 10px 10px; }
+        .order-info { background: white; padding: 20px; border-radius: 10px; margin: 20px 0; }
+        .footer { text-align: center; margin-top: 30px; color: #666; font-size: 14px; }
+        .status-badge { display: inline-block; background: #dc3545; color: white; padding: 5px 15px; border-radius: 20px; font-size: 12px; font-weight: bold; }
+        .amount-highlight { font-size: 24px; font-weight: bold; color: #dc3545; }
+        .cancellation-highlight { background: #f8d7da; padding: 15px; border-radius: 8px; border-left: 4px solid #dc3545; margin: 20px 0; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h1>❌ Order Cancellation Confirmed</h1>
+          <p>Your order has been successfully cancelled</p>
+        </div>
+        
+        <div class="content">
+          <h2>Hello ${customerData.customer_name},</h2>
+          
+          <div class="cancellation-highlight">
+            <h3>📋 Order Cancellation Confirmed</h3>
+            <p>Your order has been successfully cancelled as requested. We understand that circumstances can change, and we're here to help when you're ready to shop again.</p>
+          </div>
+          
+          <div class="order-info">
+            <h3>Cancelled Order Details</h3>
+            <p><strong>Order ID:</strong> #${customerData.order_id}</p>
+            <p><strong>Product:</strong> ${customerData.product_name}</p>
+            <p><strong>Order Status:</strong> <span class="status-badge">Cancelled</span></p>
+            <p><strong>Order Amount:</strong> <span class="amount-highlight">$${customerData.total_amount.toFixed(2)}</span></p>
+            <p><strong>Order Date:</strong> ${new Date(customerData.order_date).toLocaleDateString()}</p>
+            <p><strong>Cancellation Date:</strong> ${new Date(customerData.cancellation_date).toLocaleDateString()}</p>
+          </div>
+          
+          <h3>What happens next?</h3>
+          <ul>
+            <li>✅ Your order has been cancelled in our system</li>
+            <li>✅ If you made any payment, it will be refunded according to our refund policy</li>
+            <li>✅ You'll receive a refund confirmation email if applicable</li>
+            <li>✅ The dealer has been notified of the cancellation</li>
+          </ul>
+          
+          <h3>Need to place a new order?</h3>
+          <p>We'd love to have you back! Browse our latest products and services:</p>
+          
+          <div style="text-align: center; margin: 20px 0;">
+            <a href="${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}" style="display: inline-block; background: #034c8c; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px;">
+              Browse Products
+            </a>
+          </div>
+          
+          <p><strong>Questions about your cancellation?</strong></p>
+          <p>If you have any questions about your order cancellation or need assistance with a new order, please don't hesitate to contact our customer support team.</p>
+          
+          <p>Thank you for choosing KriptoCar!</p>
+          
+          <p>Best regards,<br>The KriptoCar Team</p>
+        </div>
+        
+        <div class="footer">
+          <p>© 2024 KriptoCar. All rights reserved.</p>
+          <p>This email was sent to ${customerData.customer_email}</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  return await sendEmail({
+    to: customerData.customer_email,
+    subject,
+    html,
+  });
+};
+
+// Send order cancellation email to dealer
+export const sendDealerOrderCancellationEmail = async (dealerData: {
+  order_id: string;
+  dealer_name: string;
+  dealer_email: string;
+  customer_name: string;
+  customer_email: string;
+  customer_phone: string;
+  product_name: string;
+  total_amount: number;
+  order_date: string;
+  cancellation_date: string;
+  items: any[];
+}): Promise<boolean> => {
+  const subject = `Order Cancelled by Customer #${dealerData.order_id} - KriptoCar`;
+  
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Order Cancelled by Customer - KriptoCar</title>
+      <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: linear-gradient(135deg, #dc3545 0%, #c82333 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+        .content { background: #f8f9fa; padding: 30px; border-radius: 0 0 10px 10px; }
+        .order-info { background: white; padding: 20px; border-radius: 10px; margin: 20px 0; }
+        .footer { text-align: center; margin-top: 30px; color: #666; font-size: 14px; }
+        .status-badge { display: inline-block; background: #dc3545; color: white; padding: 5px 15px; border-radius: 20px; font-size: 12px; font-weight: bold; }
+        .amount-highlight { font-size: 24px; font-weight: bold; color: #dc3545; }
+        .cancellation-highlight { background: #f8d7da; padding: 15px; border-radius: 8px; border-left: 4px solid #dc3545; margin: 20px 0; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h1>❌ Order Cancelled by Customer</h1>
+          <p>A customer has cancelled their order</p>
+        </div>
+        
+        <div class="content">
+          <h2>Hello ${dealerData.dealer_name},</h2>
+          
+          <div class="cancellation-highlight">
+            <h3>📋 Order Cancellation Notification</h3>
+            <p>A customer has cancelled their order. Please update your inventory and records accordingly.</p>
+          </div>
+          
+          <div class="order-info">
+            <h3>Cancelled Order Details</h3>
+            <p><strong>Order ID:</strong> #${dealerData.order_id}</p>
+            <p><strong>Product:</strong> ${dealerData.product_name}</p>
+            <p><strong>Order Status:</strong> <span class="status-badge">Cancelled</span></p>
+            <p><strong>Order Amount:</strong> <span class="amount-highlight">$${dealerData.total_amount.toFixed(2)}</span></p>
+            <p><strong>Order Date:</strong> ${new Date(dealerData.order_date).toLocaleDateString()}</p>
+            <p><strong>Cancellation Date:</strong> ${new Date(dealerData.cancellation_date).toLocaleDateString()}</p>
+          </div>
+          
+          <div class="order-info">
+            <h3>Customer Information</h3>
+            <p><strong>Customer Name:</strong> ${dealerData.customer_name}</p>
+            <p><strong>Customer Email:</strong> ${dealerData.customer_email}</p>
+            <p><strong>Customer Phone:</strong> ${dealerData.customer_phone}</p>
+          </div>
+          
+          <h3>Required Actions:</h3>
+          <ul>
+            <li>✅ Update your inventory to reflect the cancelled order</li>
+            <li>✅ Cancel any pending shipments for this order</li>
+            <li>✅ Update your order management system</li>
+            <li>✅ Process any necessary refunds if payment was received</li>
+            <li>✅ Contact the customer if you need additional information</li>
+          </ul>
+          
+          <h3>Next Steps:</h3>
+          <ul>
+            <li>Review the cancellation reason if provided</li>
+            <li>Consider reaching out to the customer to understand their concerns</li>
+            <li>Update your product availability if needed</li>
+            <li>Monitor for any similar cancellations to identify patterns</li>
+          </ul>
+          
+          <p>If you have any questions about this cancellation or need assistance, please contact our support team.</p>
+          
+          <p>Thank you for being a trusted dealer with KriptoCar!</p>
+          
+          <p>Best regards,<br>The KriptoCar Team</p>
+        </div>
+        
+        <div class="footer">
+          <p>© 2024 KriptoCar. All rights reserved.</p>
+          <p>This email was sent to ${dealerData.dealer_email}</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  return await sendEmail({
+    to: dealerData.dealer_email,
+    subject,
+    html,
+  });
+};
+
+export const sendServiceCancellationEmail = async (emailData: any, recipientType: 'customer' | 'vendor'): Promise<boolean> => {
+  const isCustomer = recipientType === 'customer';
+  const subject = isCustomer 
+    ? `Service Cancellation Confirmation - ${emailData.service_name}`
+    : `Service Cancelled by Customer - ${emailData.service_name}`;
+  
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Service Cancellation</title>
+      <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: linear-gradient(135deg, #dc2626 0%, #ef4444 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+        .content { background: #f8f9fa; padding: 30px; border-radius: 0 0 10px 10px; }
+        .details { background: white; padding: 20px; margin: 20px 0; border-radius: 8px; border-left: 4px solid #dc2626; }
+        .button { display: inline-block; background: #dc2626; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; margin: 20px 0; }
+        .footer { text-align: center; margin-top: 30px; color: #666; font-size: 14px; }
+        .status { display: inline-block; background: #dc2626; color: white; padding: 8px 16px; border-radius: 20px; font-size: 14px; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h1>❌ Service Cancelled</h1>
+          <p>${isCustomer ? 'Your service has been cancelled' : 'A service has been cancelled by the customer'}</p>
+        </div>
+        
+        <div class="content">
+          <h2>Hello ${isCustomer ? emailData.customer_name : emailData.vendor_name},</h2>
+          
+          ${isCustomer ? `
+          <p>Your service booking has been successfully cancelled. Here are the details of the cancelled service:</p>
+          ` : `
+          <p>A customer has cancelled their service booking. Here are the details of the cancelled service:</p>
+          `}
+          
+          <div class="details">
+            <h3>Service Details</h3>
+            <p><strong>Service:</strong> ${emailData.service_name}</p>
+            <p><strong>Order ID:</strong> ${emailData.service_order_id}</p>
+            <p><strong>Date:</strong> ${new Date(emailData.service_date).toLocaleDateString()}</p>
+            <p><strong>Time:</strong> ${emailData.service_time}</p>
+            ${isCustomer ? `<p><strong>Amount:</strong> ₹${(Number(emailData.final_price) || 0).toFixed(2)}</p>` : ''}
+            <p><strong>Status:</strong> <span class="status">Cancelled</span></p>
+          </div>
+          
+          ${isCustomer ? `
+          <div class="details">
+            <h3>Vendor Information</h3>
+            <p><strong>Vendor:</strong> ${emailData.vendor_name}</p>
+          </div>
+          ` : `
+          <div class="details">
+            <h3>Customer Information</h3>
+            <p><strong>Customer:</strong> ${emailData.customer_name}</p>
+            <p><strong>Email:</strong> ${emailData.customer_email}</p>
+          </div>
+          `}
+          
+          <div class="details">
+            <h3>Cancellation Information</h3>
+            <p><strong>Cancellation Date:</strong> ${new Date(emailData.cancellation_date).toLocaleDateString()}</p>
+            <p><strong>Cancellation Time:</strong> ${new Date(emailData.cancellation_date).toLocaleTimeString()}</p>
+          </div>
+          
+          ${isCustomer ? `
+          <div style="text-align: center;">
+            <a href="${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/profile" class="button">
+              View My Bookings
+            </a>
+          </div>
+          
+          <p><strong>Need to book another service?</strong> You can easily book a new service through our platform.</p>
+          ` : `
+          <p><strong>Note:</strong> This cancellation has been automatically processed. Please update your schedule accordingly.</p>
+          `}
+          
+          <p>Thank you for using our services!</p>
+          
+          <p>Best regards,<br>The KriptoCar Team</p>
+        </div>
+        
+        <div class="footer">
+          <p>This is an automated email. Please do not reply to this message.</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+  
+  return await sendEmail({
+    to: isCustomer ? emailData.customer_email : emailData.vendor_email,
+    subject: subject,
+    html: html
   });
 }; 

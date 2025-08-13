@@ -107,7 +107,10 @@ async function testOrderCreation() {
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(checkoutData),
+      body: JSON.stringify({
+        cartItems: cartItems,
+        orderData: checkoutData
+      }),
     });
 
     console.log('📥 Response status:', response.status);

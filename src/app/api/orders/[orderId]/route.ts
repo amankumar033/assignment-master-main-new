@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
+import { processImageData } from '@/lib/imageUtils';
 
 export async function GET(
   request: NextRequest,
@@ -25,9 +26,17 @@ export async function GET(
     const cleanOrderId = orderId.trim();
     console.log('Cleaned Order ID:', cleanOrderId);
 
-    // First, try to get order details from Orders table with exact match
+    // First, try to get order details from Orders table with exact match and product details
     let orderResult = await query(
-      'SELECT * FROM kriptocar.orders WHERE order_id = ?',
+      `SELECT 
+        o.*,
+        p.name as product_name,
+        p.sale_price as product_price,
+        p.image_1 as product_image,
+        p.description as product_description
+      FROM kriptocar.orders o
+      LEFT JOIN kriptocar.products p ON o.product_id = p.product_id
+      WHERE o.order_id = ?`,
       [cleanOrderId]
     ) as any[];
 
@@ -37,7 +46,15 @@ export async function GET(
     if (!orderResult || orderResult.length === 0) {
       console.log('No exact match found, trying case-insensitive search...');
       orderResult = await query(
-        'SELECT * FROM kriptocar.orders WHERE UPPER(order_id) = UPPER(?)',
+        `SELECT 
+          o.*,
+          p.name as product_name,
+          p.sale_price as product_price,
+          p.image_1 as product_image,
+          p.description as product_description
+        FROM kriptocar.orders o
+        LEFT JOIN kriptocar.products p ON o.product_id = p.product_id
+        WHERE UPPER(o.order_id) = UPPER(?)`,
         [cleanOrderId]
       ) as any[];
       console.log('Case-insensitive query result:', orderResult);
@@ -89,6 +106,12 @@ export async function GET(
       order: {
         order_id: order.order_id,
         user_id: order.user_id,
+        product_id: order.product_id,
+        product_name: order.product_name || 'Product not found',
+        product_price: parseFloat(order.product_price) || 0,
+        product_image: processImageData(order.product_image),
+        product_description: order.product_description,
+        quantity: parseInt(order.quantity) || 1, // Get quantity from orders table
         customer_name: order.customer_name,
         customer_email: order.customer_email,
         customer_phone: order.customer_phone,

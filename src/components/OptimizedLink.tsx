@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useEnhancedTopLoaderNavigation } from '@/hooks/useEnhancedTopLoaderNavigation';
+
 import { ReactNode } from 'react';
 
 interface OptimizedLinkProps {
@@ -25,7 +25,7 @@ const OptimizedLink = ({
   shallow = false,
   ...props 
 }: OptimizedLinkProps) => {
-  const { navigateWithOptimization } = useEnhancedTopLoaderNavigation();
+
 
   const handleClick = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -34,7 +34,8 @@ const OptimizedLink = ({
       onClick();
     }
     
-    navigateWithOptimization(href, { replace, scroll, shallow });
+          // Use direct navigation for better performance
+      window.location.href = href;
   };
 
   return (

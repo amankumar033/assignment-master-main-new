@@ -22,9 +22,16 @@ interface CartContextType {
   clearCart: () => void;
   getTotalItems: () => number;
   getTotalPrice: () => number;
+  getDiscountedPrice: () => number;
+  applyCoupon: (code: string) => { success: boolean; message: string; discount: number };
+  removeCoupon: () => void;
+  couponCode: string | null;
+  discountPercentage: number;
   loading: boolean;
   error: string | null;
   loadingItems: Set<string>; // Track which items are being added
+  isCheckoutInProgress: boolean;
+  checkout: (orderData: any) => Promise<{ success: boolean; message: string; order_id?: string; order_ids?: string[] }>;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -67,6 +74,10 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loadingItems, setLoadingItems] = useState<Set<string>>(new Set());
+  const [isCheckoutInProgress, setIsCheckoutInProgress] = useState(false);
+  const [couponCode, setCouponCode] = useState<string | null>(null);
+  const [discountPercentage, setDiscountPercentage] = useState(0);
+  const checkoutRequestId = useRef<string | null>(null);
   
   const { user, isLoggedIn } = useAuth();
   const { showToast } = useToast();
@@ -357,7 +368,7 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
         syncWithDatabase(pendingCartItemsRef.current);
         pendingCartItemsRef.current = null;
       }
-    }, 100);
+    }, 50); // Reduced from 100ms to 50ms for faster sync
   };
 
   // Ensure pending sync is flushed when page/tab is hidden or unloading
@@ -486,7 +497,7 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
         newSet.delete(item.product_id);
         return newSet;
       });
-    }, 400);
+    }, 100); // Reduced from 400ms to 100ms for faster response
   };
 
   // Fast stock verification on UI tick to prevent overs from DB; does not block adding
@@ -515,10 +526,10 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
         });
         await Promise.race([
           Promise.allSettled(checks),
-          new Promise(resolve => setTimeout(resolve, 200)), // hard cap to keep fast
+          new Promise(resolve => setTimeout(resolve, 100)), // hard cap to keep fast - reduced from 200ms
         ]);
       } catch {}
-    }, 150);
+    }, 50); // Reduced from 150ms to 50ms for faster response
     return () => { clearTimeout(timer); controller.abort(); };
   }, [cartItems]);
 
@@ -655,19 +666,128 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
     return cartItems.reduce((total, item) => total + (item.price * item.quantity), 0);
   };
 
+  const getDiscountedPrice = () => {
+    const total = getTotalPrice();
+    const discount = (total * discountPercentage) / 100;
+    return total - discount;
+  };
+
+  const applyCoupon = (code: string) => {
+    const normalizedCode = code.trim().toLowerCase();
+    
+    if (normalizedCode === 'coupon10') {
+      setCouponCode(code);
+      setDiscountPercentage(10);
+      showToast('success', 'Coupon applied! 10% discount');
+      return { success: true, message: 'Coupon applied! 10% discount', discount: 10 };
+    } else {
+      showToast('error', 'Invalid coupon code');
+      return { success: false, message: 'Invalid coupon code', discount: 0 };
+    }
+  };
+
+  const removeCoupon = () => {
+    setCouponCode(null);
+    setDiscountPercentage(0);
+    showToast('info', 'Coupon removed');
+  };
+
+  const checkout = async (orderData: any): Promise<{ success: boolean; message: string; order_id?: string; order_ids?: string[] }> => {
+    if (isCheckoutInProgress) {
+      return { success: false, message: 'Checkout already in progress. Please wait.' };
+    }
+
+    if (cartItems.length === 0) {
+      return { success: false, message: 'Cart is empty' };
+    }
+
+    // Generate unique request ID to prevent duplicates
+    const requestId = `checkout_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    checkoutRequestId.current = requestId;
+    setIsCheckoutInProgress(true);
+    setError(null);
+
+    try {
+      console.log('🔄 Starting checkout process...', { requestId, itemsCount: cartItems.length });
+
+      const response = await fetch('/api/checkout', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          cartItems,
+          orderData,
+          requestId // Include request ID for server-side deduplication
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        console.log('✅ Checkout successful:', data);
+        
+        // Clear cart only on successful checkout
+        setCartItems([]);
+        
+        // Dispatch cart update event
+        window.dispatchEvent(new CustomEvent('cartUpdated', {
+          detail: { cartItems: [], action: 'checkout_completed' }
+        }));
+
+        return {
+          success: true,
+          message: data.message,
+          order_id: data.order_id,
+          order_ids: data.order_ids
+        };
+      } else {
+        console.error('❌ Checkout failed:', data.message);
+        setError(data.message);
+        return {
+          success: false,
+          message: data.message
+        };
+      }
+    } catch (error) {
+      console.error('❌ Checkout error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Checkout failed';
+      setError(errorMessage);
+      return {
+        success: false,
+        message: errorMessage
+      };
+    } finally {
+      // Only clear checkout state if this is still the current request
+      if (checkoutRequestId.current === requestId) {
+        setIsCheckoutInProgress(false);
+        checkoutRequestId.current = null;
+      }
+    }
+  };
+
+  const value = {
+    cartItems,
+    loading,
+    error,
+    loadingItems,
+    isCheckoutInProgress,
+    addToCart,
+    removeFromCart,
+    updateQuantity,
+    clearCart,
+    getTotalPrice,
+    getDiscountedPrice,
+    getTotalItems,
+    applyCoupon,
+    removeCoupon,
+    couponCode,
+    discountPercentage,
+    checkout
+  };
+
   return (
-    <CartContext.Provider value={{
-      cartItems,
-      addToCart,
-      updateQuantity,
-      removeFromCart,
-      clearCart,
-      getTotalItems,
-      getTotalPrice,
-      loading,
-      error,
-      loadingItems
-    }}>
+    <CartContext.Provider value={value}>
       {children}
     </CartContext.Provider>
   );

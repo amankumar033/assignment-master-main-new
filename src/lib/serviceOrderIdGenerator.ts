@@ -24,34 +24,44 @@ export class DatabaseServiceOrderIdGenerator implements ServiceOrderIdGenerator 
         existingRows = [result];
       }
 
-      console.log('🔍 Existing service order IDs:', existingRows.map(row => row.service_order_id));
+      const existingIds = existingRows.map(row => row.service_order_id);
+      console.log('🔍 Existing service order IDs:', existingIds);
 
-      // Find the next available number
+      // Try to find an available ID in ranges: 1-10, 11-20, 21-30, etc.
       let nextNumber = 1;
-      
-      if (existingRows.length > 0) {
-        // Extract numbers from existing IDs and find the maximum
-        const numbers = existingRows.map(row => {
-          const match = row.service_order_id.match(/^SRV(\d+)$/);
-          return match ? parseInt(match[1]) : 0;
-        }).filter(num => num > 0);
+      const maxAttempts = 1000; // Prevent infinite loops
+      let attempts = 0;
+
+      while (attempts < maxAttempts) {
+        // Check if this number is available
+        const proposedId = `SRV${nextNumber.toString().padStart(5, '0')}`;
         
-        if (numbers.length > 0) {
-          nextNumber = Math.max(...numbers) + 1;
+        if (!existingIds.includes(proposedId)) {
+          console.log(`✅ Generated unique service order ID: ${proposedId}`);
+          return proposedId;
         }
+
+        // Move to next range if current range is full
+        if (nextNumber % 10 === 0) {
+          nextNumber = Math.floor(nextNumber / 10) * 10 + 11;
+        } else {
+          nextNumber++;
+        }
+
+        attempts++;
       }
 
-      const serviceOrderId = `SRV${nextNumber}`;
-      console.log(`✅ Generated service order ID: ${serviceOrderId}`);
-      
-      return serviceOrderId;
+      // If we can't find a unique ID in reasonable ranges, use timestamp
+      const timestamp = Date.now();
+      const fallbackId = `SRV${timestamp.toString().slice(-5)}`;
+      console.log(`🔄 Using fallback service order ID: ${fallbackId}`);
+      return fallbackId;
     } catch (error) {
       console.error('❌ Error generating service order ID:', error);
       
       // Fallback to timestamp-based ID if database fails
       const timestamp = Date.now();
-      const randomSuffix = Math.floor(Math.random() * 1000);
-      const fallbackId = `SRV${timestamp}${randomSuffix}`;
+      const fallbackId = `SRV${timestamp.toString().slice(-5)}`;
       console.log(`🔄 Using fallback ID: ${fallbackId}`);
       
       return fallbackId;
@@ -81,34 +91,41 @@ export class FallbackServiceOrderIdGenerator implements ServiceOrderIdGenerator 
         existingRows = [result];
       }
 
+      const existingIds = existingRows.map(row => row.service_order_id);
       let nextNumber = 1;
-      
-      if (existingRows.length > 0) {
-        // Extract numbers from existing IDs and find the maximum
-        const numbers = existingRows.map(row => {
-          const match = row.service_order_id.match(/^SRV(\d+)$/);
-          return match ? parseInt(match[1]) : 0;
-        }).filter(num => num > 0);
+      const maxAttempts = 1000;
+      let attempts = 0;
+
+      while (attempts < maxAttempts) {
+        // Check if this number is available
+        const proposedId = `SRV${nextNumber.toString().padStart(5, '0')}`;
         
-        if (numbers.length > 0) {
-          nextNumber = Math.max(...numbers) + 1;
+        if (!existingIds.includes(proposedId)) {
+          console.log(`✅ Generated unique fallback service order ID: ${proposedId}`);
+          return proposedId;
         }
-      } else {
-        // Fallback to static counter if database query fails
-        FallbackServiceOrderIdGenerator.counter++;
-        nextNumber = FallbackServiceOrderIdGenerator.counter;
+
+        // Move to next range if current range is full
+        if (nextNumber % 10 === 0) {
+          nextNumber = Math.floor(nextNumber / 10) * 10 + 11;
+        } else {
+          nextNumber++;
+        }
+
+        attempts++;
       }
 
-      const serviceOrderId = `SRV${nextNumber}`;
-      console.log(`✅ Generated fallback service order ID: ${serviceOrderId}`);
+      // Fallback to static counter if database query fails
+      FallbackServiceOrderIdGenerator.counter++;
+      const fallbackId = `SRV${FallbackServiceOrderIdGenerator.counter.toString().padStart(5, '0')}`;
+      console.log(`✅ Generated fallback service order ID: ${fallbackId}`);
 
-      return serviceOrderId;
+      return fallbackId;
     } catch (error) {
       console.error('❌ Error in fallback service order ID generator:', error);
       // Ultimate fallback with timestamp
       const timestamp = Date.now();
-      const randomSuffix = Math.floor(Math.random() * 1000);
-      const fallbackId = `SRV${timestamp}${randomSuffix}`;
+      const fallbackId = `SRV${timestamp.toString().slice(-5)}`;
       console.log(`🔄 Using ultimate fallback ID: ${fallbackId}`);
       return fallbackId;
     }

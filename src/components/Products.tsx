@@ -8,15 +8,22 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useCart } from '@/contexts/CartContext';
 import { useToast } from '@/contexts/ToastContext';
 import { getValidImageSrc, handleImageError } from '@/utils/imageUtils';
+import { formatPrice } from '@/utils/priceUtils';
 
 const Products = () => {
   const router = useRouter();
   useEffect(() => {
-    try {
-      // @ts-ignore
-      router.prefetch?.('/shop');
-      router.prefetch?.('/location');
-    } catch {}
+    // Immediate prefetch - don't block UI
+    const prefetchRoutes = () => {
+      try {
+        // @ts-ignore
+        router.prefetch?.('/shop');
+        router.prefetch?.('/location');
+      } catch {}
+    };
+    
+    // Execute immediately
+    prefetchRoutes();
   }, [router]);
   const { user, isLoggedIn } = useAuth();
   const { cartItems, addToCart, loadingItems } = useCart();
@@ -32,7 +39,7 @@ const Products = () => {
 
   // Debug logging removed for performance
 
-  // Fetch featured products from API
+  // Fetch featured products from API - Non-blocking
   useEffect(() => {
     const fetchProducts = async () => {
       try {
@@ -53,10 +60,12 @@ const Products = () => {
       }
     };
 
-    fetchProducts();
+    // Small delay to prioritize navigation
+    const timer = setTimeout(fetchProducts, 10); // Reduced from 50ms to 10ms
+    return () => clearTimeout(timer);
   }, []);
 
-  // Fetch advertisements from API
+  // Fetch advertisements from API - Non-blocking
   useEffect(() => {
     const fetchAdvertisements = async () => {
       try {
@@ -74,7 +83,9 @@ const Products = () => {
       }
     };
 
-    fetchAdvertisements();
+    // Delay to prioritize navigation
+    const timer = setTimeout(fetchAdvertisements, 20); // Reduced from 100ms to 20ms
+    return () => clearTimeout(timer);
   }, []);
 
 
@@ -322,17 +333,41 @@ const Products = () => {
                       ))}
                       <span className="text-lg text-black ml-1">({Number(product.rating || 0).toFixed(1)})</span>
                     </div>
+
+                    {/* Stock Status */}
+                    <div className="flex justify-center items-center mt-2">
+                      {product.stock_quantity > 0 ? (
+                        <span className={`text-sm font-medium px-2 py-1 rounded-full ${
+                          product.stock_quantity > 10 
+                            ? 'bg-green-100 text-green-800' 
+                            : product.stock_quantity > 5 
+                            ? 'bg-yellow-100 text-yellow-800' 
+                            : 'bg-red-100 text-red-800'
+                        }`}>
+                          {product.stock_quantity > 10 
+                            ? 'In Stock' 
+                            : product.stock_quantity > 5 
+                            ? `Low Stock (${product.stock_quantity})` 
+                            : `Only ${product.stock_quantity} left`
+                          }
+                        </span>
+                      ) : (
+                        <span className="text-sm font-medium px-2 py-1 rounded-full bg-gray-100 text-gray-800">
+                          Out of Stock
+                        </span>
+                      )}
+                    </div>
                     
                     {/* Price and Add to Cart */}
                     <div className="mt-3 sm:mt-4 flex flex-col justify-between items-center">
                       <div className="flex items-center mb-2 gap-1">
                         {product.original_price && product.original_price > 0 && (
                           <span className="font-bold text-lg text-black line-through">
-                            ${Number(product.original_price).toFixed(2)}
+                            {formatPrice(product.original_price)}
                           </span>
                         )}
                         <span className="font-bold text-xl text-black mr-2">
-                          ${Number(product.sale_price || 0).toFixed(2)}
+                          {formatPrice(product.sale_price || 0)}
                         </span>
                       </div>
 

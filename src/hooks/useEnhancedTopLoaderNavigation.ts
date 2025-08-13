@@ -73,12 +73,12 @@ export const useEnhancedTopLoaderNavigation = () => {
         router.push(href, options);
       }
       
-      // Fallback completion after 1 second
+      // Fallback completion after 500ms
       setTimeout(() => {
         if (isNavigating) {
           setIsNavigating(false);
         }
-      }, 1000);
+      }, 500);
       
     } catch (error) {
       console.error('Navigation error:', error);

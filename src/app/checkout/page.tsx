@@ -4,9 +4,12 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCart } from '@/contexts/CartContext';
+import { formatPrice } from '@/utils/priceUtils';
 import { useToast } from '@/contexts/ToastContext';
-import LoadingPage from '@/components/LoadingPage';
+
 import { getValidImageSrc } from '@/utils/imageUtils';
+import OrderCheckoutProgress from '@/components/OrderCheckoutProgress';
+
 
 type CartItem = {
   product_id: number;
@@ -41,16 +44,33 @@ type CheckoutForm = {
 const CheckoutPage = () => {
   const router = useRouter();
   const { user, isLoggedIn } = useAuth();
-  const { cartItems, loading: cartLoading, clearCart } = useCart();
+  const { 
+    cartItems, 
+    loading: cartLoading, 
+    clearCart,
+    getTotalPrice,
+    getDiscountedPrice,
+    applyCoupon,
+    removeCoupon,
+    couponCode,
+    discountPercentage
+  } = useCart();
   const { showToast } = useToast();
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [discount, setDiscount] = useState(0);
+  const [localCouponCode, setLocalCouponCode] = useState('');
+  const [couponMessage, setCouponMessage] = useState('');
   const [shippingCost, setShippingCost] = useState(0);
   const [taxAmount, setTaxAmount] = useState(0);
   const [orderSuccess, setOrderSuccess] = useState(false);
+  const [orderData, setOrderData] = useState<any>(null);
+  
+  // Progress states for order processing
+  const [showProgress, setShowProgress] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [progressMessage, setProgressMessage] = useState('');
 
   const [formData, setFormData] = useState<CheckoutForm>({
     customer_name: '',
@@ -71,21 +91,55 @@ const CheckoutPage = () => {
     if (isLoggedIn && user) {
       setFormData(prev => ({
         ...prev,
-        customer_name: user.full_name || '',
+        customer_name: user.full_name || user.email?.split('@')[0] || '',
         customer_email: user.email || ''
       }));
     }
   }, [cartLoading, isLoggedIn, user]);
 
+  // Handle redirect after order success
+  useEffect(() => {
+    if (orderSuccess && orderData) {
+      const redirectTimer = setTimeout(() => {
+        // Check if we have multiple orders and redirect accordingly
+        if (orderData.order_ids && orderData.order_ids.length > 1) {
+          // Redirect to multi-order confirmation page
+          const queryParams = new URLSearchParams({
+            order_ids: orderData.order_ids.join(','),
+            total_amount: orderData.total_amount.toString(),
+            total_items: orderData.total_items.toString()
+          });
+          router.push(`/multi-order-confirmation?${queryParams.toString()}`);
+        } else if (orderData.order_ids && orderData.order_ids.length === 1) {
+          // Redirect to single order confirmation page
+          router.push(`/order-confirmation/${orderData.order_ids[0]}`);
+        } else {
+          // Fallback to profile page
+          router.push('/profile');
+        }
+      }, 3000); // Wait 3 seconds before redirecting
+
+      return () => clearTimeout(redirectTimer);
+    }
+  }, [orderSuccess, orderData, router]);
+
   // Calculate totals
   const calculateSubtotal = () => {
-    return cartItems.reduce((total, item) => total + (Number(item.price) * item.quantity), 0);
+    return getTotalPrice();
   };
 
   const calculateTotal = () => {
-    const subtotal = calculateSubtotal();
-    const discountedSubtotal = subtotal - (subtotal * discount / 100);
+    const subtotal = getTotalPrice();
+    const discountedSubtotal = getDiscountedPrice();
     return discountedSubtotal + shippingCost + taxAmount;
+  };
+
+  const handleApplyCoupon = () => {
+    const result = applyCoupon(localCouponCode);
+    setCouponMessage(result.message);
+    if (result.success) {
+      setLocalCouponCode('');
+    }
   };
 
   // Handle form input changes
@@ -148,18 +202,39 @@ const CheckoutPage = () => {
 
     setSubmitting(true);
     setError(null);
-    showToast('info', 'Processing your order...');
+    setShowProgress(true);
+    setProgress(0);
+    setProgressMessage('Starting order processing...');
 
     // Store cart items before clearing
     const currentCartItems = [...cartItems];
 
     try {
-      // Start a global progress indicator immediately for perceived speed
-      document.dispatchEvent(new CustomEvent('navigationStart'));
+      // Simulate progress updates
+      const progressInterval = setInterval(() => {
+        setProgress(prev => {
+          if (prev >= 90) {
+            clearInterval(progressInterval);
+            return 90;
+          }
+          const newProgress = prev + Math.random() * 15;
+          if (newProgress > 25 && prev <= 25) {
+            setProgressMessage('Checking product availability...');
+          } else if (newProgress > 50 && prev <= 50) {
+            setProgressMessage('Processing payment...');
+          } else if (newProgress > 75 && prev <= 75) {
+            setProgressMessage('Creating order...');
+          } else if (newProgress > 90 && prev <= 90) {
+            setProgressMessage('Preparing confirmation...');
+          }
+          return Math.min(newProgress, 90);
+        });
+      }, 200);
+
       const orderData = {
         user_id: user?.user_id?.toString(),
-        dealer_id: null, // Will be set by backend based on products
-        product_id: currentCartItems[0]?.product_id, // For single product orders, or will be handled by backend
+        dealer_id: null,
+        product_id: currentCartItems[0]?.product_id,
         customer_name: formData.customer_name,
         customer_email: formData.customer_email,
         customer_phone: formData.customer_phone,
@@ -170,51 +245,71 @@ const CheckoutPage = () => {
         total_amount: calculateTotal(),
         tax_amount: taxAmount,
         shipping_cost: shippingCost,
-        discount_amount: (calculateSubtotal() * discount / 100),
+        discount_amount: calculateSubtotal() - getDiscountedPrice(),
         payment_method: formData.payment_method,
         payment_status: 'Pending',
-        transaction_id: null,
-        cart_items: currentCartItems // For backend processing
+        transaction_id: null
       };
-
+      
       const response = await fetch('/api/checkout', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(orderData),
+        body: JSON.stringify({
+          cartItems: currentCartItems,
+          orderData: orderData
+        }),
       });
 
+      // Clear progress interval and set to 100%
+      clearInterval(progressInterval);
+      setProgress(100);
+      setProgressMessage('Order completed successfully!');
+
       const data = await response.json();
-      console.log('📥 Checkout API response:', data);
-      console.log('📥 Response status:', response.status);
-      console.log('📥 order_id from response:', data.order_id);
-      console.log('📥 order_ids from response:', data.order_ids);
 
       if (data.success) {
         setOrderSuccess(true);
+        setOrderData(data);
         showToast('success', 'Order placed successfully!');
         
         // Clear the cart after successful order
         try {
           await clearCart();
-          console.log('Cart cleared successfully after order');
         } catch (clearError) {
           console.error('Error clearing cart after order:', clearError);
         }
         
-        // Redirect to order confirmation page immediately
-        router.push(`/order-confirmation/${data.order_id}`);
+        // Redirect immediately without waiting for notifications/emails
+        setShowProgress(false);
+        
+        // Store order data for potential use
+        if (data.order_ids && data.order_ids.length > 1) {
+          // Store multi-order data in localStorage as backup
+          const multiOrderData = {
+            order_ids: data.order_ids,
+            total_amount: data.total_amount,
+            total_items: data.total_items,
+            orders: data.orders,
+            timestamp: Date.now()
+          };
+          localStorage.setItem('multiOrderData', JSON.stringify(multiOrderData));
+        }
+        
+        // Let the useEffect handle the redirect after showing success message
+        console.log('Order placed successfully, redirecting to profile in 3 seconds...');
       } else {
+        setShowProgress(false);
         setError(data.message || 'Failed to place order');
         showToast('error', data.message || 'Failed to place order');
       }
     } catch (error) {
       console.error('Error placing order:', error);
+      setShowProgress(false);
       setError('Failed to place order. Please try again.');
       showToast('error', 'Failed to place order. Please try again.');
     } finally {
-      document.dispatchEvent(new CustomEvent('navigationComplete'));
       setSubmitting(false);
     }
   };
@@ -272,86 +367,99 @@ const CheckoutPage = () => {
     );
   }
 
-  if (orderSuccess) {
-    return (
-      <div className="container mx-auto px-4 py-8 text-black">
-        <div className="text-center py-12">
-          <div className="mb-4">
-            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-              </svg>
-            </div>
-          </div>
-          <h2 className="text-2xl font-bold text-green-600 mb-4">Order Placed Successfully!</h2>
-          <p className="text-lg text-gray-600 mb-6">Your order has been confirmed and is being processed.</p>
-          <div className="animate-pulse">
-            <p className="text-sm text-gray-500">Redirecting to order confirmation...</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (cartItems.length === 0 && !orderSuccess) {
-    return (
-      <div className="container mx-auto px-4 py-8 text-black">
-        <div className="text-center py-12">
-          <p className="text-xl mb-4">Your cart is empty</p>
-          <Link 
-            href="/"
-            className="inline-block bg-amber-700 text-white px-6 py-3 rounded hover:bg-black transition"
-          >
-            Continue Shopping
-          </Link>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Loading Overlay */}
-        {submitting && (
-          <div className="fixed inset-0 bg-white bg-opacity-95 flex items-center justify-center z-40">
-            <div className="bg-white rounded-lg shadow-lg p-4 sm:p-6 max-w-md w-full mx-4">
-              <div className="text-center">
-                <video
-                  src="/mobile-shipping-process-12728435-10453894.mp4"
-                  className="w-full rounded mb-3"
-                  autoPlay
-                  loop
-                  muted
-                  playsInline
-                />
-                <h3 className="text-lg font-semibold text-gray-800">Order processing...</h3>
-                <p className="text-gray-600 text-sm mt-1">Please wait while we confirm your order.</p>
+    <>
+      {/* Order Checkout Progress Component */}
+      <OrderCheckoutProgress 
+        isVisible={showProgress}
+        progress={progress}
+        message={progressMessage}
+      />
+      
+      {orderSuccess ? (
+        <div className="container mx-auto px-4 py-8 text-black">
+          <div className="text-center py-12">
+            <div className="mb-4">
+              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
               </div>
             </div>
+            <h2 className="text-2xl font-bold text-green-600 mb-4">
+              {orderData?.order_ids?.length > 1 ? 'Orders Confirmed!' : 'Order Confirmed!'}
+            </h2>
+            <p className="text-lg text-gray-600 mb-6">
+              Thank you for your {orderData?.order_ids?.length > 1 ? 'orders' : 'order'}. We'll send you a confirmation email shortly.
+            </p>
+            <div className="animate-pulse">
+              <p className="text-sm text-gray-500">
+                Redirecting to {orderData?.order_ids?.length > 1 ? 'order confirmation' : 'order details'}...
+              </p>
+            </div>
+            <div className="mt-4 space-x-4">
+              {orderData?.order_ids?.length > 1 ? (
+                <Link 
+                  href={`/multi-order-confirmation?order_ids=${orderData.order_ids.join(',')}&total_amount=${orderData.total_amount}&total_items=${orderData.total_items}`}
+                  className="inline-block bg-blue-600 text-white px-6 py-3 rounded hover:bg-blue-700 transition"
+                >
+                  View Order Confirmation Now
+                </Link>
+              ) : orderData?.order_ids?.length === 1 ? (
+                <Link 
+                  href={`/order-confirmation/${orderData.order_ids[0]}`}
+                  className="inline-block bg-blue-600 text-white px-6 py-3 rounded hover:bg-blue-700 transition"
+                >
+                  View Order Details Now
+                </Link>
+              ) : (
+                <Link 
+                  href="/profile"
+                  className="inline-block bg-blue-600 text-white px-6 py-3 rounded hover:bg-blue-700 transition"
+                >
+                  View Orders Now
+                </Link>
+              )}
+            </div>
           </div>
-        )}
-
-
-
-        {/* Breadcrumb */}
-        <div className="flex items-center space-x-2 text-sm text-gray-600 mb-6">
-          <Link href="/" className="hover:text-gray-900">Home</Link>
-          <span>/</span>
-          <Link href="/cart" className="hover:text-gray-900">Cart</Link>
-          <span>/</span>
-          <span className="text-gray-900">Checkout</span>
         </div>
-
-        <h1 className="text-3xl font-bold mb-8 text-black">Checkout</h1>
-        
-        {error && (
-          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-            {error}
+      ) : cartItems.length === 0 ? (
+        <div className="container mx-auto px-4 py-8 text-black">
+          <div className="text-center py-12">
+            <p className="text-xl mb-4">Your cart is empty</p>
+            <Link 
+              href="/"
+              className="inline-block bg-amber-700 text-white px-6 py-3 rounded hover:bg-black transition"
+            >
+              Continue Shopping
+            </Link>
           </div>
-        )}
+        </div>
+      ) : (
+        <div className="min-h-screen bg-gray-50 py-8">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
-        <form onSubmit={handleSubmit} className="flex flex-col lg:flex-row gap-8">
+
+            {/* Breadcrumb */}
+            <div className="flex items-center space-x-2 text-sm text-gray-600 mb-6">
+              <Link href="/" className="hover:text-gray-900">Home</Link>
+              <span>/</span>
+              <Link href="/cart" className="hover:text-gray-900">Cart</Link>
+              <span>/</span>
+              <span className="text-gray-900">Checkout</span>
+            </div>
+
+            <h1 className="text-3xl font-bold mb-8 text-black">Checkout</h1>
+            
+            {error && (
+              <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+                {error}
+              </div>
+            )}
+
+            <form onSubmit={handleSubmit} className="flex flex-col lg:flex-row gap-8">
+
+
           {/* Checkout Form */}
           <div className="lg:w-2/3">
             <div className="bg-white rounded-lg shadow p-6 mb-6">
@@ -510,39 +618,77 @@ const CheckoutPage = () => {
                       <p className="text-xs text-gray-500">Qty: {item.quantity}</p>
                     </div>
                     <div className="text-sm font-medium text-black">
-                      ${((Number(item.price) || 0) * item.quantity).toFixed(2)}
+                      {formatPrice((Number(item.price) || 0) * item.quantity)}
                     </div>
                   </div>
                 ))}
+              </div>
+
+              {/* Coupon Section */}
+              <div className="border-t pt-4 mb-4">
+                <h3 className="text-sm font-medium text-black mb-2">Have a coupon?</h3>
+                <div className="flex space-x-2">
+                  <input
+                    type="text"
+                    value={localCouponCode}
+                    onChange={(e) => setLocalCouponCode(e.target.value)}
+                    placeholder="Enter coupon code"
+                    className="flex-1 border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleApplyCoupon}
+                    className="bg-blue-600 text-white px-4 py-2 rounded text-sm hover:bg-blue-700 transition"
+                  >
+                    Apply
+                  </button>
+                </div>
+                {couponMessage && (
+                  <p className={`text-xs mt-1 ${couponMessage.includes('applied') ? 'text-green-600' : 'text-red-600'}`}>
+                    {couponMessage}
+                  </p>
+                )}
+                {couponCode && (
+                  <div className="flex items-center justify-between mt-2 p-2 bg-green-50 rounded">
+                    <span className="text-sm text-green-700">Coupon: {couponCode}</span>
+                    <button
+                      type="button"
+                      onClick={removeCoupon}
+                      className="text-red-600 text-sm hover:text-red-800"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                )}
               </div>
 
               {/* Order Totals */}
               <div className="space-y-3 border-t pt-4">
                 <div className="flex justify-between text-black">
                   <span>Subtotal:</span>
-                  <span>${calculateSubtotal().toFixed(2)}</span>
+                  <span>{formatPrice(calculateSubtotal())}</span>
                 </div>
                 
-                {discount > 0 && (
+                {discountPercentage > 0 && (
                   <div className="flex justify-between text-green-600">
-                    <span>Discount ({discount}%):</span>
-                    <span>-${(calculateSubtotal() * discount / 100).toFixed(2)}</span>
+                    <span>Discount ({discountPercentage}%):</span>
+                    <span>-{formatPrice(calculateSubtotal() - getDiscountedPrice())}</span>
                   </div>
                 )}
                 
                 <div className="flex justify-between text-black">
                   <span>Shipping:</span>
-                  <span>${shippingCost.toFixed(2)}</span>
+                  <span>{formatPrice(shippingCost)}</span>
                 </div>
                 
                 <div className="flex justify-between text-black">
                   <span>Tax:</span>
-                  <span>${taxAmount.toFixed(2)}</span>
+                  <span>{formatPrice(taxAmount)}</span>
                 </div>
                 
                 <div className="flex justify-between font-bold text-lg border-t pt-3 text-black">
                   <span>Total:</span>
-                  <span>${calculateTotal().toFixed(2)}</span>
+                  <span>{formatPrice(calculateTotal())}</span>
                 </div>
               </div>
 
@@ -554,7 +700,7 @@ const CheckoutPage = () => {
                 {submitting ? (
                   <div className="flex items-center justify-center">Processing...</div>
                 ) : (
-                  `Place Order - $${calculateTotal().toFixed(2)}`
+                  `Place Order - ${formatPrice(calculateTotal())}`
                 )}
               </button>
             </div>
@@ -562,6 +708,8 @@ const CheckoutPage = () => {
         </form>
       </div>
     </div>
+      )}
+    </>
   );
 };
 

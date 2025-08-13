@@ -4,6 +4,8 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import LoadingPage from '@/components/LoadingPage';
+import ServiceBookingProgress from '@/components/ServiceBookingProgress';
+import { formatPrice } from '@/utils/priceUtils';
 
 type Service = {
   service_id: string; // Changed from number to string to match varchar type
@@ -39,6 +41,8 @@ const ServiceBookingPage = () => {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<{ type: 'success' | 'error' | 'warning', message: string } | null>(null);
+  const [bookingProgress, setBookingProgress] = useState(0);
+  const [bookingMessage, setBookingMessage] = useState('Initializing booking...');
 
   const [formData, setFormData] = useState<BookingForm>({
     service_date: '',
@@ -80,6 +84,19 @@ const ServiceBookingPage = () => {
     fetchService();
   }, [params.serviceId]);
 
+  // Parse service pincodes into an array
+  const getServicePincodes = (): string[] => {
+    if (!service?.service_pincodes) return [];
+    
+    // Split by common delimiters and clean up
+    const pincodes = service.service_pincodes
+      .split(/[,;\s]+/) // Split by comma, semicolon, or whitespace
+      .map(pincode => pincode.trim())
+      .filter(pincode => pincode.length === 6 && /^\d{6}$/.test(pincode)); // Only valid 6-digit pincodes
+    
+    return [...new Set(pincodes)]; // Remove duplicates
+  };
+
   // Handle form input changes
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -104,13 +121,21 @@ const ServiceBookingPage = () => {
       return false;
     }
     if (!formData.service_pincode.trim()) {
-      setError('Please enter your pincode');
+      setError('Please select your pincode');
       return false;
     }
     if (!/^\d{6}$/.test(formData.service_pincode.trim())) {
       setError('Please enter a valid 6-digit pincode');
       return false;
     }
+    
+    // Validate if the selected pincode is available for this service
+    const availablePincodes = getServicePincodes();
+    if (availablePincodes.length > 0 && !availablePincodes.includes(formData.service_pincode.trim())) {
+      setError(`Service is not available in pincode ${formData.service_pincode}. Available pincodes: ${availablePincodes.join(', ')}`);
+      return false;
+    }
+    
     return true;
   };
 
@@ -129,22 +154,32 @@ const ServiceBookingPage = () => {
 
     setSubmitting(true);
     setError(null);
+    setBookingProgress(0);
+    setBookingMessage('Initializing booking...');
 
     try {
+      // Step 1: Validation
+      setBookingProgress(10);
+      setBookingMessage('Validating service availability...');
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
+      setBookingProgress(20);
+      setBookingMessage('Preparing booking data...');
+      await new Promise(resolve => setTimeout(resolve, 200));
+
       console.log('🔍 Service object:', service);
       console.log('🔍 Service vendor_id:', service.vendor_id);
     
-      
       const bookingData = {
         user_id: user?.user_id,
         service_id: service.service_id,
         vendor_id: service.vendor_id,
         service_name: service.name,
         service_description: service.description,
-        service_category: service.category, // This will be the category name
+        service_category: service.category,
         service_type: service.type,
         base_price: service.base_price,
-        final_price: service.base_price, // Can be modified for discounts
+        final_price: service.base_price,
         duration_minutes: service.duration_minutes,
         service_date: formData.service_date,
         service_time: formData.service_time,
@@ -156,6 +191,9 @@ const ServiceBookingPage = () => {
       
       console.log('🔍 Booking data being sent:', bookingData);
 
+      setBookingProgress(40);
+      setBookingMessage('Processing booking request...');
+
       const response = await fetch('/api/service-booking', {
         method: 'POST',
         headers: {
@@ -164,13 +202,26 @@ const ServiceBookingPage = () => {
         body: JSON.stringify(bookingData),
       });
 
+      setBookingProgress(70);
+      setBookingMessage('Sending notifications...');
+      await new Promise(resolve => setTimeout(resolve, 400));
+
       const data = await response.json();
 
       if (data.success) {
+        setBookingProgress(90);
+        setBookingMessage('Finalizing booking...');
+        await new Promise(resolve => setTimeout(resolve, 300));
+        
+        setBookingProgress(100);
+        setBookingMessage('Booking completed successfully!');
+        
         showToast('success', 'Service booked successfully!');
-        setTimeout(() => {
-          router.push(`/service-confirmation/${data.service_order_id}`);
-        }, 2000);
+        
+        // Wait a moment to show completion
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        router.push(`/service-confirmation/${data.service_order_id}`);
       } else {
         setError(data.message || 'Failed to book service');
         showToast('error', data.message || 'Failed to book service');
@@ -226,7 +277,15 @@ const ServiceBookingPage = () => {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8 text-black">
+    <>
+      {/* Service Booking Progress Modal */}
+      <ServiceBookingProgress 
+        isVisible={submitting}
+        progress={bookingProgress}
+        message={bookingMessage}
+      />
+      
+      <div className="container mx-auto px-4 py-8 text-black">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
         <div className="mb-8">
@@ -252,7 +311,7 @@ const ServiceBookingPage = () => {
             </div>
             <div>
               <p className="text-sm text-gray-600">Price</p>
-              <p className="font-medium">₹{service.base_price}</p>
+                              <p className="font-medium">{formatPrice(service.base_price)}</p>
             </div>
             <div>
               <p className="text-sm text-gray-600">Duration</p>
@@ -262,6 +321,21 @@ const ServiceBookingPage = () => {
               <p className="text-sm text-gray-600">Description</p>
               <p className="font-medium">{service.description}</p>
             </div>
+            {getServicePincodes().length > 0 && (
+              <div className="md:col-span-2">
+                <p className="text-sm text-gray-600">Available Service Areas</p>
+                <div className="flex flex-wrap gap-2 mt-1">
+                  {getServicePincodes().map((pincode) => (
+                    <span 
+                      key={pincode} 
+                      className="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full font-medium"
+                    >
+                      {pincode}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
@@ -352,17 +426,48 @@ const ServiceBookingPage = () => {
               <label htmlFor="service_pincode" className="block text-sm font-medium text-gray-700 mb-2">
                 Pincode *
               </label>
-              <input
-                type="text"
-                id="service_pincode"
-                name="service_pincode"
-                value={formData.service_pincode}
-                onChange={handleInputChange}
-                placeholder="Enter 6-digit pincode"
-                maxLength={6}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500"
-                required
-              />
+              {getServicePincodes().length > 0 ? (
+                <div>
+                  <select
+                    id="service_pincode"
+                    name="service_pincode"
+                    value={formData.service_pincode}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500 bg-white"
+                    required
+                  >
+                    <option value="">Select your pincode</option>
+                    {getServicePincodes().map((pincode) => (
+                      <option key={pincode} value={pincode}>
+                        {pincode}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-xs text-green-600 mt-1 flex items-center gap-1">
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    Service available in {getServicePincodes().length} area{getServicePincodes().length > 1 ? 's' : ''}
+                  </p>
+                </div>
+              ) : (
+                <div>
+                  <input
+                    type="text"
+                    id="service_pincode"
+                    name="service_pincode"
+                    value={formData.service_pincode}
+                    onChange={handleInputChange}
+                    placeholder="Enter 6-digit pincode"
+                    maxLength={6}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500"
+                    required
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Please enter your pincode to check service availability
+                  </p>
+                </div>
+              )}
             </div>
 
             {/* Payment Method */}
@@ -419,6 +524,7 @@ const ServiceBookingPage = () => {
         </form>
       </div>
     </div>
+    </>
   );
 };
 

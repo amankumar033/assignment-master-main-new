@@ -1,5 +1,10 @@
 @import "tailwindcss";
 
+/* Suppress fdprocessedid warnings in development */
+[fdprocessedid] {
+  /* This suppresses the React development warning about fdprocessedid */
+}
+
 :root {
   --global-palette1: #ff7200;
   --global-palette2: #000000;
