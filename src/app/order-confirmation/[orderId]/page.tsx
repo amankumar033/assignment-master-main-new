@@ -18,12 +18,8 @@ type OrderDetails = {
   customer_name: string;
   customer_email: string;
   customer_phone: string;
-  shipping_address_line1: string;
-  shipping_address_line2: string;
-  shipping_city: string;
-  shipping_state: string;
-  shipping_postal_code: string;
-  shipping_country: string;
+  shipping_address: string;
+  shipping_pincode: string;
   order_date: string;
   order_status: string;
   total_amount: number;
@@ -237,11 +233,13 @@ const OrderConfirmationPage = () => {
             <div className="space-y-3">
               <div>
                 <span className="text-gray-600 text-sm">Name:</span>
-                <p className="text-black font-medium">{orderDetails.customer_name}</p>
+                <p className="text-black font-medium">
+                  {orderDetails.customer_name || user?.full_name || 'N/A'}
+                </p>
               </div>
               <div>
                 <span className="text-gray-600 text-sm">Email:</span>
-                <p className="text-black">{orderDetails.customer_email}</p>
+                <p className="text-black">{orderDetails.customer_email || 'N/A'}</p>
               </div>
               {orderDetails.customer_phone && (
                 <div>
@@ -257,14 +255,9 @@ const OrderConfirmationPage = () => {
         <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
           <h2 className="text-xl font-bold text-black mb-4">Shipping Address</h2>
           <div className="bg-gray-50 rounded-lg p-4">
-            <p className="text-black font-medium">{orderDetails.shipping_address_line1}</p>
-            {orderDetails.shipping_address_line2 && (
-              <p className="text-black">{orderDetails.shipping_address_line2}</p>
-            )}
-            <p className="text-black">
-              {orderDetails.shipping_city}, {orderDetails.shipping_state} {orderDetails.shipping_postal_code}
-            </p>
-            <p className="text-black">{orderDetails.shipping_country}</p>
+            <p className="text-black font-medium">{orderDetails.shipping_address || 'Not provided'}</p>
+            <p className="text-black">Postal Code: {orderDetails.shipping_pincode || 'Not provided'}</p>
+            <p className="text-black">Phone: {orderDetails.customer_phone || 'Not provided'}</p>
           </div>
         </div>
 

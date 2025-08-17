@@ -99,6 +99,8 @@ export async function GET(
 
     const order = orderResult[0];
     console.log('✅ Order found:', order);
+    console.log('🔍 Customer name from order:', order.customer_name);
+    console.log('🔍 Customer email from order:', order.customer_email);
 
     const response = {
       success: true,
@@ -111,15 +113,15 @@ export async function GET(
         product_price: parseFloat(order.product_price) || 0,
         product_image: processImageData(order.product_image),
         product_description: order.product_description,
-        quantity: parseInt(order.quantity) || 1, // Get quantity from orders table
+        quantity: parseInt(order.qauntity) || 1, // Get quantity from orders table (DB uses 'qauntity')
         customer_name: order.customer_name,
         customer_email: order.customer_email,
         customer_phone: order.customer_phone,
-        shipping_address_line1: order.shipping_address,
+        shipping_address: order.shipping_address,
         shipping_address_line2: '', // Not available in current schema
         shipping_city: 'City', // Default value
         shipping_state: 'State', // Default value
-        shipping_postal_code: order.shipping_pincode,
+        shipping_pincode: order.shipping_pincode,
         shipping_country: 'India', // Default value
         order_date: order.order_date,
         order_status: order.order_status,

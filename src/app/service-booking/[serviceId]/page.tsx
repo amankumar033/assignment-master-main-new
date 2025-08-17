@@ -43,6 +43,8 @@ const ServiceBookingPage = () => {
   const [toast, setToast] = useState<{ type: 'success' | 'error' | 'warning', message: string } | null>(null);
   const [bookingProgress, setBookingProgress] = useState(0);
   const [bookingMessage, setBookingMessage] = useState('Initializing booking...');
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [redirectCountdown, setRedirectCountdown] = useState(3);
 
   const [formData, setFormData] = useState<BookingForm>({
     service_date: '',
@@ -215,13 +217,19 @@ const ServiceBookingPage = () => {
         
         setBookingProgress(100);
         setBookingMessage('Booking completed successfully!');
-        
         showToast('success', 'Service booked successfully!');
-        
-        // Wait a moment to show completion
-        await new Promise(resolve => setTimeout(resolve, 500));
-        
-        router.push(`/service-confirmation/${data.service_order_id}`);
+        setShowSuccess(true);
+        // Auto-redirect after short countdown
+        const countdownTimer = setInterval(() => {
+          setRedirectCountdown(prev => {
+            if (prev <= 1) {
+              clearInterval(countdownTimer);
+              router.push(`/service-confirmation/${data.service_order_id}`);
+              return 0;
+            }
+            return prev - 1;
+          });
+        }, 1000);
       } else {
         setError(data.message || 'Failed to book service');
         showToast('error', data.message || 'Failed to book service');
@@ -280,9 +288,10 @@ const ServiceBookingPage = () => {
     <>
       {/* Service Booking Progress Modal */}
       <ServiceBookingProgress 
-        isVisible={submitting}
+        isVisible={submitting || showSuccess}
         progress={bookingProgress}
         message={bookingMessage}
+        showSuccess={showSuccess}
       />
       
       <div className="container mx-auto px-4 py-8 text-black">

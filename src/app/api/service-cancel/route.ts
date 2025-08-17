@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
     // Update service status to cancelled
     const updateResult = await query(
       `UPDATE kriptocar.service_orders 
-       SET service_status = 'Cancelled', updated_at = NOW()
+       SET service_status = 'Cancelled'
        WHERE service_order_id = ? AND user_id = ?`,
       [service_order_id, user_id]
     ) as any;
@@ -66,77 +66,74 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create enhanced notification for customer
-    try {
-      await notificationIdGenerator.createNotification({
-        user_id: user_id,
-        notification_type: 'service_cancelled',
-        title: `Service Cancelled - ${order.service_name}`,
-        message: `Your service booking #${order.service_order_id} has been cancelled successfully. Refund will be processed.`
-      });
-      console.log('✅ Customer notification created for service cancellation');
-    } catch (notificationError) {
-      console.error('❌ Error creating customer notification:', notificationError);
-    }
-
-    // Create enhanced notification for vendor
-    if (order.vendor_id) {
+    // Kick off notifications and emails asynchronously so the response returns fast
+    setTimeout(async () => {
       try {
         await notificationIdGenerator.createNotification({
-          user_id: order.vendor_id,
+          user_id: user_id,
           notification_type: 'service_cancelled',
-          title: `Service Cancelled #${order.service_order_id} - ${order.customer_name}`,
-          message: `Service booking "${order.service_name}" has been cancelled by ${order.customer_name}. Scheduled for ${order.service_date} at ${order.service_time}.`
+          title: `Service Cancelled - ${order.service_name}`,
+          message: `Your service booking #${order.service_order_id} has been cancelled successfully. Refund will be processed.`
         });
-        console.log('✅ Vendor notification created for service cancellation');
+        console.log('✅ Customer notification created for service cancellation');
       } catch (notificationError) {
-        console.error('❌ Error creating vendor notification:', notificationError);
+        console.error('❌ Error creating customer notification:', notificationError);
       }
-    }
 
-    // Send email to vendor
-    if (order.vendor_email) {
-      try {
-        const vendorEmailData = {
-          vendor_name: order.vendor_name,
-          vendor_email: order.vendor_email,
-          service_name: order.service_name,
-          service_order_id: order.service_order_id,
-          customer_name: order.customer_name,
-          customer_email: order.customer_email,
-          service_date: order.service_date,
-          service_time: order.service_time,
-          cancellation_date: new Date().toISOString()
-        };
-
-        await sendServiceCancellationEmail(vendorEmailData, 'vendor');
-        console.log('✅ Cancellation email sent to vendor');
-      } catch (emailError) {
-        console.error('❌ Error sending cancellation email to vendor:', emailError);
+      if (order.vendor_id) {
+        try {
+          await notificationIdGenerator.createNotification({
+            user_id: order.vendor_id,
+            notification_type: 'service_cancelled',
+            title: `Service Cancelled #${order.service_order_id} - ${order.customer_name}`,
+            message: `Service booking "${order.service_name}" has been cancelled by ${order.customer_name}. Scheduled for ${order.service_date} at ${order.service_time}.`
+          });
+          console.log('✅ Vendor notification created for service cancellation');
+        } catch (notificationError) {
+          console.error('❌ Error creating vendor notification:', notificationError);
+        }
       }
-    }
 
-    // Send email to customer
-    if (order.customer_email) {
-      try {
-        const customerEmailData = {
-          customer_name: order.customer_name,
-          customer_email: order.customer_email,
-          service_name: order.service_name,
-          service_order_id: order.service_order_id,
-          vendor_name: order.vendor_name,
-          service_date: order.service_date,
-          service_time: order.service_time,
-          final_price: order.final_price,
-          cancellation_date: new Date().toISOString()
-        };
-
-        await sendServiceCancellationEmail(customerEmailData, 'customer');
-        console.log('✅ Cancellation email sent to customer');
-      } catch (emailError) {
-        console.error('❌ Error sending cancellation email to customer:', emailError);
+      if (order.vendor_email) {
+        try {
+          const vendorEmailData = {
+            vendor_name: order.vendor_name,
+            vendor_email: order.vendor_email,
+            service_name: order.service_name,
+            service_order_id: order.service_order_id,
+            customer_name: order.customer_name,
+            customer_email: order.customer_email,
+            service_date: order.service_date,
+            service_time: order.service_time,
+            cancellation_date: new Date().toISOString()
+          };
+          await sendServiceCancellationEmail(vendorEmailData, 'vendor');
+          console.log('✅ Cancellation email sent to vendor');
+        } catch (emailError) {
+          console.error('❌ Error sending cancellation email to vendor:', emailError);
+        }
       }
-    }
+
+      if (order.customer_email) {
+        try {
+          const customerEmailData = {
+            customer_name: order.customer_name,
+            customer_email: order.customer_email,
+            service_name: order.service_name,
+            service_order_id: order.service_order_id,
+            vendor_name: order.vendor_name,
+            service_date: order.service_date,
+            service_time: order.service_time,
+            final_price: order.final_price,
+            cancellation_date: new Date().toISOString()
+          };
+          await sendServiceCancellationEmail(customerEmailData, 'customer');
+          console.log('✅ Cancellation email sent to customer');
+        } catch (emailError) {
+          console.error('❌ Error sending cancellation email to customer:', emailError);
+        }
+      }
+    }, 0);
 
     return NextResponse.json({
       success: true,

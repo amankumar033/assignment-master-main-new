@@ -189,8 +189,8 @@ const Navbar = () => {
             />
           </Link>
 
-        {/* Search Bar */}
-          <div className="flex-1 max-w-2xl mx-8">
+        {/* Search Bar - Desktop/Tablet only */}
+          <div className="hidden md:block flex-1 max-w-2xl mx-4 lg:mx-8">
             <form onSubmit={handleSearch} className="flex" suppressHydrationWarning>
             <input
               type="text"
@@ -212,8 +212,8 @@ const Navbar = () => {
           </form>
         </div>
 
-          {/* User Icons */}
-          <div className="flex items-center space-x-6">
+          {/* User Icons - Responsive */}
+          <div className="hidden md:flex items-center space-x-4 lg:space-x-6">
             {/* Auth Controls */}
             {isLoggedIn ? (
               <div className="flex items-center space-x-4">
@@ -300,61 +300,57 @@ const Navbar = () => {
       </div>
 
       </div>
-      {/* Orange Navigation Bar (sticky) */}
-      <div className="bg-[#D27208] text-white py-2 px-4 lg:px-20 sticky top-0 z-30">
+      {/* Orange Navigation Bar (sticky) - Hidden on mobile */}
+      <div className="hidden lg:block bg-[#D27208] text-white py-2 px-4 lg:px-20 sticky top-0 z-30">
         <div className="flex items-center justify-between">
           {/* Left Side - Navigation Items with Slider Effect */}
           <div className="flex items-center">
-            {/* Shop by Categories */}
+            {/* Home */}
             <div className="relative group">
               <LoadingButton 
-                onClick={() => handleNavigation('/shop')}
+                onClick={() => handleNavigation('/')}
                 className="block px-6 py-2 font-bold transition-all duration-300 hover:text-[#D27208] relative z-10"
                 showSpinner={false}
                 instantFeedback={false}
               >
-                Shop by categories
+                Home
               </LoadingButton>
               <div className="absolute inset-0 bg-white rounded-lg transform scale-x-0 group-hover:scale-x-100 origin-left"></div>
-                    </div>
-
-            {/* Shop by Brand */}
-            <div className="relative group">
-              <div className="relative">
-                <span className="absolute left-1/2 transform -translate-x-1/2 bg-green-500 text-white text-sm px-2 mb-4  rounded-full z-20" style={{ top: '-8px' }}>New!</span>
-                                  <LoadingButton 
-                  onClick={() => handleNavigation('/shop')}
-                  className="block px-6 py-2 font-bold cursor-pointer transition-all duration-300 hover:text-[#D27208] relative z-10"
-                  showSpinner={false}
-                  instantFeedback={false}
-                >
-                  Shop by brand
-                                  </LoadingButton>
-                                </div>
-              <div className="absolute inset-0 bg-white rounded-lg transform scale-x-0 group-hover:scale-x-100 origin-left"></div>
-                              </div>
+            </div>
 
             {/* Shop */}
             <div className="relative group">
-                            <LoadingButton 
+              <LoadingButton 
                 onClick={() => handleNavigation('/shop')}
                 className="block px-6 py-2 font-bold cursor-pointer transition-all duration-300 hover:text-[#D27208] relative z-10"
                 showSpinner={false}
               >
                 Shop
-                            </LoadingButton>
+              </LoadingButton>
               <div className="absolute inset-0 bg-white rounded-lg transform scale-x-0 group-hover:scale-x-100 origin-left"></div>
-                          </div>
+            </div>
 
             {/* Services */}
             <div className="relative group">
-                          <LoadingButton 
+              <LoadingButton 
                 onClick={() => handleNavigation('/location')}
                 className="block px-6 py-2 font-bold cursor-pointer transition-all duration-300 hover:text-[#D27208] relative z-10"
                 showSpinner={false}
               >
                 Services
-                          </LoadingButton>
+              </LoadingButton>
+              <div className="absolute inset-0 bg-white rounded-lg transform scale-x-0 group-hover:scale-x-100 origin-left"></div>
+            </div>
+
+            {/* Track Orders */}
+            <div className="relative group">
+              <LoadingButton 
+                onClick={() => handleNavigation('/orders')}
+                className="block px-6 py-2 font-bold cursor-pointer transition-all duration-300 hover:text-[#D27208] relative z-10"
+                showSpinner={false}
+              >
+                Track Orders
+              </LoadingButton>
               <div className="absolute inset-0 bg-white rounded-lg transform scale-x-0 group-hover:scale-x-100 origin-left"></div>
             </div>
           </div>
@@ -388,8 +384,27 @@ const Navbar = () => {
         </div>
       </div>
 
-      {/* Mobile Menu Button */}
-      <div className="lg:hidden bg-[#D27208] px-4 py-2">
+      {/* Mobile Bar: search (when menu closed) + hamburger */}
+      <div className="lg:hidden bg-[#D27208] px-4 py-2 flex items-center space-x-2">
+        {!isMobileMenuOpen && (
+          <form onSubmit={handleSearch} className="flex flex-1">
+            <input
+              type="text"
+              placeholder="Search products..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="flex-1 px-3 py-2 text-black rounded-l-lg outline-none bg-white text-sm"
+            />
+            <button 
+              type="submit"
+              className="bg-red-600 hover:bg-red-700 px-4 py-2 rounded-r-lg transition-colors"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            </button>
+          </form>
+        )}
         <button
           onClick={toggleMobileMenu}
           className="text-white hover:text-yellow-200 transition-colors"
@@ -403,60 +418,143 @@ const Navbar = () => {
       {/* Mobile Menu */}
       {isMobileMenuOpen && (
         <div className="lg:hidden bg-[#D27208] text-white px-4 py-4">
-          <div className="space-y-4">
+          {/* Mobile Menu Header with Close Button */}
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-lg font-bold">Menu</h3>
+            <button
+              onClick={toggleMobileMenu}
+              className="text-white hover:text-yellow-200 transition-colors"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+          {/* Mobile Search removed from menu to avoid duplication */}
+
+          {/* Row 1: Primary menu items */}
+          <div className="mb-4 grid grid-cols-4 gap-2">
             <LoadingButton 
-              onClick={() => {
-                console.log('🔐 Mobile login button clicked');
-                handleNavigation('/login');
-              }}
-              className="block py-2 hover:text-yellow-200 transition-colors w-full text-left"
+              onClick={() => handleNavigation('/')}
+              className="flex flex-col items-center justify-center bg-white/10 rounded-md py-3 text-sm"
               showSpinner={false}
               instantFeedback={false}
             >
-              Login
+              <svg className="w-5 h-5 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0h6" />
+              </svg>
+              Home
             </LoadingButton>
-                    <LoadingButton 
+            <LoadingButton 
               onClick={() => handleNavigation('/shop')}
-              className="block py-2 hover:text-yellow-200 transition-colors w-full text-left"
+              className="flex flex-col items-center justify-center bg-white/10 rounded-md py-3 text-sm"
               showSpinner={false}
-              instantFeedback={false}
             >
-              Shop by categories
-                    </LoadingButton>
-            <div className="flex items-center space-x-2 py-2">
-              <span>Shop by brand</span>
-              <span className="bg-green-500 text-white text-[8px] px-0.5 py-0 rounded-full">New!</span>
-            </div>
-          <LoadingButton 
-              onClick={() => handleNavigation('/shop')}
-              className="block py-2 hover:text-yellow-200 transition-colors w-full text-left"
-              showSpinner={false}
-              instantFeedback={false}
-            >
+              <svg className="w-5 h-5 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h18M3 9h18M3 15h18M3 21h18" />
+              </svg>
               Shop
-                  </LoadingButton>
+            </LoadingButton>
             <LoadingButton 
               onClick={() => handleNavigation('/location')}
-              className="block py-2 hover:text-yellow-200 transition-colors w-full text-left"
+              className="flex flex-col items-center justify-center bg-white/10 rounded-md py-3 text-sm"
               showSpinner={false}
-              instantFeedback={false}
             >
+              <svg className="w-5 h-5 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1 1 0 01-1.414 0L6.343 16.657a8 8 0 1111.314 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
               Services
             </LoadingButton>
-            <div className="pt-4 border-t border-orange-400">
-              <div className="flex items-center space-x-2 py-2">
-                <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
-                  <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z" />
-                </svg>
-                <span>9742839555</span>
+            <LoadingButton 
+              onClick={() => handleNavigation('/orders')}
+              className="flex flex-col items-center justify-center bg-white/10 rounded-md py-3 text-sm"
+              showSpinner={false}
+            >
+              <svg className="w-5 h-5 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-6a2 2 0 012-2h8m-6 8h6M3 7h6m0 0V3m0 4v8" />
+              </svg>
+              Orders
+            </LoadingButton>
+          </div>
+
+          {/* Row 2: Account/Cart controls */}
+          <div className="mb-4 grid grid-cols-3 gap-2">
+            {isLoggedIn ? (
+              <>
+                <LoadingButton
+                  onClick={() => handleNavigation('/profile')}
+                  className="flex items-center justify-center bg-white/10 rounded-md py-3 text-sm"
+                  showSpinner={false}
+                >
+                  <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                  </svg>
+                  Profile
+                </LoadingButton>
+                <LoadingButton
+                  onClick={handleLogout}
+                  className="flex items-center justify-center bg-white/10 rounded-md py-3 text-sm"
+                  showSpinner={false}
+                >
+                  <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7" />
+                  </svg>
+                  Logout
+                </LoadingButton>
+                <LoadingButton
+                  onClick={() => handleNavigation('/cart')}
+                  className="flex items-center justify-center bg-white/10 rounded-md py-3 text-sm"
+                  showSpinner={false}
+                >
+                  <img src="/cart-2.png" alt="Cart" className="w-5 h-5 mr-2" />
+                  Cart ({cartItemCount})
+                </LoadingButton>
+              </>
+            ) : (
+              <>
+                <LoadingButton 
+                  onClick={() => handleNavigation('/login')}
+                  className="flex items-center justify-center bg-white/10 rounded-md py-3 text-sm"
+                  showSpinner={false}
+                >
+                  <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                  </svg>
+                  Login
+                </LoadingButton>
+                <div className="col-span-2">
+                  <LoadingButton
+                    onClick={() => handleNavigation('/cart')}
+                    className="flex items-center justify-center bg-white/10 rounded-md py-3 text-sm w-full"
+                    showSpinner={false}
+                  >
+                    <img src="/cart-2.png" alt="Cart" className="w-5 h-5 mr-2" />
+                    Cart ({cartItemCount})
+                  </LoadingButton>
                 </div>
-              <div className="flex items-center space-x-2 py-2">
-                <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M18 10c0 3.866-3.582 7-8 7a8.841 8.841 0 01-4.083-.98L2 17l1.338-3.123C2.493 12.767 2 11.434 2 10c0-3.866 3.582-7 8-7s8 3.134 8 7zM7 9H5v2h2V9zm8 0h-2v2h2V9zM9 9h2v2H9V9z" clipRule="evenodd" />
-                </svg>
-                <span>Live Chat</span>
-                </div>
-            </div>
+              </>
+            )}
+          </div>
+
+          {/* Row 3: Contact */}
+          <div className="grid grid-cols-2 gap-2">
+            <a href="tel:9742839555" className="flex items-center justify-center bg-green-600 rounded-md py-3 font-semibold">
+              <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z" />
+              </svg>
+              9742839555
+            </a>
+            <LoadingButton
+              onClick={() => {}}
+              className="flex items-center justify-center bg-white/10 rounded-md py-3 font-semibold"
+              showSpinner={false}
+            >
+              <svg className="w-6 h-6 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M18 10c0 3.866-3.582 7-8 7a8.841 8.841 0 01-4.083-.98L2 17l1.338-3.123C2.493 12.767 2 11.434 2 10c0-3.866 3.582-7 8-7s8 3.134 8 7zM7 9H5v2h2V9zm8 0h-2v2h2V9zM9 9h2v2H9V9z" clipRule="evenodd" />
+              </svg>
+              Live Chat
+            </LoadingButton>
           </div>
         </div>
       )}

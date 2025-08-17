@@ -105,7 +105,7 @@ const NavigationProgress = () => {
   return (
     <div className="fixed top-0 left-0 w-full z-[1700]">
       <div 
-        className="h-1 bg-gradient-to-r from-[#D27208] to-orange-500 transition-all duration-200 ease-out"
+        className="h-1 bg-gradient-to-r from-red-500 to-red-600 transition-all duration-200 ease-out"
         style={{ width: `${progress}%` }}
       />
     </div>

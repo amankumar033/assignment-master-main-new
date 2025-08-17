@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCart } from '@/contexts/CartContext';
@@ -14,6 +14,7 @@ type Product = {
   product_id: string;
   name: string;
   description: string;
+  short_description?: string;
   sale_price: number;
   original_price: number;
   rating: number;
@@ -22,7 +23,10 @@ type Product = {
   image_3?: string;
   image_4?: string;
   category_id: string;
+  category_name?: string;
+  subcategory_name?: string;
   brand_name: string;
+  sub_brand_name?: string;
   stock_quantity: number;
   is_active: number;
   is_featured: number;
@@ -31,6 +35,8 @@ type Product = {
   updated_at: string;
   dealer_id: string;
 };
+
+
 
 type Review = {
   id: number;
@@ -45,7 +51,7 @@ const ProductDetailPage = () => {
   const params = useParams();
   const router = useRouter();
   const { user, isLoggedIn } = useAuth();
-  const { cartItems, addToCart } = useCart();
+  const { cartItems, addToCart, updateQuantity } = useCart();
 
 
   const [product, setProduct] = useState<Product | null>(null);
@@ -55,6 +61,22 @@ const ProductDetailPage = () => {
   const [error, setError] = useState<string | null>(null);
   const [quantity, setQuantity] = useState(1); // Default quantity should be 1
   const [originalStock, setOriginalStock] = useState(0);
+  
+  // Image gallery state
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [isAutoScrolling, setIsAutoScrolling] = useState(true);
+  const [zoomLevel, setZoomLevel] = useState(1);
+  const [isZoomed, setIsZoomed] = useState(false);
+  const [dragPosition, setDragPosition] = useState({ x: 0, y: 0 });
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const autoScrollInterval = useRef<NodeJS.Timeout | null>(null);
+  
+  // Cursor zoom state
+  const [isCursorZoomEnabled, setIsCursorZoomEnabled] = useState(false);
+  const [cursorPosition, setCursorPosition] = useState({ x: 0, y: 0 });
+  const [isHovering, setIsHovering] = useState(false);
+
+
 
   const productSlug = params.slug;
 
@@ -103,6 +125,8 @@ const ProductDetailPage = () => {
   ];
 
   console.log('Product detail page - productSlug:', productSlug, 'type:', typeof productSlug, 'params:', params);
+
+
 
   // Fetch product details
   const fetchProduct = async () => {
@@ -260,15 +284,29 @@ const ProductDetailPage = () => {
   };
 
   // Add to cart functionality
-  const handleAddToCart = () => {
+  const handleAddToCart = async () => {
     if (!product) return;
-    addToCart({
-      product_id: product.product_id,
-      name: product.name,
-      price: product.sale_price,
-      image: product.image_1,
-      quantity: quantity // Add the selected quantity
-    });
+    
+    // Check if item already exists in cart
+    const existingItem = cartItems.find(item => item.product_id === product.product_id);
+    
+    if (existingItem) {
+      // If item exists, update quantity
+      await updateQuantity(product.product_id, quantity);
+    } else {
+      // If item doesn't exist, add it first then update quantity
+      await addToCart({
+        product_id: product.product_id,
+        name: product.name,
+        price: product.sale_price,
+        image: product.image_1
+      });
+      
+      // Update to the selected quantity
+      if (quantity > 1) {
+        await updateQuantity(product.product_id, quantity);
+      }
+    }
   };
 
   // Handle quantity increase (local only, no cart update)
@@ -328,6 +366,239 @@ const ProductDetailPage = () => {
       day: 'numeric'
     });
   };
+
+  // Get all product images
+  const getProductImages = () => {
+    const images = [];
+    if (product?.image_1) images.push(product.image_1);
+    if (product?.image_2) images.push(product.image_2);
+    if (product?.image_3) images.push(product.image_3);
+    if (product?.image_4) images.push(product.image_4);
+    return images;
+  };
+
+  // Auto-scroll functionality
+  useEffect(() => {
+    if (!isAutoScrolling) return;
+    
+    const images = getProductImages();
+    if (images.length <= 1) return;
+
+    autoScrollInterval.current = setInterval(() => {
+      setCurrentImageIndex((prev) => (prev + 1) % images.length);
+    }, 3000); // Change image every 3 seconds
+
+    return () => {
+      if (autoScrollInterval.current) {
+        clearInterval(autoScrollInterval.current);
+      }
+    };
+  }, [isAutoScrolling, product]);
+
+  // Keyboard shortcuts for zoom controls
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) {
+        return; // Don't handle shortcuts when typing in input fields
+      }
+
+      switch (event.key) {
+        case '+':
+        case '=':
+          event.preventDefault();
+          zoomIn();
+          break;
+        case '-':
+          event.preventDefault();
+          zoomOut();
+          break;
+        case '0':
+          event.preventDefault();
+          resetZoom();
+          break;
+        case 'Escape':
+          event.preventDefault();
+          resetZoom();
+          break;
+        case 'c':
+        case 'C':
+          event.preventDefault();
+          toggleCursorZoom();
+          break;
+        case 'd':
+        case 'D':
+          event.preventDefault();
+          resetToDefault();
+          break;
+      }
+    };
+
+    const handleGlobalMouseUp = () => {
+      if (isDraggingActive) {
+        setIsDraggingActive(false);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('mouseup', handleGlobalMouseUp);
+    
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('mouseup', handleGlobalMouseUp);
+    };
+  }, [zoomLevel, isCursorZoomEnabled]);
+
+  // Cursor zoom functionality
+  const toggleCursorZoom = useCallback(() => {
+    const newCursorZoomState = !isCursorZoomEnabled;
+    setIsCursorZoomEnabled(newCursorZoomState);
+    if (!newCursorZoomState) {
+      setIsHovering(false);
+      setCursorPosition({ x: 0, y: 0 });
+    }
+  }, [isCursorZoomEnabled]);
+
+  // Pause auto-scroll on hover
+  const handleImageHover = () => {
+    setIsAutoScrolling(false);
+    if (autoScrollInterval.current) {
+      clearInterval(autoScrollInterval.current);
+    }
+  };
+
+  const handleImageLeave = () => {
+    setIsAutoScrolling(true);
+  };
+
+  // Navigation functions
+  const nextImage = () => {
+    const images = getProductImages();
+    setCurrentImageIndex((prev) => (prev + 1) % images.length);
+    // Reset zoom when changing images
+    setZoomLevel(1);
+    setIsZoomed(false);
+    setDragPosition({ x: 0, y: 0 });
+    setIsDragEnabled(false);
+    setIsDraggingActive(false);
+    // Reset cursor zoom state
+    setIsHovering(false);
+    setCursorPosition({ x: 0, y: 0 });
+  };
+
+  const prevImage = () => {
+    const images = getProductImages();
+    setCurrentImageIndex((prev) => (prev - 1 + images.length) % images.length);
+    // Reset zoom when changing images
+    setZoomLevel(1);
+    setIsZoomed(false);
+    setDragPosition({ x: 0, y: 0 });
+    setIsDragEnabled(false);
+    setIsDraggingActive(false);
+    // Reset cursor zoom state
+    setIsHovering(false);
+    setCursorPosition({ x: 0, y: 0 });
+  };
+
+  // Zoom control functions
+  const zoomIn = () => {
+    setZoomLevel(prev => Math.min(prev + 0.25, 3));
+    setIsZoomed(true);
+  };
+
+  const zoomOut = () => {
+    setZoomLevel(prev => Math.max(prev - 0.25, 0.5));
+    if (zoomLevel <= 1) {
+      setIsZoomed(false);
+    }
+  };
+
+  const resetZoom = () => {
+    setZoomLevel(1);
+    setIsZoomed(false);
+  };
+
+  const resetToDefault = () => {
+    // Reset all zoom and interaction states to default
+    setZoomLevel(1);
+    setIsZoomed(false);
+    setDragPosition({ x: 0, y: 0 });
+    setIsDragEnabled(false);
+    setIsDraggingActive(false);
+    setIsCursorZoomEnabled(false);
+    setIsHovering(false);
+    setCursorPosition({ x: 0, y: 0 });
+  };
+
+  const handleImageClick = () => {
+    if (isZoomed) {
+      resetZoom();
+    } else {
+      zoomIn();
+    }
+  };
+
+  // Drag functionality
+  const [isDragEnabled, setIsDragEnabled] = useState(false);
+  const [isDraggingActive, setIsDraggingActive] = useState(false);
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    // Only handle drag if zoomed and drag is enabled
+    if (isZoomed && isDragEnabled) {
+      e.preventDefault();
+      e.stopPropagation();
+      setIsDraggingActive(true);
+      setDragStart({ x: e.clientX - dragPosition.x, y: e.clientY - dragPosition.y });
+    }
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    // Handle drag movement
+    if (isDraggingActive && isZoomed && isDragEnabled) {
+      e.preventDefault();
+      e.stopPropagation();
+      setDragPosition({
+        x: e.clientX - dragStart.x,
+        y: e.clientY - dragStart.y
+      });
+    }
+    
+    // Handle cursor zoom movement
+    if (isCursorZoomEnabled && !isZoomed && !isDraggingActive) {
+      const rect = e.currentTarget.getBoundingClientRect();
+      const x = ((e.clientX - rect.left) / rect.width) * 100;
+      const y = ((e.clientY - rect.top) / rect.height) * 100;
+      setCursorPosition({ x, y });
+    }
+  };
+
+  const handleMouseUp = (e: React.MouseEvent) => {
+    if (isDraggingActive) {
+      e.preventDefault();
+      e.stopPropagation();
+      setIsDraggingActive(false);
+    }
+  };
+
+  const toggleDragMode = () => {
+    if (isZoomed) {
+      const newDragState = !isDragEnabled;
+      setIsDragEnabled(newDragState);
+      if (!newDragState) {
+        setDragPosition({ x: 0, y: 0 });
+        setIsDraggingActive(false);
+      }
+    } else {
+      // If not zoomed, zoom in first and then enable drag
+      setZoomLevel(1.5);
+      setIsZoomed(true);
+      setIsDragEnabled(true);
+      // Reset any cursor zoom state
+      setIsHovering(false);
+      setCursorPosition({ x: 0, y: 0 });
+    }
+  };
+
+
 
   if (loading) {
     return (
@@ -397,23 +668,218 @@ const ProductDetailPage = () => {
         </nav>
 
         <div className="flex flex-col lg:flex-row gap-8">
-          {/* Product Image - Left */}
+          {/* Product Image Gallery - Left */}
           <div className="relative lg:w-1/3 lg:ml-8">
-            <div className="aspect-square bg-white rounded-lg overflow-hidden shadow-lg">
-              <Image
-                src={getValidImageSrc(product.image_1)}
-                alt={product.name}
-                fill
-                className="object-cover"
-                onError={handleImageError}
-                                  unoptimized={!!(product.image_1 && product.image_1.startsWith('https://'))}
-              />
+                    <div 
+          className="aspect-square bg-white rounded-lg overflow-hidden shadow-lg group relative"
+          onMouseEnter={(e) => {
+            handleImageHover();
+            if (isCursorZoomEnabled && !isZoomed) {
+              setIsHovering(true);
+            }
+          }}
+          onMouseLeave={(e) => {
+            handleImageLeave();
+            if (isCursorZoomEnabled) {
+              setIsHovering(false);
+            }
+          }}
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUp}
+        >
+              {(() => {
+                const images = getProductImages();
+                const currentImage = images[currentImageIndex];
+                
+                return (
+                  <>
+                    <Image
+                      src={getValidImageSrc(currentImage)}
+                      alt={`${product.name} - Image ${currentImageIndex + 1}`}
+                      fill
+                      className={`object-cover transition-transform duration-300 ${
+                        isZoomed ? 'cursor-grab' : isCursorZoomEnabled ? 'cursor-crosshair' : 'cursor-pointer'
+                      } ${isDraggingActive ? 'cursor-grabbing' : ''}`}
+                      style={{ 
+                        transform: isCursorZoomEnabled && isHovering && !isZoomed 
+                          ? `scale(2)` 
+                          : `scale(${zoomLevel}) translate(${dragPosition.x}px, ${dragPosition.y}px)`,
+                        transformOrigin: isCursorZoomEnabled && isHovering && !isZoomed 
+                          ? `${cursorPosition.x}% ${cursorPosition.y}%` 
+                          : 'center',
+                        maxWidth: 'none',
+                        maxHeight: 'none'
+                      }}
+                      onError={handleImageError}
+                      unoptimized={!!(currentImage && currentImage.startsWith('https://'))}
+                      onClick={handleImageClick}
+                    />
+                    
+                    {/* Zoom Controls */}
+                    <div className="absolute top-2 right-2 flex flex-col space-y-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                      <button
+                        onClick={zoomIn}
+                        className="bg-black bg-opacity-50 text-white p-2 rounded-full hover:bg-opacity-70 transition-all duration-200"
+                        title="Zoom In"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v14m-7-7h14" />
+                        </svg>
+                      </button>
+                      <button
+                        onClick={zoomOut}
+                        className="bg-black bg-opacity-50 text-white p-2 rounded-full hover:bg-opacity-70 transition-all duration-200"
+                        title="Zoom Out"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 12h14" />
+                        </svg>
+                      </button>
+                      <button
+                        onClick={toggleCursorZoom}
+                        className={`bg-black bg-opacity-50 text-white p-2 rounded-full hover:bg-opacity-70 transition-all duration-200 ${
+                          isCursorZoomEnabled ? 'bg-blue-600' : ''
+                        }`}
+                        title={isCursorZoomEnabled ? "Disable Cursor Zoom" : "Enable Cursor Zoom"}
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
+                      </button>
+                      <button
+                        onClick={resetToDefault}
+                        className="bg-black bg-opacity-50 text-white p-2 rounded-full hover:bg-opacity-70 transition-all duration-200"
+                        title="Reset to Original Size (D)"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5a2 2 0 012-2h4a2 2 0 012 2v2H8V5z" />
+                        </svg>
+                      </button>
+                      {isZoomed && (
+                        <>
+                          <button
+                            onClick={toggleDragMode}
+                            className={`bg-black bg-opacity-50 text-white p-2 rounded-full hover:bg-opacity-70 transition-all duration-200 ${
+                              isDragEnabled ? 'bg-blue-600' : ''
+                            }`}
+                            title={isDragEnabled ? "Disable Drag" : "Enable Drag"}
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                          </button>
+                          <button
+                            onClick={resetZoom}
+                            className="bg-black bg-opacity-50 text-white p-2 rounded-full hover:bg-opacity-70 transition-all duration-200"
+                            title="Reset Zoom"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+                            </svg>
+                          </button>
+                        </>
+                      )}
+                    </div>
+                    
+                    {/* Zoom Level Indicator */}
+                    {isZoomed && (
+                      <div className="absolute top-2 left-2 bg-black bg-opacity-50 text-white px-2 py-1 rounded text-xs">
+                        {Math.round(zoomLevel * 100)}%
+                      </div>
+                    )}
+                    
+                    {/* Navigation Arrows */}
+                    {images.length > 1 && (
+                      <>
+                        <button
+                          onClick={prevImage}
+                          className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white p-2 rounded-full hover:bg-opacity-70 transition-all duration-200 opacity-0 group-hover:opacity-100"
+                        >
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                          </svg>
+                        </button>
+                        <button
+                          onClick={nextImage}
+                          className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white p-2 rounded-full hover:bg-opacity-70 transition-all duration-200 opacity-0 group-hover:opacity-100"
+                        >
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                          </svg>
+                        </button>
+                      </>
+                    )}
+                    
+                    {/* Image Counter */}
+                    {images.length > 1 && (
+                      <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 bg-black bg-opacity-50 text-white px-2 py-1 rounded-full text-sm">
+                        {currentImageIndex + 1} / {images.length}
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
             </div>
+            
+            {/* Hot Deal Badge */}
             {product.is_hot_deal && (
-              <div className="absolute top-4 left-4 bg-red-500 text-white px-3 py-1 rounded-full text-sm font-bold">
+              <div className="absolute top-4 left-4 bg-red-500 text-white px-3 py-1 rounded-full text-sm font-bold z-10">
                 HOT DEAL
               </div>
             )}
+            
+            {/* Thumbnail Navigation */}
+            {(() => {
+              const images = getProductImages();
+              if (images.length <= 1) return null;
+              
+              return (
+                <div className="mt-4 flex justify-center space-x-2">
+                  {images.map((image, index) => (
+                    <button
+                      key={index}
+                      onClick={() => {
+                        setCurrentImageIndex(index);
+                        // Reset zoom when clicking thumbnails
+                        setZoomLevel(1);
+                        setIsZoomed(false);
+                        setDragPosition({ x: 0, y: 0 });
+                        setIsDragEnabled(false);
+                        setIsDraggingActive(false);
+                        // Reset cursor zoom state
+                        setIsHovering(false);
+                        setCursorPosition({ x: 0, y: 0 });
+                      }}
+                      className={`w-16 h-16 rounded-lg overflow-hidden border-2 transition-all duration-200 ${
+                        index === currentImageIndex 
+                          ? 'border-blue-500 scale-110' 
+                          : 'border-gray-300 hover:border-gray-400'
+                      }`}
+                    >
+                      <Image
+                        src={getValidImageSrc(image)}
+                        alt={`Thumbnail ${index + 1}`}
+                        width={64}
+                        height={64}
+                        className="object-cover w-full h-full"
+                        onError={handleImageError}
+                        unoptimized={!!(image && image.startsWith('https://'))}
+                      />
+                    </button>
+                  ))}
+                </div>
+              );
+            })()}
+
+            {/* Full Description directly under images */}
+            <div className="mt-[29px] bg-white rounded-lg border p-4">
+              <h3 className="text-base text-xl font-semibold text-gray-800 mb-3">Description</h3>
+              <div className="prose prose-sm max-w-none text-gray-800">
+                <div dangerouslySetInnerHTML={{ __html: product.description || '' }} />
+              </div>
+            </div>
           </div>
 
           {/* Product Details - Center */}
@@ -466,23 +932,6 @@ const ProductDetailPage = () => {
               <div>
                 <span className="text-sm font-medium text-black">Brand</span>
                 <p className="text-black">{product.brand_name || 'Not specified'}</p>
-              </div>
-              <div>
-                <span className="text-sm font-medium text-black">Category</span>
-                <p className="text-black">{product.category_id || 'Not specified'}</p>
-              </div>
-              <div>
-                <span className="text-sm font-medium text-black">Stock</span>
-                <p className="text-black">{(() => {
-                  const cartItem = cartItems.find(item => item.product_id === product.product_id);
-                  const cartQuantity = cartItem ? cartItem.quantity : 0;
-                  const availableStock = originalStock - cartQuantity;
-                  return `${availableStock} units available`;
-                })()}</p>
-              </div>
-              <div>
-                <span className="text-sm font-medium text-black">Status</span>
-                <p className="text-black">{product.is_active ? 'Active' : 'Inactive'}</p>
               </div>
             </div>
 
@@ -543,25 +992,76 @@ const ProductDetailPage = () => {
                 })()}
               </div>
             )}
+
+            {/* Product Information Section */}
+            <div className="mt-8">
+              <div className="bg-white rounded-lg border p-4">
+                <h3 className="text-base font-semibold text-gray-800 mb-4">Product Information</h3>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Categories */}
+                  <div className="space-y-2">
+                    <div className="flex items-center">
+                      <div className="w-2 h-2 bg-blue-500 rounded-full mr-3"></div>
+                      <span className="text-sm font-medium text-gray-700">Category:</span>
+                    </div>
+                    <div className="ml-5">
+                      <span className="text-sm text-gray-800">
+                        {product.category_name || 'Not specified'}
+                        {product.subcategory_name && (
+                          <span className="text-gray-600">
+                            {' '}• {product.subcategory_name}
+                          </span>
+                        )}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Brand Information */}
+                  <div className="space-y-2">
+                    <div className="flex items-center">
+                      <div className="w-2 h-2 bg-green-500 rounded-full mr-3"></div>
+                      <span className="text-sm font-medium text-gray-700">Brand:</span>
+                    </div>
+                    <div className="ml-5">
+                      <span className="text-sm text-gray-800">
+                        {product.brand_name || 'Not specified'}
+                        {product.sub_brand_name && (
+                          <span className="text-gray-600">
+                            {' '}• {product.sub_brand_name}
+                          </span>
+                        )}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
 
-          {/* Product Description - Right */}
+          {/* Right column: Short Description as dropdown */}
           <div className="lg:w-1/3">
             <div className="space-y-4">
-              <DescriptionDropdown
-                title="Product Description"
-                content={product.description}
-                defaultOpen={true}
-                className="h-full"
-              />
+              {product.short_description && (
+                <DescriptionDropdown
+                  title="Short Description"
+                  content={product.short_description}
+                  defaultOpen={false}
+                />
+              )}
             </div>
           </div>
         </div>
 
         {/* Related Products Section */}
-        {relatedProducts.length > 0 && (
-          <div className="mt-16">
-            <h2 className="text-2xl font-bold text-black mb-8">Related Products</h2>
+        <div className="mt-16">
+          <h2 className="text-2xl font-bold text-black mb-8">Related Products</h2>
+          {relatedLoading ? (
+            <div className="flex justify-center items-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+              <span className="ml-2 text-gray-600">Loading related products...</span>
+            </div>
+          ) : relatedProducts.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
               {relatedProducts.map((relatedProduct) => (
                 <div 
@@ -569,26 +1069,31 @@ const ProductDetailPage = () => {
                   className="bg-white rounded-lg shadow overflow-hidden hover:shadow-lg transition cursor-pointer hover:scale-105 transform duration-200"
                   onClick={(e) => handleRelatedProductClick(relatedProduct.product_id, e)}
                 >
-                    <div className="relative h-48 w-full">
+                    <div className="relative h-48 w-full bg-white">
                       <Image
                         src={getValidImageSrc(relatedProduct.image_1)}
                         alt={relatedProduct.name}
                         fill
                         className="object-cover"
                         onError={handleImageError}
-                                                  unoptimized={!!(relatedProduct.image_1 && relatedProduct.image_1.startsWith('https://'))}
+                        unoptimized={!!(relatedProduct.image_1 && relatedProduct.image_1.startsWith('https://'))}
                       />
                     </div>
                     <div className="p-4">
-                      <h3 className="font-semibold text-lg mb-1">{relatedProduct.name}</h3>
+                      <h3 className="font-semibold text-lg mb-1 text-gray-600">{relatedProduct.name}</h3>
                        <p className="text-sm text-black mb-2">{relatedProduct.brand_name}</p>
                       <p className="text-lg font-bold text-black">{formatPrice(relatedProduct.sale_price)}</p>
                     </div>
                   </div>
               ))}
             </div>
-          </div>
-        )}
+          ) : (
+            <div className="text-center py-8">
+              <p className="text-gray-600">No related products found in this category.</p>
+              <p className="text-sm text-gray-500 mt-2">Try browsing other categories for similar products.</p>
+            </div>
+          )}
+        </div>
 
         {/* Customer Reviews */}
         <div className="mt-16">

@@ -20,26 +20,36 @@ export async function GET(
     }
 
     const queryString = `SELECT 
-      product_id,
-      name,
-      slug,
-      description,
-      sale_price,
-      original_price,
-      rating,
-      image_1,
-      category_id,
-      brand_name,
-      sub_brand_name,
-      stock_quantity,
-      is_active,
-      is_featured,
-      is_hot_deal,
-      created_at,
-      updated_at,
-      dealer_id
-     FROM kriptocar.products 
-     WHERE slug = ?`;
+      p.product_id,
+      p.name,
+      p.slug,
+      p.description,
+      p.short_description,
+      p.sale_price,
+      p.original_price,
+      p.rating,
+      p.image_1,
+      p.image_2,
+      p.image_3,
+      p.image_4,
+      p.category_id,
+      p.brand_name,
+      p.sub_brand_name,
+      p.stock_quantity,
+      p.is_active,
+      p.is_featured,
+      p.is_hot_deal,
+      p.created_at,
+      p.updated_at,
+      p.dealer_id,
+      COALESCE(c.name, CONCAT('Category ', p.category_id)) as category_name,
+      c.slug as category_slug,
+      sc.name as subcategory_name,
+      sc.slug as subcategory_slug
+     FROM kriptocar.products p
+     LEFT JOIN kriptocar.categories c ON p.category_id = c.category_id
+     LEFT JOIN kriptocar.sub_categories sc ON p.sub_category_id = sc.sub_category_id
+     WHERE p.slug = ?`;
 
     const products = await query(queryString, [slug]) as any[];
 

@@ -140,6 +140,35 @@ export const NOTIFICATION_TEMPLATES: NotificationTemplates = {
 };
 
 // Helpers to standardize content
+const getISTTimestamps = () => {
+  const now = new Date();
+  const ist = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
+  const yyyy = ist.getFullYear();
+  const mm = String(ist.getMonth() + 1).padStart(2, '0');
+  const dd = String(ist.getDate()).padStart(2, '0');
+  const hh = String(ist.getHours()).padStart(2, '0');
+  const mi = String(ist.getMinutes()).padStart(2, '0');
+  const ss = String(ist.getSeconds()).padStart(2, '0');
+  return {
+    createdAt: `${yyyy}-${mm}-${dd} ${hh}:${mi}:${ss}`,
+    createdTime: `${hh}:${mi}:${ss}`
+  };
+};
+
+let hasCreatedTimeColumn: boolean | null = null;
+const ensureCreatedTimeColumnExists = async (): Promise<boolean> => {
+  if (hasCreatedTimeColumn !== null) return hasCreatedTimeColumn;
+  try {
+    const rows = await query(
+      `SELECT COLUMN_NAME FROM information_schema.COLUMNS 
+       WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'notifications' AND COLUMN_NAME = 'created_time'`
+    ) as any[];
+    hasCreatedTimeColumn = Array.isArray(rows) && rows.length > 0;
+  } catch {
+    hasCreatedTimeColumn = false;
+  }
+  return hasCreatedTimeColumn as boolean;
+};
 const truncateMessage = (text: string, maxLength: number = 120): string => {
   if (!text) return '';
   return text.length > maxLength ? text.slice(0, maxLength - 3) + '...' : text;
@@ -256,25 +285,50 @@ export const createNotification = async (notificationData: NotificationData): Pr
       user_id
     });
 
-    const result = await query(
-      `INSERT INTO kriptocar.notifications (
-        type, title, message, description, for_admin, for_dealer, for_vendor,
-        dealer_id, vendor_id, user_id, metadata, created_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
-      [
-        type,
-        title,
-        finalMessage,
-        finalDescription || null,
-        for_admin ? 1 : 0,
-        for_dealer ? 1 : 0,
-        for_vendor ? 1 : 0,
-        dealer_id || null,
-        vendor_id || null,
-        user_id || null,
-        metadata ? JSON.stringify(metadata) : null
-      ]
-    ) as any;
+    const { createdAt, createdTime } = getISTTimestamps();
+    const includeTime = await ensureCreatedTimeColumnExists();
+    const sql = includeTime
+      ? `INSERT INTO kriptocar.notifications (
+           type, title, message, description, for_admin, for_dealer, for_vendor,
+           dealer_id, vendor_id, user_id, metadata, created_at, created_time
+         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      : `INSERT INTO kriptocar.notifications (
+           type, title, message, description, for_admin, for_dealer, for_vendor,
+           dealer_id, vendor_id, user_id, metadata, created_at
+         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+
+    const params = includeTime
+      ? [
+          type,
+          title,
+          finalMessage,
+          finalDescription || null,
+          for_admin ? 1 : 0,
+          for_dealer ? 1 : 0,
+          for_vendor ? 1 : 0,
+          dealer_id || null,
+          vendor_id || null,
+          user_id || null,
+          metadata ? JSON.stringify(metadata) : null,
+          createdAt,
+          createdTime
+        ]
+      : [
+          type,
+          title,
+          finalMessage,
+          finalDescription || null,
+          for_admin ? 1 : 0,
+          for_dealer ? 1 : 0,
+          for_vendor ? 1 : 0,
+          dealer_id || null,
+          vendor_id || null,
+          user_id || null,
+          metadata ? JSON.stringify(metadata) : null,
+          createdAt
+        ];
+
+    const result = await query(sql, params) as any;
 
     console.log('✅ Notification created successfully:', title);
     console.log('📝 Notification result:', result);
@@ -364,7 +418,7 @@ export const createOrderNotifications = async (
     totalAmount: orderData.total_amount
   });
 
-  const currentTime = new Date().toISOString().slice(0, 19).replace('T', ' ');
+  const { createdAt: currentTime } = getISTTimestamps();
   
   // Determine if this is multiple orders or single order with multiple products
   // If we have multiple products and the system is designed to create separate orders for each product,
@@ -549,7 +603,7 @@ export const createMultipleOrderNotifications = async (
     totalItems: orderData.total_items
   });
 
-  const currentTime = new Date().toISOString().slice(0, 19).replace('T', ' ');
+  const { createdAt: currentTime } = getISTTimestamps();
   
   // Generate individual order IDs for each product if not provided
   const orderIds = orderData.order_ids || [];
@@ -730,7 +784,7 @@ export const createServiceOrderNotifications = async (
     finalPrice: serviceOrderData.final_price
   });
 
-  const currentTime = new Date().toISOString().slice(0, 19).replace('T', ' ');
+  const { createdAt: currentTime } = getISTTimestamps();
   
   // Prepare service order metadata with enhanced details
   const serviceOrderMetadata = {

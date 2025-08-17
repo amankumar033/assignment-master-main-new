@@ -43,3 +43,11 @@ async function checkNotificationsStructure() {
 }
 
 checkNotificationsStructure();
+
+
+
+
+
+
+
+

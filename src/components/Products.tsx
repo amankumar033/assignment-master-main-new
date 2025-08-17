@@ -224,7 +224,7 @@ const Products = () => {
 
 
   return (
-    <div className="container mx-auto   px-20 bg-gray-100" style={{ marginTop: '30px' }}>
+    <div className="container mx-auto px-4 sm:px-6 lg:px-20 bg-gray-100" style={{ marginTop: '30px' }}>
       {/* First Div - Heading with Navigation */}
       <div className="flex justify-between items-center mb-6  sm:mb-8">
         <div>
@@ -301,7 +301,7 @@ const Products = () => {
               <div key={product.product_id} className="bg-white rounded-lg shadow-md overflow-hidden relative">
                 <div className="flex p-3 sm:p-4 cursor-pointer" onClick={() => window.location.href = `/products/${product.slug}`}>
                   {/* Product Image */}
-                  <div className="w-40 h-40 relative flex-shrink-0">4
+                  <div className="w-28 h-28 sm:w-40 sm:h-40 relative flex-shrink-0">
                     <Image
                       src={validImageSrc}
                       alt={product.name}
@@ -334,29 +334,7 @@ const Products = () => {
                       <span className="text-lg text-black ml-1">({Number(product.rating || 0).toFixed(1)})</span>
                     </div>
 
-                    {/* Stock Status */}
-                    <div className="flex justify-center items-center mt-2">
-                      {product.stock_quantity > 0 ? (
-                        <span className={`text-sm font-medium px-2 py-1 rounded-full ${
-                          product.stock_quantity > 10 
-                            ? 'bg-green-100 text-green-800' 
-                            : product.stock_quantity > 5 
-                            ? 'bg-yellow-100 text-yellow-800' 
-                            : 'bg-red-100 text-red-800'
-                        }`}>
-                          {product.stock_quantity > 10 
-                            ? 'In Stock' 
-                            : product.stock_quantity > 5 
-                            ? `Low Stock (${product.stock_quantity})` 
-                            : `Only ${product.stock_quantity} left`
-                          }
-                        </span>
-                      ) : (
-                        <span className="text-sm font-medium px-2 py-1 rounded-full bg-gray-100 text-gray-800">
-                          Out of Stock
-                        </span>
-                      )}
-                    </div>
+
                     
                     {/* Price and Add to Cart */}
                     <div className="mt-3 sm:mt-4 flex flex-col justify-between items-center">
@@ -386,7 +364,7 @@ const Products = () => {
 
       {/* Advertisement Section - IDs 6 and 7 */}
       {!adsLoading && (
-        <div className="mt-12 sm:mt-16" style={{ marginLeft: '50px', marginRight: '50px' }}>
+        <div className="mt-12 sm:mt-16 px-4 sm:px-8 md:px-12 lg:px-16">
           {(() => {
             const targetAds = advertisements.filter(ad => [6, 7].includes(ad.id));
             if (targetAds.length === 0) return null;
@@ -395,8 +373,8 @@ const Products = () => {
               const ad = targetAds[0];
               return (
                 <div className="w-full">
-                  <div className="rounded-lg overflow-hidden" style={{ height: '300px' }}>
-                    <img src={ad.image} alt={ad.name} className="w-full object-cover" style={{ height: '300px' }} />
+                  <div className="rounded-lg overflow-hidden h-40 sm:h-56 md:h-72 lg:h-[300px]">
+                    <img src={ad.image} alt={ad.name} className="w-full h-full object-cover" />
                   </div>
                 </div>
               );
@@ -404,10 +382,10 @@ const Products = () => {
             
             // Two advertisements - 50/50 layout
             return (
-              <div className="grid grid-cols-1 md:grid-cols-2" style={{ gap: '20px' }}>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
                 {targetAds.map(ad => (
-                  <div key={ad.id} className="rounded-lg overflow-hidden" style={{ height: '300px' }}>
-                    <img src={ad.image} alt={ad.name} className="w-full object-cover" style={{ height: '300px' }} />
+                  <div key={ad.id} className="rounded-lg overflow-hidden h-40 sm:h-56 md:h-72 lg:h-[300px]">
+                    <img src={ad.image} alt={ad.name} className="w-full h-full object-cover" />
                   </div>
                 ))}
               </div>

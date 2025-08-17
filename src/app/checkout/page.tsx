@@ -8,7 +8,7 @@ import { formatPrice } from '@/utils/priceUtils';
 import { useToast } from '@/contexts/ToastContext';
 
 import { getValidImageSrc } from '@/utils/imageUtils';
-import OrderCheckoutProgress from '@/components/OrderCheckoutProgress';
+import CheckoutProcessingPage from '@/components/CheckoutProcessingPage';
 
 
 type CartItem = {
@@ -91,9 +91,30 @@ const CheckoutPage = () => {
     if (isLoggedIn && user) {
       setFormData(prev => ({
         ...prev,
-        customer_name: user.full_name || user.email?.split('@')[0] || '',
-        customer_email: user.email || ''
+        customer_name: user.full_name || user.email?.split('@')[0] || 'Guest User',
+        customer_email: user.email || '',
+        customer_phone: user.phone || '',
+        shipping_address: user.address || '',
+        shipping_pincode: user.pincode || ''
       }));
+    } else {
+      // If not logged in, try to get data from localStorage as fallback
+      try {
+        const storedUserData = localStorage.getItem('user_data');
+        if (storedUserData) {
+          const userData = JSON.parse(storedUserData);
+          setFormData(prev => ({
+            ...prev,
+            customer_name: userData.full_name || userData.email?.split('@')[0] || 'Guest User',
+            customer_email: userData.email || '',
+            customer_phone: userData.phone || '',
+            shipping_address: userData.address || '',
+            shipping_pincode: userData.pincode || ''
+          }));
+        }
+      } catch (error) {
+        console.log('No stored user data available');
+      }
     }
   }, [cartLoading, isLoggedIn, user]);
 
@@ -369,8 +390,8 @@ const CheckoutPage = () => {
 
   return (
     <>
-      {/* Order Checkout Progress Component */}
-      <OrderCheckoutProgress 
+      {/* Enhanced Order Processing UI (overlay) */}
+      <CheckoutProcessingPage
         isVisible={showProgress}
         progress={progress}
         message={progressMessage}
@@ -633,7 +654,7 @@ const CheckoutPage = () => {
                     value={localCouponCode}
                     onChange={(e) => setLocalCouponCode(e.target.value)}
                     placeholder="Enter coupon code"
-                    className="flex-1 border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="flex-1 border border-gray-300 text-gray-600 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                   <button
                     type="button"

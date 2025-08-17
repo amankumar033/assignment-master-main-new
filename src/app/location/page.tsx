@@ -52,6 +52,16 @@ const LocationPage = () => {
   
   const router = useRouter();
 
+  // Derive a category label for filters: prefer category, then type, then name; fallback 'Other'
+  const getCategoryLabel = (service: Service): string => {
+    const cat = (service.category || '').trim();
+    if (cat) return cat;
+    const typ = (service.type || '').trim();
+    if (typ) return typ;
+    const nm = (service.name || '').trim();
+    return nm || 'Other';
+  };
+
   // Update price range when services are loaded
   useEffect(() => {
     if (services.length > 0) {
@@ -325,7 +335,8 @@ const LocationPage = () => {
 
   // Apply filters to services
   const filteredServices = services.filter(service => {
-    const categoryMatch = selectedCategories.length === 0 || selectedCategories.includes(service.category);
+    const derivedCategory = getCategoryLabel(service);
+    const categoryMatch = selectedCategories.length === 0 || selectedCategories.includes(derivedCategory);
     const typeMatch = selectedTypes.length === 0 || selectedTypes.includes(service.type);
     const priceMatch = Number(service.base_price) <= priceRange;
     const availabilityMatch = !availableOnly || service.is_available;
@@ -609,8 +620,8 @@ const LocationPage = () => {
                       </div>
                     </div>
                     <ul className="bg-white border text-gray-600  border-t-0 border-gray-200 rounded-b-lg divide-y divide-gray-200">
-                      {Array.from(new Set(services.map(s => s.category))).map(category => (
-                        <li key={getDisplayLabel(category, 'uncategorized')}>
+                      {Array.from(new Set(services.map(s => getCategoryLabel(s)))).map(category => (
+                        <li key={getDisplayLabel(category, 'Other')}>
                           <button 
                             onClick={() => toggleCategory(category)}
                             className={`w-full px-5 py-4 text-left flex justify-between items-center transition-all duration-200 ${
@@ -622,7 +633,7 @@ const LocationPage = () => {
                             <span className="flex items-center gap-2">
                               {getDisplayLabel(category)}
                               <span className="text-xs text-gray-500">
-                                ({services.filter(s => s.category === category).length})
+                                ({services.filter(s => getCategoryLabel(s) === category).length})
                               </span>
                             </span>
                           </button>
@@ -709,7 +720,7 @@ const LocationPage = () => {
                     {/* Distance Filter */}
                     <div className="bg-gray-300 p-5 rounded-t-lg mt-6">
                       <div className="flex justify-between items-center">
-                        <h3 className="font-bold text-lg text-gray-600 ">Distance</h3>
+                        <h3 className="font-bold text-lg text-gray-600 +">Distance</h3>
                       </div>
                     </div>
                     <ul className="bg-white border border-t-0 border-gray-200 rounded-b-lg divide-y divide-gray-200">

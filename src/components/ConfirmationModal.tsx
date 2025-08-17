@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 
 interface ConfirmationModalProps {
   isOpen: boolean;
@@ -12,6 +12,7 @@ interface ConfirmationModalProps {
   onCancel: () => void;
   type?: 'danger' | 'warning' | 'info';
   isLoading?: boolean;
+  position?: { x: number; y: number } | null;
 }
 
 const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
@@ -23,8 +24,27 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
   onConfirm,
   onCancel,
   type = 'danger',
-  isLoading = false
+  isLoading = false,
+  position
 }) => {
+  const modalRef = useRef<HTMLDivElement>(null);
+  
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (modalRef.current && !modalRef.current.contains(event.target as Node)) {
+        onCancel();
+      }
+    };
+
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isOpen, onCancel]);
+
   if (!isOpen) return null;
 
   const getTypeStyles = () => {
@@ -32,7 +52,7 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
       case 'danger':
         return {
           icon: (
-            <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
             </svg>
           ),
@@ -42,7 +62,7 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
       case 'warning':
         return {
           icon: (
-            <svg className="w-8 h-8 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-4 h-4 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
             </svg>
           ),
@@ -52,7 +72,7 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
       default:
         return {
           icon: (
-            <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
           ),
@@ -65,21 +85,33 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
   const styles = getTypeStyles();
 
   return (
-    <div className="fixed inset-0 bg-white bg-opacity-95 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4 shadow-xl border border-gray-200">
-        <div className="text-center">
-          <div className={`w-16 h-16 ${styles.iconBg} rounded-full flex items-center justify-center mx-auto mb-4`}>
-            {styles.icon}
+    <div className="fixed inset-0  bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div 
+        ref={modalRef} 
+        className="bg-white rounded-lg shadow-xl border border-gray-300 max-w-md w-full overflow-hidden animate-in fade-in-0 slide-in-from-bottom-2 duration-200"
+      >
+        {/* Header */}
+        <div className={`${styles.iconBg} px-6 py-4 border-b border-gray-200`}>
+          <div className="flex items-center space-x-3">
+            <div className={`w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-sm`}>
+              {styles.icon}
+            </div>
+            <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
           </div>
-          
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">{title}</h3>
-          <p className="text-sm text-gray-600 mb-6">{message}</p>
-          
+        </div>
+        
+        {/* Content */}
+        <div className="px-6 py-4">
+          <p className="text-gray-700">{message}</p>
+        </div>
+        
+        {/* Actions */}
+        <div className="px-6 py-4 bg-gray-50 border-t border-gray-200">
           <div className="flex space-x-3">
             <button
               onClick={onCancel}
               disabled={isLoading}
-              className="flex-1 bg-gray-300 text-gray-700 py-2 px-4 rounded-md hover:bg-gray-400 transition disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex-1 bg-white text-gray-700 py-2 px-4 rounded-md border border-gray-300 hover:bg-gray-50 hover:border-gray-400 transition font-medium disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {cancelText}
             </button>
@@ -87,7 +119,7 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
             <button
               onClick={onConfirm}
               disabled={isLoading}
-              className={`flex-1 text-white py-2 px-4 rounded-md transition disabled:opacity-50 disabled:cursor-not-allowed ${styles.confirmButton}`}
+              className={`flex-1 text-white py-2 px-4 rounded-md transition font-medium disabled:opacity-50 disabled:cursor-not-allowed ${styles.confirmButton}`}
             >
               {isLoading ? (
                 <div className="flex items-center justify-center space-x-2">
@@ -106,4 +138,3 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
 };
 
 export default ConfirmationModal;
-

@@ -3,9 +3,9 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import LoadingPage from '@/components/LoadingPage';
-import ConfirmationModal from '@/components/ConfirmationModal';
+
 import { useToast } from '@/contexts/ToastContext';
-import { formatPrice } from '@/utils/priceUtils';
+import { formatPrice, formatPriceNumber } from '@/utils/priceUtils';
 
 type Order = {
   order_id: number;
@@ -19,12 +19,8 @@ type Order = {
   customer_name: string;
   customer_email: string;
   customer_phone: string;
-  shipping_address_line1: string;
-  shipping_address_line2: string;
-  shipping_city: string;
-  shipping_state: string;
-  shipping_postal_code: string;
-  shipping_country: string;
+  shipping_address: string;
+  shipping_pincode: string;
   order_date: string;
   order_status: string;
   total_amount: number;
@@ -44,6 +40,32 @@ const OrdersPage = () => {
   const [error, setError] = useState<string | null>(null);
   const [cancellingOrderId, setCancellingOrderId] = useState<string | null>(null);
   const [showCancelConfirm, setShowCancelConfirm] = useState<string | null>(null);
+
+  // Add global event listener to prevent cursor movement when popup is open
+  useEffect(() => {
+    const preventCursorMovement = (e: MouseEvent) => {
+      if (showCancelConfirm) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    };
+
+    if (showCancelConfirm) {
+      document.addEventListener('mousemove', preventCursorMovement, { passive: false });
+      document.addEventListener('mousedown', preventCursorMovement, { passive: false });
+      document.addEventListener('mouseup', preventCursorMovement, { passive: false });
+      document.body.style.overflow = 'hidden';
+      document.body.style.userSelect = 'none';
+    }
+
+    return () => {
+      document.removeEventListener('mousemove', preventCursorMovement);
+      document.removeEventListener('mousedown', preventCursorMovement);
+      document.removeEventListener('mouseup', preventCursorMovement);
+      document.body.style.overflow = '';
+      document.body.style.userSelect = '';
+    };
+  }, [showCancelConfirm]);
 
   useEffect(() => {
     const fetchOrders = async () => {
@@ -184,18 +206,7 @@ const OrdersPage = () => {
 
   return (
     <>
-      {/* Confirmation Modal */}
-      <ConfirmationModal
-        isOpen={!!showCancelConfirm}
-        title="Cancel Order"
-        message="Are you sure you want to cancel this order? This action cannot be undone and will notify the dealer."
-        confirmText="Yes, Cancel Order"
-        cancelText="Keep Order"
-        onConfirm={() => handleCancelOrder(showCancelConfirm!)}
-        onCancel={closeCancelConfirmation}
-        type="danger"
-        isLoading={!!cancellingOrderId}
-      />
+
 
       <div className="min-h-screen bg-gray-50 py-8">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -285,7 +296,7 @@ const OrdersPage = () => {
                       <div className="space-y-2 text-sm">
                         <div className="flex justify-between items-center">
                           <span className="text-gray-600">Total Amount:</span>
-                          <span className="font-semibold text-black">{formatPrice(order.total_amount)}</span>
+                          <span className="font-semibold text-black">{formatPriceNumber(order.total_amount)}</span>
                         </div>
                         <div className="flex justify-between items-center">
                           <span className="text-gray-600">Payment Method:</span>
@@ -308,45 +319,137 @@ const OrdersPage = () => {
                       </div>
                     </div>
 
-                    {/* Shipping Address */}
-                    <div className="bg-white p-4 rounded-lg border">
-                      <h4 className="font-semibold text-black mb-3">Shipping Address</h4>
-                      <div className="text-sm text-gray-600 space-y-1">
-                        <p className="font-medium text-black">{order.shipping_address_line1}</p>
-                        {order.shipping_address_line2 && <p>{order.shipping_address_line2}</p>}
-                        <p>{order.shipping_city}, {order.shipping_state} {order.shipping_postal_code}</p>
-                        <p>{order.shipping_country}</p>
-                      </div>
-                    </div>
-
-                    {/* Actions */}
-                    <div className="bg-white p-4 rounded-lg border">
-                      <h4 className="font-semibold text-black mb-3">Actions</h4>
-                      <div className="space-y-2">
-                        <Link
-                          href={`/order-confirmation/${order.order_id}`}
-                          className="block w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition text-center text-sm font-medium"
-                        >
-                          View Details
-                        </Link>
-                        {(order.order_status.toLowerCase() === 'pending' || order.order_status.toLowerCase() === 'processing') && (
-                          <button 
-                            className="block w-full bg-red-600 text-white py-2 px-4 rounded-lg hover:bg-red-700 transition text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-                            onClick={() => openCancelConfirmation(order.order_id.toString())}
-                            disabled={cancellingOrderId === order.order_id.toString()}
-                          >
-                            {cancellingOrderId === order.order_id.toString() ? (
-                              <div className="flex items-center justify-center space-x-2">
-                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                                <span>Cancelling...</span>
+                    {/* Shipping Information and Actions */}
+                    {(order.order_status.toLowerCase() === 'pending' || order.order_status.toLowerCase() === 'processing') && showCancelConfirm === order.order_id.toString() ? (
+                      /* Popup Content - Replaces the entire shipping and actions section */
+                      <div className="bg-black rounded-lg shadow-2xl border border-gray-700 overflow-hidden transform transition-all duration-300">
+                        {/* Dark Header */}
+                        <div className="bg-gray-900 px-6 py-4 border-b border-gray-700">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center space-x-3">
+                              <div className="w-8 h-8 bg-red-600 rounded-full flex items-center justify-center">
+                                <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                                </svg>
                               </div>
-                            ) : (
-                              'Cancel Order'
-                            )}
-                          </button>
-                        )}
+                              <h3 className="text-lg font-bold text-white">Cancel Order</h3>
+                            </div>
+                            <button
+                              onClick={closeCancelConfirmation}
+                              className="text-gray-400 hover:text-white transition-colors"
+                            >
+                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                              </svg>
+                            </button>
+                          </div>
+                        </div>
+                        
+                        {/* Dark Content */}
+                        <div className="px-6 py-8 bg-black">
+                          <div className="space-y-6">
+                            <p className="text-sm text-gray-300 leading-relaxed">
+                              Are you sure you want to cancel this order? This action cannot be undone and will notify the dealer.
+                            </p>
+                            <div className="bg-gray-800 border-l-4 border-red-500 p-4 rounded-r-lg">
+                              <div className="flex items-center space-x-2">
+                                <svg className="w-4 h-4 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                                </svg>
+                                <span className="text-xs text-red-300 font-medium">This action is irreversible</span>
+                              </div>
+                            </div>
+                            <div className="bg-gray-800 border-l-4 border-blue-500 p-4 rounded-r-lg">
+                              <div className="flex items-center space-x-2">
+                                <svg className="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                <span className="text-xs text-blue-300 font-medium">The dealer will be notified immediately</span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                        
+                        {/* Dark Actions */}
+                        <div className="px-6 py-6 bg-gray-900 border-t border-gray-700">
+                          <div className="space-y-3">
+                            <button
+                              onClick={closeCancelConfirmation}
+                              disabled={cancellingOrderId === order.order_id.toString()}
+                              className="w-full bg-gray-700 text-white py-3 px-4 rounded-lg hover:bg-gray-600 transition-all duration-200 font-semibold text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              Keep Order
+                            </button>
+                            
+                            <button
+                              onClick={() => handleCancelOrder(order.order_id.toString())}
+                              disabled={cancellingOrderId === order.order_id.toString()}
+                              className="w-full bg-red-600 text-white py-3 px-4 rounded-lg hover:bg-red-700 transition-all duration-200 font-semibold text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              {cancellingOrderId === order.order_id.toString() ? (
+                                <div className="flex items-center justify-center space-x-2">
+                                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                                  <span>Processing...</span>
+                                </div>
+                              ) : (
+                                'Yes, Cancel Order'
+                              )}
+                            </button>
+                          </div>
+                        </div>
                       </div>
-                    </div>
+                    ) : (
+                      /* Original Shipping Information and Actions */
+                      <>
+                        {/* Shipping Information */}
+                        <div className="bg-white p-4 rounded-lg border">
+                          <h4 className="font-semibold text-black mb-3">Shipping Information</h4>
+                          <div className="text-sm text-gray-600 space-y-2">
+                            <div>
+                              <span className="font-medium text-black">Address:</span>
+                              <p className="text-gray-700">{order.shipping_address || 'Not provided'}</p>
+                            </div>
+                            <div>
+                              <span className="font-medium text-black">Postal Code:</span>
+                              <p className="text-gray-700">{order.shipping_pincode || 'Not provided'}</p>
+                            </div>
+                            <div>
+                              <span className="font-medium text-black">Phone:</span>
+                              <p className="text-gray-700">{order.customer_phone || 'Not provided'}</p>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Actions */}
+                        <div className="bg-white p-4 rounded-lg border">
+                          <h4 className="font-semibold text-black mb-3">Actions</h4>
+                          <div className="space-y-2">
+                            <Link
+                              href={`/order-confirmation/${order.order_id}`}
+                              className="block w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition text-center text-sm font-medium"
+                            >
+                              View Details
+                            </Link>
+                            {(order.order_status.toLowerCase() === 'pending' || order.order_status.toLowerCase() === 'processing') && (
+                              <button 
+                                className="block w-full bg-red-600 text-white py-2 px-4 rounded-lg hover:bg-red-700 transition text-sm font-medium"
+                                onClick={() => openCancelConfirmation(order.order_id.toString())}
+                                disabled={cancellingOrderId === order.order_id.toString()}
+                              >
+                                {cancellingOrderId === order.order_id.toString() ? (
+                                  <div className="flex items-center justify-center space-x-2">
+                                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                                    <span>Cancelling...</span>
+                                  </div>
+                                ) : (
+                                  'Cancel Order'
+                                )}
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      </>
+                    )}
                   </div>
                 </div>
               </div>

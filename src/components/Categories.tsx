@@ -263,7 +263,7 @@ const Categories = () => {
             <button
               type="button"
               onClick={scrollLeft}
-              className="absolute top-1/2 -translate-y-1/2 z-10 bg-white/80 hover:bg-white text-gray-700 hover:text-gray-900 rounded-full p-3 shadow-lg transition-all duration-300 hover:scale-110"
+              className="absolute top-1/2 -translate-y-1/2 z-10 hidden md:flex bg-white/80 hover:bg-white text-gray-700 hover:text-gray-900 rounded-full p-3 shadow-lg transition-all duration-300 hover:scale-110"
               style={{ left: -60 }}
               aria-label="Scroll left"
             >
@@ -356,7 +356,7 @@ const Categories = () => {
             <button
               type="button"
               onClick={scrollRight}
-              className="absolute top-1/2 -translate-y-1/2 z-10 bg-white/80 hover:bg-white text-gray-700 hover:text-gray-900 rounded-full p-3 shadow-lg transition-all duration-300 hover:scale-110"
+              className="absolute top-1/2 -translate-y-1/2 z-10 hidden md:flex bg-white/80 hover:bg-white text-gray-700 hover:text-gray-900 rounded-full p-3 shadow-lg transition-all duration-300 hover:scale-110"
               style={{ right: -60 }}
               aria-label="Scroll right"
             >
@@ -418,14 +418,18 @@ const Categories = () => {
                 color: #333;
                 text-align: center;
               }
+              @media (max-width: 767px) {
+                /* Remove white background halo on mobile */
+                .categories-container { background: transparent; }
+              }
             `}</style>
           </div>
         )}
       </div>
 
               {/* Advertisements section */}
-        <div className="w-full bg-white mt-5 pt-12 ">
-          <div style={{ marginLeft: '100px', marginRight: '100px' }}>
+        <div className="w-full bg-white mt-5 pt-12">
+          <div className="px-4 sm:px-8 md:px-12 lg:px-[100px]">
         {/* Row 1: single visible ad cycling through IDs 1,2,3 every 2s with arrows and progress bar */}
         <div className="mx-auto relative">
           {(() => {
@@ -439,7 +443,7 @@ const Categories = () => {
             return (
               <div>
                 {/* Advertisement container with arrows and progress dots overlay */}
-                <div className="relative rounded-lg overflow-hidden h-[400px]">
+                <div className="relative rounded-lg overflow-hidden h-48 sm:h-64 md:h-80 lg:h-[400px]">
                   <img src={activeAd.image} alt={activeAd.name} className="w-full h-[400px] object-cover" />
                   
                   {/* Left Arrow */}
@@ -470,7 +474,7 @@ const Categories = () => {
                       {firstRowAds.map((_, index) => (
                         <div
                           key={index}
-                          className={`h-2 rounded-full transition-all duration-300 ${
+                          className={`h-1 rounded-full transition-all duration-300 ${
                             index === currentAdIndex % firstRowAds.length
                               ? 'bg-orange-500 w-8'
                               : 'bg-gray-300 w-2'
@@ -488,23 +492,23 @@ const Categories = () => {
         </div>
 
         {/* Row 2: Ads 4 and 5 (50/50 width, fallback to 100% if only one) */}
-        <div className=" mx-auto mt-6">
+        <div className="mx-auto mt-6">
           {(() => {
             const secondRowAds = advertisements.filter(a => [4,5].includes(a.id));
             if (secondRowAds.length === 0) return null;
               if (secondRowAds.length === 1) {
               const ad = secondRowAds[0];
               return (
-                <div className="rounded-lg overflow-hidden" style={{ height: '220px' }}>
-                    <img src={ad.image} alt={ad.name} className="w-full object-cover" style={{ height: '220px' }} />
+                <div className="rounded-lg overflow-hidden h-40 sm:h-56 md:h-[220px]">
+                    <img src={ad.image} alt={ad.name} className="w-full h-full object-cover" />
                 </div>
               );
             }
             return (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {secondRowAds.map(ad => (
-                  <div key={ad.id} className="rounded-lg overflow-hidden" style={{ height: '220px' }}>
-                      <img src={ad.image} alt={ad.name} className="w-full object-cover" style={{ height: '220px' }} />
+                  <div key={ad.id} className="rounded-lg overflow-hidden h-40 sm:h-56 md:h-[220px]">
+                      <img src={ad.image} alt={ad.name} className="w-full h-full object-cover" />
                   </div>
                 ))}
               </div>

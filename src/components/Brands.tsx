@@ -1,27 +1,39 @@
 
  
 "use client";
-import { useRef, useEffect } from 'react';
-
+import { useRef, useEffect, useState } from 'react';
 
 export default function Brands() {
-
+  // Updated brands list with only the requested brands and correct image paths
   const brands = [
-    { id: 1, name: 'Nike', logo: '/brands/images/1.png' },
-    { id: 2, name: 'Adidas', logo: '/brands/images/2.png' },
-    { id: 3, name: 'Apple', logo: '/brands/images/3.png' },
-    { id: 4, name: 'Samsung', logo: '/brands/images/4.png' },
-    { id: 5, name: 'Sony', logo: '/brands/images/5.png' },
-    { id: 6, name: 'Microsoft', logo: '/brands/images/6.png' },
-    { id: 7, name: 'Amazon', logo: '/brands/images/7.png' },
-    { id: 8, name: 'Google', logo: '/brands/images/8.png' },
-    { id: 9, name: 'Tesla', logo: '/brands/images/9.png' },
-    { id: 10, name: 'Intel', logo: '/brands/images/10.png' },
-    { id: 11, name: 'Coca-Cola', logo: '/brands/images/11.png' },
-    { id: 12, name: 'Pepsi', logo: '/brands/images/12.png' },
-    { id: 13, name: 'McDonalds', logo: '/brands/images/13.png' },
-    { id: 14, name: 'Starbucks', logo: '/brands/images/14.png' },
+    { id: 1, name: 'Ashok Leyland', logo: '/brands/ashok-leyland.png' },
+    { id: 2, name: 'Bajaj Auto', logo: '/brands/bajaj.png' },
+    { id: 3, name: 'Tata Motors', logo: '/brands/tata-motors.png' },
+    { id: 4, name: 'Mahindra', logo: '/brands/automotive/mahindra.png' },
+    { id: 5, name: 'Hyundai India', logo: '/brands/hyundai.png' },
+    { id: 6, name: 'TVS Motors', logo: '/brands/automotive/tvs.png' },
+    { id: 7, name: 'Royal Enfield', logo: '/brands/royal-enfield.png' },
+    { id: 8, name: 'Honda Cars India', logo: '/brands/honda.png' },
+    { id: 9, name: 'Maruti Suzuki', logo: '/brands/maruti-suzuki.png' },
   ];
+
+  const [startIndex, setStartIndex] = useState(0);
+  const visibleItems = 7; // Show 7 brands at a time
+
+  // Calculate the maximum scroll position
+  const maxScroll = Math.max(0, brands.length - visibleItems);
+
+  const nextSlide = () => {
+    setStartIndex(prev => {
+      return prev + 1 > maxScroll ? 0 : prev + 1;
+    });
+  };
+
+  const prevSlide = () => {
+    setStartIndex(prev => {
+      return prev - 1 < 0 ? maxScroll : prev - 1;
+    });
+  };
 
   const promoRefs = useRef<(HTMLDivElement | null)[]>([]);
   const animationInterval = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -36,6 +48,22 @@ export default function Brands() {
         }, 1000);
       }
     });
+  };
+
+  const handleBrandClick = (brandName: string) => {
+    // Set a timeout to detect slow navigation
+    const slowNavigationTimeout = setTimeout(() => {
+      console.log(`🐌 Slow navigation detected for brands`);
+      document.dispatchEvent(new CustomEvent('navigationStart'));
+    }, 300);
+    
+    // Navigate to shop page with brand filter
+    window.location.href = `/shop?brands=${encodeURIComponent(brandName)}`;
+    
+    // Clear timeout if navigation was fast
+    setTimeout(() => {
+      clearTimeout(slowNavigationTimeout);
+    }, 500);
   };
 
   useEffect(() => {
@@ -53,41 +81,66 @@ export default function Brands() {
       }
     };
   }, []);
+
   return (
     <div className="container mx-auto py-6 sm:py-10 text-black">
-      {/* Heading */}
-      <h1 className="text-2xl sm:text-3xl font-bold mb-6 sm:mb-8 px-4 sm:px-20 text-black">Featured Brands</h1>
+      {/* Header with arrows */}
+      <div className="flex justify-between items-center mb-6 sm:mb-8 px-4 sm:px-20">
+        <h1 className="text-2xl sm:text-3xl font-bold text-black">Featured Brands</h1>
+        <div className="flex space-x-4">
+          <button 
+            onClick={prevSlide}
+            className="p-2 rounded-full hover:bg-gray-300 transition"
+            aria-label="Previous"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+          </button>
+          <button 
+            onClick={nextSlide}
+            className="p-2 rounded-full hover:bg-gray-300 transition"
+            aria-label="Next"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+          </button>
+        </div>
+      </div>
       
-      {/* Brand Grid Container */}
+      {/* Brand Row Container */}
       <div className="px-4 sm:px-20 mb-6 sm:mb-8">
-        {/* Brand Grid - All brands in one continuous grid */}
-        <div className="flex flex-wrap justify-center gap-3 sm:gap-4 lg:gap-6 bg-gray-100 p-4 sm:p-6 rounded-lg">
-          {brands.map((brand) => (
-            <div
-              key={brand.id}
-              className="flex items-center justify-center bg-white shadow-md hover:shadow-lg transition-all rounded-lg p-2 sm:p-4 lg:p-6 h-16 sm:h-24 lg:h-32 w-[calc(33.333%-1rem)] sm:w-[calc(25%-1.5rem)] lg:w-[calc(14.285%-2.25rem)] cursor-pointer"
-                              onClick={() => {
-                  // Set a timeout to detect slow navigation
-                  const slowNavigationTimeout = setTimeout(() => {
-                    console.log(`🐌 Slow navigation detected for brands`);
-                    document.dispatchEvent(new CustomEvent('navigationStart'));
-                  }, 300);
-                  
-                  window.location.href = '/shop';
-                  
-                  // Clear timeout if navigation was fast
-                  setTimeout(() => {
-                    clearTimeout(slowNavigationTimeout);
-                  }, 500);
-                }}
+        {/* Brand Row - Show 7 brands with navigation */}
+        <div className="bg-gray-100 p-4 sm:p-6 rounded-lg">
+          <div className="relative overflow-hidden">
+            <div 
+              className="flex transition-transform duration-300 gap-3 sm:gap-4"
+              style={{ transform: `translateX(-${startIndex * (100 / visibleItems)}%)` }}
             >
-              <img 
-                src={brand.logo} 
-                alt={brand.name} 
-                className="max-w-full max-h-full object-contain"
-              />
+              {brands.map((brand) => (
+                <div key={brand.id} className="flex-shrink-0 flex flex-col items-center">
+                  <div
+                    className="flex items-center justify-center bg-white shadow-md hover:shadow-lg transition-all rounded-lg p-4 sm:p-5 h-28 sm:h-32 w-36 sm:w-40 cursor-pointer"
+                    onClick={() => handleBrandClick(brand.name)}
+                  >
+                    <img 
+                      src={brand.logo} 
+                      alt={brand.name} 
+                      className="w-16 h-16 sm:w-20 sm:h-20 object-contain"
+                      onError={(e) => {
+                        // Fallback to a generic car icon if image fails to load
+                        e.currentTarget.src = '/car-bg.png';
+                      }}
+                    />
+                  </div>
+                  <p className="text-sm sm:text-base text-center font-medium text-gray-700 leading-tight mt-3">
+                    {brand.name}
+                  </p>
+                </div>
+              ))}
             </div>
-          ))}
+          </div>
         </div>
       </div>
 

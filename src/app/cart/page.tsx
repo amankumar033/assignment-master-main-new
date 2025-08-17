@@ -39,6 +39,7 @@ const Page = () => {
   const { showToast } = useToast();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [redirectMessage, setRedirectMessage] = useState<string | null>(null);
 
   const [couponCode, setCouponCode] = useState('');
   const [discount, setDiscount] = useState(0);
@@ -49,6 +50,22 @@ const Page = () => {
   useEffect(() => {
     console.log('Cart page component - Auth state:', { user, isLoggedIn });
   }, [user, isLoggedIn]);
+
+  // Show a short redirecting message if coming back from checkout
+  useEffect(() => {
+    try {
+      if (typeof window !== 'undefined') {
+        const flag = sessionStorage.getItem('justRedirectedFromCheckout');
+        if (flag === '1') {
+          setRedirectMessage('Redirecting from checkout...');
+          setTimeout(() => {
+            setRedirectMessage(null);
+            sessionStorage.removeItem('justRedirectedFromCheckout');
+          }, 2000);
+        }
+      }
+    } catch {}
+  }, []);
 
   // Update loading state when cart loading changes
   useEffect(() => {
@@ -109,7 +126,12 @@ const Page = () => {
           <span className="text-black">Cart</span>
         </div>
 
-        <h1 className="text-3xl font-bold mb-8 text-black">Shopping Cart</h1>
+        <h1 className="text-3xl font-bold mb-2 text-black">Shopping Cart</h1>
+        {redirectMessage && (
+          <div className="mb-6 p-3 bg-blue-50 border border-blue-200 text-blue-800 rounded text-sm">
+            {redirectMessage}
+          </div>
+        )}
         
         {error && (
           <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">

@@ -36,6 +36,7 @@ export async function GET(request: Request) {
         p.category_id,
         p.brand_name,
         p.sub_brand_name,
+        p.manufacture,
         p.stock_quantity,
         p.is_active,
         p.is_featured,

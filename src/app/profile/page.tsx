@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/contexts/ToastContext';
-import { formatPrice } from '@/utils/priceUtils';
+import { formatPrice, formatPriceNumber } from '@/utils/priceUtils';
 import Link from 'next/link';
 import ConfirmationModal from '@/components/ConfirmationModal';
 
@@ -31,12 +31,8 @@ type Order = {
   customer_name: string;
   customer_email: string;
   customer_phone: string;
-  shipping_address_line1: string;
-  shipping_address_line2: string;
-  shipping_city: string;
-  shipping_state: string;
-  shipping_postal_code: string;
-  shipping_country: string;
+  shipping_address: string;
+  shipping_pincode: string;
   order_date: string;
   order_status: string;
   total_amount: number;
@@ -1352,7 +1348,7 @@ const closeCancelConfirmation = () => {
                                   </div>
                                                                      <div>
                                      <p className="text-xs text-gray-600 font-medium">Total Amount</p>
-                                     <p className="text-lg font-bold text-gray-600">{formatPrice(order.total_amount)}</p>
+                                     <p className="text-lg font-bold text-gray-600">{formatPriceNumber(order.total_amount)}</p>
                                    </div>
                                 </div>
                               </div>
@@ -1466,25 +1462,15 @@ const closeCancelConfirmation = () => {
                                 <div className="space-y-3">
                                   <div className="flex justify-between items-center py-2 border-b border-gray-100">
                                     <span className="text-sm text-gray-600">Address</span>
-                                    <span className="text-gray-900 text-right max-w-xs">{order.shipping_address_line1}</span>
-                                  </div>
-                                  {order.shipping_address_line2 && (
-                                    <div className="flex justify-between items-center py-2 border-b border-gray-100">
-                                      <span className="text-sm text-gray-600">Address Line 2</span>
-                                      <span className="text-gray-900 text-right max-w-xs">{order.shipping_address_line2}</span>
-                                    </div>
-                                  )}
-                                  <div className="flex justify-between items-center py-2 border-b border-gray-100">
-                                    <span className="text-sm text-gray-600">City</span>
-                                    <span className="font-medium text-gray-900">{order.shipping_city}</span>
+                                    <span className="text-gray-900 text-right max-w-xs">{order.shipping_address || 'Not provided'}</span>
                                   </div>
                                   <div className="flex justify-between items-center py-2 border-b border-gray-100">
-                                    <span className="text-sm text-gray-600">State</span>
-                                    <span className="font-medium text-gray-900">{order.shipping_state}</span>
+                                    <span className="text-sm text-gray-600">Postal Code</span>
+                                    <span className="font-medium text-gray-900">{order.shipping_pincode || 'Not provided'}</span>
                                   </div>
                                   <div className="flex justify-between items-center py-2">
-                                    <span className="text-sm text-gray-600">Postal Code</span>
-                                    <span className="font-medium text-gray-900">{order.shipping_postal_code}</span>
+                                    <span className="text-sm text-gray-600">Phone</span>
+                                    <span className="font-medium text-gray-900">{order.customer_phone || 'Not provided'}</span>
                                   </div>
                                 </div>
                               </div>

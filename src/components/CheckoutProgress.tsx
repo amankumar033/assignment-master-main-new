@@ -29,7 +29,7 @@ const CheckoutProgress: React.FC<CheckoutProgressProps> = ({
         );
       case 'processing':
         return (
-          <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center">
+          <div className="w-6 h-6 bg-red-500 rounded-full flex items-center justify-center">
             <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
           </div>
         );
@@ -55,7 +55,7 @@ const CheckoutProgress: React.FC<CheckoutProgressProps> = ({
       case 'completed':
         return 'text-green-600';
       case 'processing':
-        return 'text-blue-600';
+        return 'text-red-600';
       case 'error':
         return 'text-red-600';
       default:
@@ -92,14 +92,14 @@ const CheckoutProgress: React.FC<CheckoutProgressProps> = ({
                     {step.name}
                   </span>
                   {step.status === 'processing' && (
-                    <span className="text-xs text-blue-600">{Math.round(step.progress)}%</span>
+                    <span className="text-xs text-red-600">{Math.round(step.progress)}%</span>
                   )}
                 </div>
                 {step.status === 'processing' && (
                   <ProgressBar 
                     progress={step.progress} 
                     showPercentage={false}
-                    color="blue"
+                    color="green"
                     className="h-1"
                   />
                 )}

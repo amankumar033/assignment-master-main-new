@@ -286,20 +286,7 @@ const MultiOrderConfirmationPage = () => {
           </div>
         </div>
 
-        {/* Customer Information */}
-        <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
-          <h2 className="text-xl font-bold text-black mb-4">Customer Information</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <span className="text-gray-600 text-sm">Name:</span>
-              <p className="text-black font-medium">{user.name || user.customer_name || 'N/A'}</p>
-            </div>
-            <div>
-              <span className="text-gray-600 text-sm">Email:</span>
-              <p className="text-black">{user.email || user.customer_email || 'N/A'}</p>
-            </div>
-          </div>
-        </div>
+        {/* Customer Information removed as per requirements */}
 
         {/* Action Buttons */}
         <div className="flex flex-col sm:flex-row gap-4">

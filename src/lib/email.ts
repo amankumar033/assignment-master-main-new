@@ -614,7 +614,7 @@ export const sendServiceOrderConfirmationEmail = async (serviceOrderData: Servic
             <p><strong>Status:</strong> <span class="status-badge">${serviceOrderData.service_status}</span></p>
             <p><strong>Payment Method:</strong> ${serviceOrderData.payment_method}</p>
             <p><strong>Payment Status:</strong> <span class="status-badge">${serviceOrderData.payment_status}</span></p>
-            <p><strong>Total Amount:</strong> $${(Number(serviceOrderData.final_price) || 0).toFixed(2)}</p>
+            <p><strong>Total Amount:</strong> ${formatINRPrice(Number(serviceOrderData.final_price) || 0)}</p>
           </div>
           
           <div class="service-info">
@@ -742,7 +742,7 @@ export const sendDealerOrderNotificationEmail = async (dealerOrderData: DealerOr
             <p><strong>Order Date:</strong> ${new Date(dealerOrderData.order_date).toLocaleDateString()}</p>
             <p><strong>Order Status:</strong> <span class="status-badge">${dealerOrderData.order_status}</span></p>
             <p><strong>Payment Status:</strong> <span class="status-badge">${dealerOrderData.payment_status}</span></p>
-            <p><strong>Total Amount:</strong> <span class="amount-highlight">$${dealerOrderData.total_amount.toFixed(2)}</span></p>
+            <p><strong>Total Amount:</strong> <span class="amount-highlight">${formatINRPrice(dealerOrderData.total_amount)}</span></p>
           </div>
           
           <div class="order-info">
@@ -769,9 +769,9 @@ export const sendDealerOrderNotificationEmail = async (dealerOrderData: DealerOr
                 ${dealerOrderData.items.map(item => `
                   <tr>
                     <td>${item.name}</td>
-                    <td>$${item.price.toFixed(2)}</td>
+                    <td>${formatINRPrice(item.price)}</td>
                     <td>${item.quantity}</td>
-                    <td>$${(item.price * item.quantity).toFixed(2)}</td>
+                    <td>${formatINRPrice(item.price * item.quantity)}</td>
                   </tr>
                 `).join('')}
               </tbody>
@@ -851,7 +851,7 @@ export const sendVendorServiceNotificationEmail = async (vendorServiceData: Vend
             <p><strong>Type:</strong> ${vendorServiceData.service_type}</p>
             <p><strong>Service Status:</strong> <span class="status-badge">${vendorServiceData.service_status}</span></p>
             <p><strong>Payment Status:</strong> <span class="status-badge">${vendorServiceData.payment_status}</span></p>
-            <p><strong>Service Amount:</strong> <span class="amount-highlight">$${vendorServiceData.final_price.toFixed(2)}</span></p>
+            <p><strong>Service Amount:</strong> <span class="amount-highlight">${formatINRPrice(vendorServiceData.final_price)}</span></p>
           </div>
           
           <div class="service-info">
@@ -961,7 +961,7 @@ export const sendServiceAcceptanceEmail = async (serviceData: {
             <p><strong>Category:</strong> ${serviceData.service_category}</p>
             <p><strong>Type:</strong> ${serviceData.service_type}</p>
             <p><strong>Status:</strong> <span class="status-badge">Accepted</span></p>
-            <p><strong>Total Amount:</strong> $${serviceData.final_price.toFixed(2)}</p>
+            <p><strong>Total Amount:</strong> ${formatINRPrice(serviceData.final_price)}</p>
           </div>
           
           <div class="service-info">
@@ -1070,7 +1070,7 @@ export const sendVendorAcceptanceConfirmationEmail = async (vendorData: {
             <p><strong>Category:</strong> ${vendorData.service_category}</p>
             <p><strong>Type:</strong> ${vendorData.service_type}</p>
             <p><strong>Service Status:</strong> <span class="status-badge">Accepted</span></p>
-            <p><strong>Service Amount:</strong> <span class="amount-highlight">$${vendorData.final_price.toFixed(2)}</span></p>
+            <p><strong>Service Amount:</strong> <span class="amount-highlight">${formatINRPrice(vendorData.final_price)}</span></p>
           </div>
           
           <div class="service-info">
@@ -1172,7 +1172,7 @@ export const sendOrderCancellationEmail = async (customerData: {
             <p><strong>Order ID:</strong> #${customerData.order_id}</p>
             <p><strong>Product:</strong> ${customerData.product_name}</p>
             <p><strong>Order Status:</strong> <span class="status-badge">Cancelled</span></p>
-            <p><strong>Order Amount:</strong> <span class="amount-highlight">$${customerData.total_amount.toFixed(2)}</span></p>
+            <p><strong>Order Amount:</strong> <span class="amount-highlight">${formatINRPrice(customerData.total_amount)}</span></p>
             <p><strong>Order Date:</strong> ${new Date(customerData.order_date).toLocaleDateString()}</p>
             <p><strong>Cancellation Date:</strong> ${new Date(customerData.cancellation_date).toLocaleDateString()}</p>
           </div>
@@ -1273,7 +1273,7 @@ export const sendDealerOrderCancellationEmail = async (dealerData: {
             <p><strong>Order ID:</strong> #${dealerData.order_id}</p>
             <p><strong>Product:</strong> ${dealerData.product_name}</p>
             <p><strong>Order Status:</strong> <span class="status-badge">Cancelled</span></p>
-            <p><strong>Order Amount:</strong> <span class="amount-highlight">$${dealerData.total_amount.toFixed(2)}</span></p>
+            <p><strong>Order Amount:</strong> <span class="amount-highlight">${formatINRPrice(dealerData.total_amount)}</span></p>
             <p><strong>Order Date:</strong> ${new Date(dealerData.order_date).toLocaleDateString()}</p>
             <p><strong>Cancellation Date:</strong> ${new Date(dealerData.cancellation_date).toLocaleDateString()}</p>
           </div>

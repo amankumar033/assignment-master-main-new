@@ -56,9 +56,9 @@ const DescriptionDropdown: React.FC<DescriptionDropdownProps> = ({
     <div className={`border border-gray-200 rounded-lg ${className}`}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full px-4 py-3 text-left flex items-center justify-between bg-gray-50 hover:bg-gray-100 transition-colors rounded-lg"
+        className="w-full px-4 py-3 text-left flex items-center justify-between bg-gray-100 hover:bg-gray-100 transition-colors rounded-lg"
       >
-        <h3 className="text-lg font-medium text-black">{title}</h3>
+        <h3 className="text-lg font-medium text-black ">{title}</h3>
         <svg
           className={`w-5 h-5 text-gray-500 transition-transform ${isOpen ? 'rotate-180' : ''}`}
           fill="none"

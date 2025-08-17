@@ -2,138 +2,80 @@
 require('dotenv').config({ path: '.env.local' });
 const mysql = require('mysql2/promise');
 
-async function testServicesAPI() {
-  console.log('🧪 Testing Services APIs with new database structure...\n');
-  
-  let connection;
+const testServicesAPI = async () => {
   try {
-    // Create database connection
-    connection = await mysql.createConnection({
-      host: process.env.DB_HOST,
-      user: process.env.DB_USER,
-      password: process.env.DB_PASSWORD,
-      database: process.env.DB_NAME,
+    console.log('🧪 Testing Services API...\n');
+
+    // Test 1: Show all services with pincode 201301
+    console.log('📋 Test 1: Show all services for pincode 201301');
+    const response1 = await fetch('http://localhost:3000/api/services/nearby', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        pincode: '201301',
+        radius: 1000,
+        showAllServices: true
+      })
     });
 
-    console.log('✅ Database connection established');
-
-    // Test 1: Check if service_categories table exists
-    console.log('\n📊 Test 1: Checking service_categories table...');
-    const [categories] = await connection.execute(
-      "SELECT COUNT(*) as count FROM information_schema.tables WHERE table_schema = 'kriptocar' AND table_name = 'service_categories'"
-    );
+    const data1 = await response1.json();
+    console.log(`✅ Response: ${data1.success ? 'Success' : 'Failed'}`);
+    console.log(`📊 Total services returned: ${data1.services?.length || 0}`);
+    console.log(`🎯 Filtering mode: ${data1.filteringMode}`);
     
-    if (categories[0].count === 0) {
-      console.log('❌ service_categories table does not exist!');
-      console.log('Please create the service_categories table first.');
-      return;
-    } else {
-      console.log('✅ service_categories table exists');
-    }
-
-    // Test 2: Check services table structure
-    console.log('\n📊 Test 2: Checking services table structure...');
-    const [serviceColumns] = await connection.execute(
-      "SELECT COLUMN_NAME, DATA_TYPE FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = 'kriptocar' AND TABLE_NAME = 'services' ORDER BY ORDINAL_POSITION"
-    );
-    
-    console.log('Services table columns:');
-    serviceColumns.forEach(col => {
-      console.log(`  - ${col.COLUMN_NAME}: ${col.DATA_TYPE}`);
-    });
-
-    // Check if service_category_id exists
-    const hasServiceCategoryId = serviceColumns.some(col => col.COLUMN_NAME === 'service_category_id');
-    const hasCategory = serviceColumns.some(col => col.COLUMN_NAME === 'category');
-    
-    if (hasServiceCategoryId) {
-      console.log('✅ service_category_id column exists');
-    } else {
-      console.log('❌ service_category_id column does not exist');
-    }
-    
-    if (hasCategory) {
-      console.log('⚠️  category column still exists (should be removed)');
-    } else {
-      console.log('✅ category column has been removed');
-    }
-
-    // Test 3: Test the new query structure
-    console.log('\n📊 Test 3: Testing new query structure...');
-    try {
-      const [services] = await connection.execute(`
-        SELECT 
-          s.service_id,
-          s.vendor_id,
-          s.name,
-          s.description,
-          s.service_category_id,
-          sc.name as category_name,
-          s.type,
-          s.base_price,
-          s.duration_minutes,
-          s.is_available,
-          s.service_pincodes,
-          s.created_at,
-          s.updated_at
-        FROM kriptocar.services s
-        LEFT JOIN kriptocar.service_categories sc ON s.service_category_id = sc.service_category_id
-        WHERE s.is_available = 1
-        LIMIT 5
-      `);
-
-      console.log(`✅ Query executed successfully! Found ${services.length} services`);
-      
-      if (services.length > 0) {
-        console.log('\n📋 Sample service data:');
-        services.forEach((service, index) => {
-          console.log(`  Service ${index + 1}:`);
-          console.log(`    - ID: ${service.service_id}`);
-          console.log(`    - Name: ${service.name}`);
-          console.log(`    - Category ID: ${service.service_category_id}`);
-          console.log(`    - Category Name: ${service.category_name}`);
-          console.log(`    - Type: ${service.type}`);
-          console.log(`    - Price: ${service.base_price}`);
-        });
-      }
-    } catch (error) {
-      console.error('❌ Query failed:', error.message);
-      if (error.sql) {
-        console.error('SQL Error:', error.sql);
-      }
-    }
-
-    // Test 4: Check service_categories data
-    console.log('\n📊 Test 4: Checking service_categories data...');
-    try {
-      const [categoryData] = await connection.execute(
-        'SELECT service_category_id, name FROM kriptocar.service_categories LIMIT 10'
-      );
-      
-      console.log(`✅ Found ${categoryData.length} service categories:`);
-      categoryData.forEach(cat => {
-        console.log(`  - ID: ${cat.service_category_id}, Name: ${cat.name}`);
+    if (data1.services && data1.services.length > 0) {
+      console.log('\n📋 Sample services:');
+      data1.services.slice(0, 5).forEach((service, index) => {
+        console.log(`   ${index + 1}. ${service.name} (${service.pincode}) - Distance: ${service.distance}km`);
       });
-    } catch (error) {
-      console.error('❌ Failed to fetch service categories:', error.message);
     }
 
-    console.log('\n✅ All tests completed successfully!');
+    console.log('\n' + '='.repeat(50) + '\n');
+
+    // Test 2: Filter by distance (50km radius)
+    console.log('📋 Test 2: Filter by 50km radius for pincode 201301');
+    const response2 = await fetch('http://localhost:3000/api/services/nearby', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        pincode: '201301',
+        radius: 50,
+        showAllServices: false
+      })
+    });
+
+    const data2 = await response2.json();
+    console.log(`✅ Response: ${data2.success ? 'Success' : 'Failed'}`);
+    console.log(`📊 Services within 50km: ${data2.services?.length || 0}`);
+    console.log(`🎯 Filtering mode: ${data2.filteringMode}`);
+    console.log(`📍 User location: ${data2.userLocation?.pincode} (${data2.userLocation?.latitude}, ${data2.userLocation?.longitude})`);
+
+    console.log('\n' + '='.repeat(50) + '\n');
+
+    // Test 3: Check if specific service exists
+    console.log('📋 Test 3: Looking for "Testing Service2"');
+    if (data1.services) {
+      const testingService = data1.services.find(s => s.name === 'Testing Service2');
+      if (testingService) {
+        console.log(`✅ Found: ${testingService.name}`);
+        console.log(`   Service ID: ${testingService.service_id}`);
+        console.log(`   Pincode: ${testingService.pincode}`);
+        console.log(`   Distance: ${testingService.distance}km`);
+        console.log(`   Available: ${testingService.is_available}`);
+      } else {
+        console.log('❌ "Testing Service2" not found in results');
+      }
+    }
 
   } catch (error) {
-    console.error('❌ Error testing services API:', error);
-    console.error('Error details:', error.message);
-    if (error.sql) {
-      console.error('SQL Error:', error.sql);
-    }
-  } finally {
-    if (connection) {
-      await connection.end();
-      console.log('\n🔌 Database connection closed');
-    }
+    console.error('❌ Test failed:', error.message);
   }
-}
+};
 
 // Run the test
-testServicesAPI().catch(console.error);
+testServicesAPI();
 

@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import LoadingPage from '@/components/LoadingPage';
+import { useToast } from '@/contexts/ToastContext';
 import { formatPrice } from '@/utils/priceUtils';
 
 type ServiceBooking = {
@@ -36,6 +37,7 @@ type ServiceBooking = {
 
 const ServiceBookingsPage = () => {
   const { user, isLoggedIn } = useAuth();
+  const { showToast } = useToast();
   const [serviceBookings, setServiceBookings] = useState<ServiceBooking[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -281,9 +283,24 @@ const ServiceBookingsPage = () => {
                         {['pending','scheduled'].includes(booking.service_status.toLowerCase()) && (
                           <button 
                             className="block w-full bg-gray-600 text-white py-2 px-4 rounded hover:bg-gray-700 transition text-sm"
-                            onClick={() => {
-                              // TODO: Implement cancel booking functionality
-                              alert('Cancel booking functionality will be implemented here');
+                            onClick={async () => {
+                              try {
+                                const res = await fetch('/api/service-cancel', {
+                                  method: 'POST',
+                                  headers: { 'Content-Type': 'application/json' },
+                                  body: JSON.stringify({ service_order_id: booking.service_order_id, user_id: user.user_id })
+                                });
+                                const data = await res.json();
+                                if (data.success) {
+                                  showToast('success', 'Service cancelled successfully');
+                                  await fetchServiceBookings(); // refresh
+                                } else {
+                                  showToast('error', data.message || 'Failed to cancel booking');
+                                }
+                              } catch (e) {
+                                console.error('Cancel booking error', e);
+                                showToast('error', 'Failed to cancel booking');
+                              }
                             }}
                           >
                             Cancel Booking

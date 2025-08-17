@@ -48,7 +48,8 @@ type Product = {
   category_slug: string;
   subcategory_slug?: string;
   sub_brand_name?: string;
-    brand_name: string;
+  brand_name: string;
+  manufacture?: string;
   stock_quantity: string;
   is_active: string;
   is_featured: string;
@@ -89,12 +90,14 @@ export default function ShopPage() {
   const [selectedSubcategories, setSelectedSubcategories] = useState<string[]>([]);
   const [selectedBrands, setSelectedBrands] = useState<string[]>([]);
   const [selectedSubBrands, setSelectedSubBrands] = useState<string[]>([]);
+  const [selectedManufacturers, setSelectedManufacturers] = useState<string[]>([]);
   const [selectedConditions, setSelectedConditions] = useState<string[]>([]);
   const [selectedMaterials, setSelectedMaterials] = useState<string[]>([]);
   const [selectedRatings, setSelectedRatings] = useState<number[]>([]);
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 1000]);
   const [inStockOnly, setInStockOnly] = useState(false);
   const [brandSearch, setBrandSearch] = useState('');
+
   
   // Search state
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -107,10 +110,29 @@ export default function ShopPage() {
 
   // Brands accordion states
   const [brandsFromApi, setBrandsFromApi] = useState<string[]>([]);
+  const [brandCounts, setBrandCounts] = useState<Record<string, number>>({});
+  
+  // Debug brands state changes
+  useEffect(() => {
+    console.log('Brands state changed:', brandsFromApi);
+  }, [brandsFromApi]);
+
+  // Brands are loaded dynamically from the API via brandsFromApi
+
+  // Sub-brands states (restore functionality)
   const [subBrandsByBrand, setSubBrandsByBrand] = useState<Record<string, { sub_brand_name: string; brand_name: string }[]>>({});
   const [loadingSubBrands, setLoadingSubBrands] = useState<Record<string, boolean>>({});
   const [openBrandName, setOpenBrandName] = useState<string | null>(null);
   const brandContentRefs = useRef<Record<string, HTMLDivElement | null>>({});
+
+  // Static manufacturers list (based on actual database data)
+  const staticManufacturers = [
+    'Audi', 'BMW', 'Continental-Ag', 'Dailmer', 'Denso', 'Ford Mustang', 
+    'Jaguar', 'Mahindra & Mahindra', 'Manga International', 'Mercedes-Benz',
+    'Mitsubishi', 'Nissan', 'Peugeot', 'Porsche', 'PSA', 'Renault', 
+    'Robert Bosch GmbH', 'Suzuki', 'Tata'
+  ];
+
 
 
 
@@ -233,10 +255,81 @@ export default function ShopPage() {
         allFeaturedProductsRef.current = data.products;
         // Initialize brands list from the baseline to avoid disappearing options
         const baselineBrands = [...new Set((data.products as Product[]).map(p => p.brand_name).filter(Boolean))] as string[];
-        setBrandsFromApi(baselineBrands);
+        console.log('Dynamic brands loaded from database:', baselineBrands);
+        console.log('Total products loaded:', data.products.length);
+        console.log('Sample products with brands:', data.products.slice(0, 5).map((p: any) => ({ name: p.name, brand: p.brand_name })));
+        // Compute featured brand counts only from featured products
+        const featuredBrandCounts: Record<string, number> = {};
+        (data.products as Product[]).forEach((p: any) => {
+          const name = (p.brand_name || '') as string;
+          if (name) featuredBrandCounts[name] = (featuredBrandCounts[name] || 0) + 1;
+        });
+        setBrandCounts(featuredBrandCounts);
+        
+        // Do not overwrite brands list here; rely on /api/brands for brand names and counts
       }
     } catch (e) {
       console.error('Failed to fetch baseline featured products', e);
+    }
+  };
+
+  // Fetch all brands from the brands API
+  const fetchAllBrands = async () => {
+    try {
+      console.log('Fetching brands from API...');
+      const response = await fetch('/api/brands');
+      console.log('Brands API response status:', response.status);
+      const data = await response.json();
+      console.log('Brands API response data:', data);
+      
+      if (data?.success && Array.isArray(data.brands)) {
+        const allBrands = data.brands.map((brand: any) => brand.name);
+        console.log('All brands from brands API:', allBrands);
+        console.log('Setting brands in state:', allBrands);
+        setBrandsFromApi(allBrands);
+        console.log('Brands set in state successfully');
+      } else {
+        console.log('Brands API failed, will use brands from products');
+        console.log('Response data:', data);
+        console.log('Success:', data?.success);
+        console.log('Brands array:', data?.brands);
+        console.log('Is array:', Array.isArray(data?.brands));
+        
+        // Fallback: Use hardcoded brands from your database
+        const fallbackBrands = [
+          'Hyundai India',
+          'Tata Motors', 
+          'Mahindra',
+          'TVS Motors',
+          'Royal Enfield',
+          'Honda Cars India',
+          'Maruti Suzuki',
+          'Bajaj Auto',
+          'Ashok Leyland'
+        ];
+        console.log('Using fallback brands:', fallbackBrands);
+        setBrandsFromApi(fallbackBrands);
+        // Counts will be set from featured products fetch
+      }
+    } catch (e) {
+      console.error('Failed to fetch brands from brands API:', e);
+      console.log('Will use brands from products instead');
+      
+      // Fallback: Use hardcoded brands from your database
+      const fallbackBrands = [
+        'Hyundai India',
+        'Tata Motors', 
+        'Mahindra',
+        'TVS Motors',
+        'Royal Enfield',
+        'Honda Cars India',
+        'Maruti Suzuki',
+        'Bajaj Auto',
+        'Ashok Leyland'
+      ];
+      console.log('Using fallback brands due to error:', fallbackBrands);
+      setBrandsFromApi(fallbackBrands);
+      // Counts will be set from featured products fetch
     }
   };
 
@@ -354,6 +447,8 @@ export default function ShopPage() {
     // Load data in background - non-blocking
     const loadData = async () => {
       try {
+        // Load brands first, then categories and products
+        await fetchAllBrands();
         await Promise.all([
           fetchCategories(),
           fetchAllFeaturedProducts()
@@ -379,7 +474,7 @@ export default function ShopPage() {
   // Keep brands list stable based on baseline; refresh when baseline changes (set inside fetch)
   // No-op effect here on products to prevent flicker in brand list
 
-  // API helpers for brands/sub-brands
+  // API helper for sub-brands
   const fetchSubBrands = async (brandName: string) => {
     if (subBrandsByBrand[brandName]) return;
     setLoadingSubBrands(prev => ({ ...prev, [brandName]: true }));
@@ -395,6 +490,8 @@ export default function ShopPage() {
       setLoadingSubBrands(prev => ({ ...prev, [brandName]: false }));
     }
   };
+
+
 
   // Prefetch subcategories for all categories after categories load (best-effort, limited concurrency) - Non-blocking
   useEffect(() => {
@@ -429,38 +526,38 @@ export default function ShopPage() {
     };
   }, [categories]);
 
-  // Prefetch sub-brands for all brands after brands list is derived (best-effort, limited concurrency) - Non-blocking
+
+
+  // Prefetch sub-brands for brands that have products (based on API counts) - Non-blocking
   useEffect(() => {
     if (brandsFromApi.length === 0) return;
     let isCancelled = false;
 
-    // Delay prefetching to prioritize navigation
     const prefetchTimer = setTimeout(() => {
-      const concurrency = 2; // Reduced concurrency
-      const queue = [...brandsFromApi];
+      const concurrency = 2;
+      const queue = brandsFromApi.filter(name => (brandCounts[name] || 0) > 0);
 
       const runNext = async () => {
         if (isCancelled) return;
-        const name = queue.shift();
-        if (!name) return;
-        if (!subBrandsByBrand[name]) {
-          await fetchSubBrands(name);
+        const brandName = queue.shift();
+        if (!brandName) return;
+        if (!subBrandsByBrand[brandName]) {
+          await fetchSubBrands(brandName);
         }
         if (!isCancelled && queue.length > 0) {
-          // Add delay between requests to prevent blocking
           setTimeout(() => runNext(), 50);
         }
       };
 
       const workers = Array.from({ length: Math.min(concurrency, queue.length) }, () => runNext());
       Promise.all(workers).catch(() => {});
-    }, 1000); // Longer delay for sub-brands
+    }, 600);
 
     return () => {
       isCancelled = true;
       clearTimeout(prefetchTimer);
     };
-  }, [brandsFromApi]);
+  }, [brandsFromApi, brandCounts]);
 
   // No hover timeouts needed
 
@@ -472,6 +569,7 @@ export default function ShopPage() {
     const subcategoriesParam = searchParams.get('subcategories');
     const brandsParam = searchParams.get('brands');
     const subbrandsParam = searchParams.get('subbrands');
+    const manufacturersParam = searchParams.get('manufacturers');
     const minPriceParam = searchParams.get('minPrice');
     const maxPriceParam = searchParams.get('maxPrice');
     const ratingsParam = searchParams.get('ratings');
@@ -482,6 +580,7 @@ export default function ShopPage() {
     setSelectedSubcategories(subcategoriesParam ? subcategoriesParam.split(',').filter(Boolean) : []);
     setSelectedBrands(brandsParam ? brandsParam.split(',').filter(Boolean) : []);
     setSelectedSubBrands(subbrandsParam ? subbrandsParam.split(',').filter(Boolean) : []);
+    setSelectedManufacturers(manufacturersParam ? manufacturersParam.split(',').filter(Boolean) : []);
     setPriceRange([
       minPriceParam ? parseInt(minPriceParam) : 0,
       maxPriceParam ? parseInt(maxPriceParam) : 1000,
@@ -581,38 +680,39 @@ export default function ShopPage() {
     }, 300);
 
     return () => clearTimeout(timeoutId);
-  }, [filtersInitialized, selectedCategories, selectedSubcategories, selectedBrands, selectedSubBrands, selectedRatings, priceRange, inStockOnly, searchQuery]);
+  }, [filtersInitialized, selectedCategories, selectedSubcategories, selectedBrands, selectedSubBrands, selectedManufacturers, selectedRatings, priceRange, inStockOnly, searchQuery]);
 
-  // Sync selected filters to URL via Next router (no reload)
+  // Sync selected filters to URL without triggering Next.js route change (prevents remount/flicker)
   useEffect(() => {
     if (!filtersInitialized) return;
-    
     const timeoutId = setTimeout(() => {
+      if (typeof window === 'undefined') return;
       const params = new URLSearchParams();
       if (selectedCategories[0]) params.set('category', selectedCategories[0]);
       if (selectedSubcategories.length) params.set('subcategories', selectedSubcategories.join(','));
       if (selectedBrands.length) params.set('brands', selectedBrands.join(','));
       if (selectedSubBrands.length) params.set('subbrands', selectedSubBrands.join(','));
+      if (selectedManufacturers.length) params.set('manufacturers', selectedManufacturers.join(','));
       if (priceRange[0] > 0) params.set('minPrice', String(priceRange[0]));
       if (priceRange[1] < 1000) params.set('maxPrice', String(priceRange[1]));
       if (selectedRatings.length) params.set('ratings', selectedRatings.join(','));
       if (inStockOnly) params.set('inStockOnly', '1');
       if (searchQuery) params.set('search', searchQuery);
       const newQuery = params.toString();
-      if (newQuery === searchParams?.toString()) return;
-      
-      router.push(`/shop${newQuery ? `?${newQuery}` : ''}`);
-    }, 100);
-
+      const newUrl = `/shop${newQuery ? `?${newQuery}` : ''}`;
+      if (newUrl !== window.location.pathname + window.location.search) {
+        window.history.replaceState({}, '', newUrl);
+      }
+    }, 120);
     return () => clearTimeout(timeoutId);
-  }, [filtersInitialized, selectedCategories, selectedSubcategories, selectedBrands, selectedSubBrands, priceRange, selectedRatings, inStockOnly, searchQuery, router, searchParams]);
+  }, [filtersInitialized, selectedCategories, selectedSubcategories, selectedBrands, selectedSubBrands, selectedManufacturers, priceRange, selectedRatings, inStockOnly, searchQuery]);
 
   // Extract unique values for filters from products
   const filterCategories = [...new Set(allFeaturedProductsRef.current.map(p => p.category_name))];
-  const brands = [...new Set(products.map(p => p.brand_name))].filter(Boolean) as string[];
-  const filteredBrands = brands.filter(brand => 
-    (brand || '').toLowerCase().includes(brandSearch.toLowerCase())
-  );
+  // Base brand list from API (stable order)
+  const brands = brandsFromApi;
+  // Manufacturers are static - always show all
+  const filteredManufacturers = staticManufacturers;
   const ratings = [1, 2, 3, 4, 5];
 
 
@@ -677,6 +777,8 @@ export default function ShopPage() {
     // Note: Subcategory filtering is currently handled through category selection
     // TODO: Add subcategory_id to products table and update API to include subcategory data
     const brandMatch = selectedBrands.length === 0 || selectedBrands.includes(product.brand_name);
+            // For manufacturers, check against manufacture field
+        const manufacturerMatch = selectedManufacturers.length === 0 || selectedManufacturers.includes(product.manufacture || '');
     const ratingMatch = selectedRatings.length === 0 || selectedRatings.some(r => Math.floor(rating) === r);
     const priceMatch = salePrice >= priceRange[0] && salePrice <= priceRange[1];
     const stockMatch = !inStockOnly || stockQuantity > 0;
@@ -685,7 +787,7 @@ export default function ShopPage() {
     const subcategoryMatch = selectedSubcategories.length === 0 || selectedSubcategories.includes(product.subcategory_slug || '');
     // If subbrands selected, match by product sub_brand_name
     const subBrandMatch = selectedSubBrands.length === 0 || selectedSubBrands.includes((product as any).sub_brand_name || '');
-    const passes = categoryMatch && subcategoryMatch && subBrandMatch && brandMatch && ratingMatch && priceMatch && stockMatch;
+    const passes = categoryMatch && subcategoryMatch && subBrandMatch && brandMatch && manufacturerMatch && ratingMatch && priceMatch && stockMatch;
     
     return passes;
   }).sort((a, b) => {
@@ -713,7 +815,7 @@ export default function ShopPage() {
   // Reset to first page when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, selectedCategories, selectedSubcategories, selectedBrands, selectedSubBrands, selectedConditions, selectedMaterials, selectedRatings, priceRange, inStockOnly]);
+  }, [searchQuery, selectedCategories, selectedSubcategories, selectedBrands, selectedSubBrands, selectedManufacturers, selectedConditions, selectedMaterials, selectedRatings, priceRange, inStockOnly]);
 
   // Debug: Log final counts
   console.log(`Products: ${products.length} fetched, ${filteredProducts.length} displayed`);
@@ -739,7 +841,7 @@ export default function ShopPage() {
         {/* Progress Bar */}
         {(isNavigating || loading) && (
           <div className="fixed top-0 left-0 w-full z-[1700]">
-            <div className="h-1 bg-gradient-to-r from-[#D27208] to-orange-500 animate-pulse" style={{ width: '100%' }} />
+            <div className="h-1 bg-gradient-to-r from-red-600 to-red-400 animate-pulse" style={{ width: '100%' }} />
           </div>
         )}
         
@@ -1093,94 +1195,234 @@ export default function ShopPage() {
             })}
           </ul>
 
-          {/* Brands Accordion */}
+          {/* Brands Filter - Like Categories */}
           <div className="bg-gray-300 p-4 rounded-t-lg mt-6">
             <div className="flex justify-between items-center">
               <h3 className="font-bold text-lg">Shop by Brands</h3>
               {(selectedBrands.length > 0 || selectedSubBrands.length > 0) && (
                 <button
-                  onClick={() => { setSelectedBrands([]); setSelectedSubBrands([]); }}
+                  onClick={() => { 
+                    setSelectedBrands([]);
+                    setSelectedSubBrands([]);
+                  }}
                   className="text-sm text-red-600 underline"
                 >
                   Clear All
                 </button>
               )}
             </div>
+            
+
+            
+            {/* Show selected sub-brands */}
+            {selectedSubBrands.length > 0 && (
+              <div className="mt-2 flex flex-wrap gap-1">
+                {selectedSubBrands.map((subBrandName) => {
+                  const allSubBrands = Object.values(subBrandsByBrand).flat();
+                  const subBrand = allSubBrands.find(sb => sb.sub_brand_name === subBrandName);
+                  return subBrand ? (
+                    <span
+                      key={subBrandName}
+                      className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-blue-100 text-blue-800"
+                    >
+                      {subBrand.sub_brand_name}
+                      <button
+                        onClick={() => setSelectedSubBrands(selectedSubBrands.filter(sb => sb !== subBrandName))}
+                        className="ml-1 text-blue-600"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  ) : null;
+                })}
+              </div>
+            )}
           </div>
           <ul className="bg-white border border-t-0 border-gray-200 rounded-b-lg divide-y divide-gray-200">
-            {brandsFromApi.map((brandName) => {
+            {(() => {
+              // Build list with counts and hasSubBrands hint
+              const brandsToShow = brands.map((name) => ({
+                name,
+                count: brandCounts[name] ?? 0,
+                hasSubBrands: (subBrandsByBrand[name]?.length || 0) > 0
+              })).filter(b => b.count > 0);
+              
+              console.log('=== BRANDS DISPLAY DEBUG ===');
+              console.log('Brands being displayed:', brandsToShow);
+              console.log('Total brands from API:', brandsFromApi.length);
+              console.log('Brands to show (count):', brandsToShow.length);
+              console.log('All featured products count:', allFeaturedProductsRef.current.length);
+              console.log('Sample products with brands:', allFeaturedProductsRef.current.slice(0, 10).map((p: any) => ({ name: p.name, brand: p.brand_name })));
+              console.log('All brands from API:', brandsFromApi);
+              console.log('Brands to show:', brandsToShow);
+              console.log('===========================');
+              
+              // Show loading state if brands are not loaded yet
+              if (brandsToShow.length === 0 && brandsFromApi.length === 0) {
+                return (
+                  <li key="loading" className="px-4 py-3 text-sm text-gray-500">
+                    Loading brands...
+                  </li>
+                );
+              }
+              
+              return brandsToShow.map(({ name: brandName, count, hasSubBrands }) => {
               const isBrandExpanded = openBrandName === brandName;
               const subBrandList = subBrandsByBrand[brandName] || [];
-              const hasSubBrands = subBrandList.length > 0;
+              const hasSubBrandsComputed = subBrandList.length > 0;
               const isLoadingSubBrands = !!loadingSubBrands[brandName];
+              
               return (
                 <li key={brandName} className="relative">
+                  {/* Main Brand Row */}
                   <button
                     onClick={() => {
+                      // Handle brand selection like categories
+                      const newBrand = selectedBrands[0] === brandName ? [] : [brandName];
+                      setSelectedBrands(newBrand);
+                      
+                      // Handle expansion/collapse for brands with potential sub-brands
                       const willOpen = openBrandName !== brandName;
                       setOpenBrandName(willOpen ? brandName : null);
-                      if (willOpen && !subBrandsByBrand[brandName]) {
+                      
+                      // Try to fetch sub-brands if not loaded yet (non-blocking)
+                      if (willOpen && !hasSubBrandsComputed && !isLoadingSubBrands) {
                         fetchSubBrands(brandName);
                       }
                     }}
-                    className={`w-full px-4 py-3 text-left flex justify-between items-center ${selectedBrands.includes(brandName) ? 'bg-blue-100 text-blue-700 font-bold' : ''}`}
+                    className={`w-full px-4 py-3 text-left flex justify-between items-center transition-all duration-200 ${
+                      selectedBrands[0] === brandName ? 'bg-blue-100 text-blue-700 font-bold' : 'hover:bg-gray-50'
+                    }`}
+                    aria-expanded={isBrandExpanded}
                   >
                     <span className="flex items-center gap-2">
                       {brandName}
-                      <span className="text-xs text-gray-500">({allFeaturedProductsRef.current.filter(p => (p.brand_name || '') === brandName).length})</span>
+                      <span className="text-xs text-gray-500">({count})</span>
                     </span>
-                    {(hasSubBrands || isBrandExpanded || isLoadingSubBrands) && (
-                      <svg className={`w-4 h-4 transition-transform duration-200 ${isBrandExpanded ? 'rotate-90' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    {(hasSubBrandsComputed || isLoadingSubBrands || isBrandExpanded) && (
+                      <svg
+                        className={`w-4 h-4 transition-transform duration-200 ${isBrandExpanded ? 'rotate-90' : ''}`}
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                       </svg>
                     )}
                   </button>
-
-                  <div
+                  
+                  {/* Expanded Sub-brands Section */}
+                  <div 
                     className={`overflow-hidden transition-all duration-300 ease-in-out ${isBrandExpanded ? 'opacity-100' : 'opacity-0'}`}
-                    style={{ height: isBrandExpanded ? (brandContentRefs.current[brandName]?.scrollHeight || 48) : 0 }}
+                    style={{ height: isBrandExpanded ? (brandContentRefs.current[brandName]?.scrollHeight || 0) : 0 }}
                   >
-                    <div ref={(el) => { brandContentRefs.current[brandName] = el; }}>
-                      {isLoadingSubBrands && (
-                        <div className="bg-gray-50 border-t border-gray-200">
-                          <div className="px-6 py-3 text-sm text-gray-500">Loading...</div>
-                        </div>
-                      )}
-                      {subBrandList.length > 0 && (
-                        <div className="bg-gray-50 border-t border-gray-200">
-                          <div className="max-h-[60vh] overflow-y-auto">
-                            {subBrandList.map((sb) => (
-                              <button
-                                key={`${sb.brand_name}:${sb.sub_brand_name}`}
-                                onClick={() => {
-                                  if (selectedSubBrands.includes(sb.sub_brand_name)) {
-                                    setSelectedSubBrands(selectedSubBrands.filter(s => s !== sb.sub_brand_name));
-                                  } else {
-                                    setSelectedSubBrands([...selectedSubBrands, sb.sub_brand_name]);
-                                    if (!selectedBrands.includes(sb.brand_name)) {
-                                      setSelectedBrands([sb.brand_name]);
-                                    }
+                    {isLoadingSubBrands && (
+                      <div className="bg-gray-50 border-t border-gray-200">
+                        <div className="px-6 py-3 text-sm text-gray-500">Loading...</div>
+                      </div>
+                    )}
+                    {!isLoadingSubBrands && !hasSubBrands && isBrandExpanded && (
+                      <div className="bg-gray-50 border-t border-gray-200">
+                        <div className="px-6 py-3 text-sm text-gray-500">No sub-brands available for this brand.</div>
+                      </div>
+                    )}
+                    {hasSubBrands && subBrandList.length > 0 && (
+                      <div className="bg-gray-50 border-t border-gray-200">
+                        <div className="max-h-[60vh] overflow-y-auto" ref={(el) => { brandContentRefs.current[brandName] = el; }}>
+                          {subBrandList.map((subBrand) => (
+                            <button
+                              key={`${subBrand.brand_name}:${subBrand.sub_brand_name}`}
+                              onClick={() => {
+                                // Handle sub-brand selection - MULTIPLE SELECTION like sub-categories
+                                if (selectedSubBrands.includes(subBrand.sub_brand_name)) {
+                                  // Remove sub-brand
+                                  setSelectedSubBrands(selectedSubBrands.filter(sb => sb !== subBrand.sub_brand_name));
+                                } else {
+                                  // Add sub-brand (multiple selection)
+                                  setSelectedSubBrands([...selectedSubBrands, subBrand.sub_brand_name]);
+                                  // Remove brand filter when a sub-brand is selected
+                                  if (selectedBrands.length > 0) {
+                                    setSelectedBrands([]);
                                   }
-                                }}
-                                className={`w-full px-6 py-3 text-left flex items-center border-b border-gray-100 last:border-b-0 border-l-4 ${selectedSubBrands.includes(sb.sub_brand_name) ? 'bg-orange-50 text-orange-600 font-medium border-orange-500' : 'text-gray-700 border-transparent'}`}
-                              >
-                                <div className="w-2 h-2 bg-gray-400 rounded-full mr-3"></div>
-                                <span className="text-sm font-medium flex-1">{sb.sub_brand_name}</span>
-                                 <span className="text-xs text-gray-500 mr-2">({allFeaturedProductsRef.current.filter(p => (p.sub_brand_name || '') === sb.sub_brand_name).length})</span>
-                                <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                                </svg>
-                              </button>
-                            ))}
-                          </div>
+                                }
+                                // Don't close the expansion when selecting sub-brand
+                              }}
+                              className={`w-full px-6 py-3 text-left flex items-center border-b border-gray-100 last:border-b-0 border-l-4 ${
+                                selectedSubBrands.includes(subBrand.sub_brand_name) ? 'bg-orange-50 text-orange-600 font-medium border-orange-500' : 'text-gray-700 border-transparent'
+                              }`}
+                            >
+                              {/* Tree Structure Icon */}
+                              <div className="flex items-center mr-3">
+                                <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
+                              </div>
+                              
+                              {/* Sub-brand Name */}
+                              <span className="text-sm font-medium flex-1">{subBrand.sub_brand_name}</span>
+                              <span className="text-xs text-gray-500 mr-2">({allFeaturedProductsRef.current.filter(p => (p.sub_brand_name || '') === subBrand.sub_brand_name).length})</span>
+                            </button>
+                          ))}
                         </div>
-                      )}
-                    </div>
+                      </div>
+                    )}
                   </div>
                 </li>
               );
-            })}
+            });
+            })()}
+            
+
           </ul>
+
+          {/* Manufacturers Filter - Static List */}
+          <div className="bg-gray-300 p-4 rounded-t-lg mt-6">
+            <div className="flex justify-between items-center">
+              <h3 className="font-bold text-lg">Shop by Manufacturers</h3>
+              {selectedManufacturers.length > 0 && (
+                <button
+                  onClick={() => { setSelectedManufacturers([]); }}
+                  className="text-sm text-red-600 underline"
+                >
+                  Clear All
+                </button>
+              )}
+            </div>
+
+            
+
+          </div>
+          <div className="bg-white border border-t-0 border-gray-200 rounded-b-lg">
+            <div className="max-h-[300px] overflow-y-auto">
+              <ul className="divide-y divide-gray-200">
+                {filteredManufacturers.map((manufacturerName) => {
+                  return (
+                    <li key={manufacturerName} className="relative">
+                      <button
+                        onClick={() => {
+                          // Handle manufacturer selection like categories
+                          const newManufacturers = selectedManufacturers.includes(manufacturerName)
+                            ? selectedManufacturers.filter(m => m !== manufacturerName)
+                            : [...selectedManufacturers, manufacturerName];
+                          setSelectedManufacturers(newManufacturers);
+                        }}
+                        className={`w-full px-4 py-3 text-left flex justify-between items-center transition-all duration-200 ${
+                          selectedManufacturers.includes(manufacturerName)
+                            ? 'bg-green-50 text-green-700 border-l-4 border-green-500' 
+                            : 'hover:bg-gray-50'
+                        }`}
+                      >
+                        <span className="flex items-center gap-2">
+                          {manufacturerName}
+                          <span className="text-xs text-gray-500">({allFeaturedProductsRef.current.filter(p => (p.manufacture || '') === manufacturerName).length})</span>
+                        </span>
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+              
+
+            </div>
+          </div>
           {/* Price Range Filter */}
           <div className="bg-white p-4 rounded-lg shadow mt-6">
             <h3 className="font-bold text-lg mb-3 pb-2 border-b text-center">Price Range</h3>
@@ -1255,8 +1497,8 @@ export default function ShopPage() {
               setSelectedSubcategories([]);
               setSelectedBrands([]);
               setSelectedSubBrands([]);
+              setSelectedManufacturers([]);
               setOpenListCategoryId(null);
-              setOpenBrandName(null);
               setSelectedConditions([]);
               setSelectedMaterials([]);
               setSelectedRatings([]);
@@ -1314,7 +1556,7 @@ export default function ShopPage() {
               ))}
             </div>
           ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
             {paginatedProducts.map(product => (
   <div key={product.product_id} className="bg-white rounded-lg shadow overflow-hidden flex flex-col h-full">
     {/* Product Image and Name as Link */}
@@ -1400,7 +1642,7 @@ export default function ShopPage() {
       })()}
     </div>
   </div>
-))}
+            ))}
           </div>
           )}
 

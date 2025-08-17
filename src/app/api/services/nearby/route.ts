@@ -32,13 +32,18 @@ async function getCoordinatesFromPincode(pincode: string): Promise<{ lat: number
   // Simple mapping for common pincodes (you should replace this with proper geocoding)
   const pincodeCoordinates: { [key: string]: { lat: number, lng: number } } = {
     '110001': { lat: 28.6139, lng: 77.2090 }, // New Delhi
+    '110002': { lat: 28.6139, lng: 77.2090 }, // New Delhi
     '400001': { lat: 19.0760, lng: 72.8777 }, // Mumbai
+    '400011': { lat: 19.0760, lng: 72.8777 }, // Mumbai
     '700001': { lat: 22.5726, lng: 88.3639 }, // Kolkata
     '600001': { lat: 13.0827, lng: 80.2707 }, // Chennai
     '500001': { lat: 17.3850, lng: 78.4867 }, // Hyderabad
     '560001': { lat: 12.9716, lng: 77.5946 }, // Bangalore
     '380001': { lat: 23.0225, lng: 72.5714 }, // Ahmedabad
     '302001': { lat: 26.9124, lng: 75.7873 }, // Jaipur
+    '201301': { lat: 28.5355, lng: 77.3910 }, // Noida
+    '201302': { lat: 28.5355, lng: 77.3910 }, // Noida
+    '201306': { lat: 28.5355, lng: 77.3910 }, // Noida
     '226001': { lat: 26.8467, lng: 80.9462 }, // Lucknow
     '800001': { lat: 25.5941, lng: 85.1376 }, // Patna
   };
@@ -61,6 +66,8 @@ function getPincodeFromCoordinates(lat: number, lng: number): string {
   // Simple mapping for common coordinates (you should replace this with proper reverse geocoding)
   if (lat >= 28.5 && lat <= 28.7 && lng >= 77.1 && lng <= 77.3) {
     return '110001'; // New Delhi area
+  } else if (lat >= 28.48 && lat <= 28.58 && lng >= 77.30 && lng <= 77.46) {
+    return '201301'; // Noida
   } else if (lat >= 19.0 && lat <= 19.2 && lng >= 72.8 && lng <= 73.0) {
     return '400001'; // Mumbai area
   } else if (lat >= 22.5 && lat <= 22.7 && lng >= 88.3 && lng <= 88.4) {
@@ -176,8 +183,22 @@ export async function POST(request: NextRequest) {
 
       // Get coordinates for service pincode
       const serviceCoords = await getCoordinatesFromPincode(service.pincode);
+      
+      console.log(`🔍 Processing service: ${service.name}`);
+      console.log(`   Service pincode: ${service.pincode}`);
+      
       if (!serviceCoords) {
         console.log(`⚠️  Could not get coordinates for service pincode: ${service.pincode}`);
+        // If showAllServices is true, include the service even without coordinates
+        if (showAllServices) {
+          servicesWithinRadius.push({
+            ...service,
+            category: service.category_name, // Map category_name to category for backward compatibility
+            distance: null, // No distance available
+            pincode: service.pincode
+          });
+          console.log(`✅ Service added to results (showing all services - no coordinates available)`);
+        }
         continue;
       }
 
@@ -187,8 +208,6 @@ export async function POST(request: NextRequest) {
         serviceCoords.lat, serviceCoords.lng
       );
 
-      console.log(`🔍 Processing service: ${service.name}`);
-      console.log(`   Service pincode: ${service.pincode}`);
       console.log(`   Service coordinates: [${serviceCoords.lat}, ${serviceCoords.lng}]`);
       console.log(`   Distance from user: ${distance.toFixed(2)} km`);
 

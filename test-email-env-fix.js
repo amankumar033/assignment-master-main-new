@@ -31,3 +31,8 @@ if (process.env.EMAIL_USER && process.env.EMAIL_PASSWORD) {
   console.log('❌ Email configuration is missing');
   console.log('Please check your .env.local file');
 }
+
+
+
+
+
