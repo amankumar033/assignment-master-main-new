@@ -1,7 +1,7 @@
 "use client";
 import { useState } from 'react';
 // Update the import path below to the actual location of your font file
-import { specialGothic } from '../fonts';
+// import { specialGothic } from '../fonts';
 
 export default function Home() {
   const [position, setPosition] = useState({ x: 0, y: 0 });

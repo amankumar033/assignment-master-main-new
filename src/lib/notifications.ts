@@ -650,7 +650,7 @@ export const createMultipleOrderNotifications = async (
   // Create single admin notification for all orders
   console.log('👨‍💼 Creating admin notification for multiple orders...');
   
-  let adminDescription = `Multiple orders have been created by ${orderData.customer_name} for $${toTwoDecimals(orderData.total_amount)}. ` +
+  const adminDescription = `Multiple orders have been created by ${orderData.customer_name} for $${toTwoDecimals(orderData.total_amount)}. ` +
     `Status: ${orderData.order_status}. Payment: ${orderData.payment_status}. ` +
     `Ship to: ${orderData.shipping_address}, ${orderData.shipping_pincode}. ` +
     `Total Orders: ${orderIds.length}. Total Items: ${orderData.total_items}. ` +
@@ -1163,10 +1163,14 @@ export const createOrderCancellationNotifications = async (
               total_amount: orderData.total_amount,
               order_date: orderData.order_date,
               cancellation_date: new Date().toISOString(),
-              items: orderData.items || []
+              items: orderData.items || [],
+              order_status: 'Cancelled',
+              payment_status: orderData.payment_status || 'Pending',
+              shipping_address: orderData.shipping_address || 'Not provided',
+              shipping_pincode: orderData.shipping_pincode || 'Not provided'
             };
 
-            const emailSent = await sendDealerOrderCancellationEmail(dealerEmailData);
+            const emailSent = await sendDealerOrderNotificationEmail(dealerEmailData);
             if (emailSent) {
               console.log('✅ Dealer cancellation email sent successfully');
             } else {

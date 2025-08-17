@@ -5,7 +5,7 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const pincode = searchParams.get('pincode');
-    const distance = searchParams.get('distance') || '10';
+    // const distance = searchParams.get('distance') || '10';
 
     if (!pincode) {
       return NextResponse.json(

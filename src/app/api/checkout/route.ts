@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import mysql from 'mysql2/promise';
-import { sendOrderConfirmationEmail, sendCustomerOrderConfirmationEmail, sendDealerOrderNotificationEmail } from '@/lib/email';
+import { sendCustomerOrderConfirmationEmail, sendDealerOrderNotificationEmail } from '@/lib/email';
 import { notificationIdGenerator } from '@/lib/notificationIdGenerator';
-import { createOrderNotifications, createMultipleOrderNotifications } from '@/lib/notifications';
+import { createOrderNotifications } from '@/lib/notifications';
 
 // Track processed requests to prevent duplicates
 const processedRequests = new Set();
@@ -178,7 +178,7 @@ export async function POST(request: NextRequest) {
         if ((existingOrder as any[]).length > 0) {
           // Find next available ID
           let attemptNumber = orderNumber + 1;
-          let maxAttempts = 100;
+          const maxAttempts = 100;
           
           while (attemptNumber < orderNumber + maxAttempts) {
             const alternativeId = `ORD${userNumber}${attemptNumber}`;
@@ -260,7 +260,7 @@ export async function POST(request: NextRequest) {
       });
       
       // Step 5: Insert all orders in a single transaction
-      const [result] = await connection.execute(
+      await connection.execute(
         `INSERT INTO kriptocar.orders (
           order_id, user_id, dealer_id, product_id, qauntity, customer_name, customer_email, 
           customer_phone, shipping_address, shipping_pincode, order_date, 
@@ -333,11 +333,12 @@ export async function POST(request: NextRequest) {
             const item = cartItems[i];
             const orderId = orderIds[i];
             const product = productMap.get(item.product_id);
-            const dealerId = product.dealer_id;
+            // const dealerId = product.dealer_id;
             const dealerEmail = product.dealer_email;
             
             if (dealerEmail) {
-              // Prepare individual order data for each product
+              // Prepare individual order data for each product (commented out unused variable)
+              /*
               const individualOrderData = {
                 customer_name: orderData.customer_name || orderData.customer_email?.split('@')[0] || 'Customer',
                 customer_email: orderData.customer_email,
@@ -368,6 +369,7 @@ export async function POST(request: NextRequest) {
                 dealer_name: product.dealer_name,
                 dealer_id: dealerId
               };
+              */
 
               // Send individual email to dealer for this specific product
               

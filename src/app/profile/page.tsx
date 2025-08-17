@@ -83,7 +83,7 @@ const ProfilePage = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState<Partial<UserProfile>>({});
   const [saveLoading, setSaveLoading] = useState(false);
-  const [editLoading, setEditLoading] = useState(false);
+  const [editLoading, _setEditLoading] = useState(false);
 
   
   // Password change states

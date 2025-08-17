@@ -44,7 +44,7 @@ const ServiceBookingPage = () => {
   const [bookingProgress, setBookingProgress] = useState(0);
   const [bookingMessage, setBookingMessage] = useState('Initializing booking...');
   const [showSuccess, setShowSuccess] = useState(false);
-  const [redirectCountdown, setRedirectCountdown] = useState(3);
+  const [redirectCountdown, _setRedirectCountdown] = useState(3);
 
   const [formData, setFormData] = useState<BookingForm>({
     service_date: '',
@@ -221,7 +221,7 @@ const ServiceBookingPage = () => {
         setShowSuccess(true);
         // Auto-redirect after short countdown
         const countdownTimer = setInterval(() => {
-          setRedirectCountdown(prev => {
+          _setRedirectCountdown(prev => {
             if (prev <= 1) {
               clearInterval(countdownTimer);
               router.push(`/service-confirmation/${data.service_order_id}`);

@@ -36,7 +36,7 @@ export class NotificationIdGenerator {
         );
         
         // Step 2: Extract existing notification numbers
-        const existingNotificationNumbers = existingNotifications
+        const existingNotificationNumbers = (existingNotifications as any[])
           .map((row: any) => row.notification_id)
           .filter(notificationId => notificationId.match(/^NOT\d{3}$/))
           .map(notificationId => {
@@ -59,7 +59,7 @@ export class NotificationIdGenerator {
           [notificationId]
         );
         
-        if (existingNotification.length > 0) {
+        if ((existingNotification as any[]).length > 0) {
           // If ID exists, find the next available one
           const alternativeNotificationId = await this.findAlternativeNotificationId(connection, existingNotificationNumbers);
           await connection.commit();
@@ -134,7 +134,7 @@ export class NotificationIdGenerator {
         [alternativeNotificationId]
       );
       
-      if (checkExisting.length === 0) {
+      if ((checkExisting as any[]).length === 0) {
         return alternativeNotificationId;
       }
       
@@ -196,7 +196,7 @@ export class NotificationIdGenerator {
         [notificationId]
       );
       
-      return existingNotification.length === 0;
+      return (existingNotification as any[]).length === 0;
       
     } catch (error) {
       console.error('Error checking notification ID availability:', error);
@@ -228,7 +228,7 @@ export class NotificationIdGenerator {
         'SELECT notification_id FROM notifications ORDER BY notification_id'
       );
       
-      const existingNotificationNumbers = existingNotifications
+      const existingNotificationNumbers = (existingNotifications as any[])
         .map((row: any) => row.notification_id)
         .filter(notificationId => notificationId.match(/^NOT\d{3}$/))
         .map(notificationId => {

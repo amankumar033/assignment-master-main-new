@@ -1,7 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { userIdGenerator } from '@/lib/userIdGenerator';
+import { NextResponse } from 'next/server';
+import { userIdGenerator, UserIdGenerator } from '@/lib/userIdGenerator';
 
-export async function POST(request: NextRequest) {
+export async function POST() {
   try {
     // Generate a unique user ID
     const userId = await userIdGenerator.generateUserId();
@@ -14,8 +14,8 @@ export async function POST(request: NextRequest) {
       message: 'User ID generated successfully',
       data: {
         user_id: userId,
-        user_number: userIdGenerator.extractUserNumber(userId),
-        range_info: userIdGenerator.getRangeInfo(userIdGenerator.extractUserNumber(userId)),
+        user_number: UserIdGenerator.extractUserNumber(userId),
+        range_info: UserIdGenerator.getRangeInfo(UserIdGenerator.extractUserNumber(userId)),
         statistics: {
           total_users: statistics.totalUsers,
           next_available_number: statistics.nextAvailableNumber,
@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     // Get statistics about user ID usage
     const statistics = await userIdGenerator.getUserIdStatistics();

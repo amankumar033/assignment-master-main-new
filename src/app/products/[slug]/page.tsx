@@ -50,7 +50,7 @@ type Review = {
 const ProductDetailPage = () => {
   const params = useParams();
   const router = useRouter();
-  const { user, isLoggedIn } = useAuth();
+  const { user: _user, isLoggedIn: _isLoggedIn } = useAuth();
   const { cartItems, addToCart, updateQuantity } = useCart();
 
 
@@ -672,13 +672,13 @@ const ProductDetailPage = () => {
           <div className="relative lg:w-1/3 lg:ml-8">
                     <div 
           className="aspect-square bg-white rounded-lg overflow-hidden shadow-lg group relative"
-          onMouseEnter={(e) => {
+          onMouseEnter={(_e) => {
             handleImageHover();
             if (isCursorZoomEnabled && !isZoomed) {
               setIsHovering(true);
             }
           }}
-          onMouseLeave={(e) => {
+          onMouseLeave={(_e) => {
             handleImageLeave();
             if (isCursorZoomEnabled) {
               setIsHovering(false);

@@ -1,50 +1,26 @@
 "use client";
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCart } from '@/contexts/CartContext';
 import { formatPrice } from '@/utils/priceUtils';
-import { useToast } from '@/contexts/ToastContext';
+
 import LoadingPage from '@/components/LoadingPage';
 import { getValidImageSrc, handleImageError } from '@/utils/imageUtils';
 
-type CartItem = {
-  product_id: string;
-  name: string;
-  price: number; // This is the price stored when item was added to cart
-  quantity: number;
-  image?: string;
-  description?: string;
-  original_price?: number;
-  rating?: number;
-  brand?: string;
-  stock_quantity?: number;
-  product?: {
-    product_id: string;
-    name: string;
-    image_1: string;
-    image_2?: string;
-    image_3?: string;
-    image_4?: string;
-    stock_quantity: number;
-    sale_price: number;
-    [key: string]: any;
-  };
-};
+
 
 const Page = () => {
   const { user, isLoggedIn } = useAuth();
   const { cartItems, updateQuantity, removeFromCart, clearCart, loading: cartLoading } = useCart();
-  const { showToast } = useToast();
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [redirectMessage, setRedirectMessage] = useState<string | null>(null);
 
   const [couponCode, setCouponCode] = useState('');
   const [discount, setDiscount] = useState(0);
   const [couponMessage, setCouponMessage] = useState('');
-  const [updatingQuantities, setUpdatingQuantities] = useState<{ [key: string]: boolean }>({});
+  const [updatingQuantities, _setUpdatingQuantities] = useState<{ [key: string]: boolean }>({});
 
   // Debug logging
   useEffect(() => {
@@ -133,11 +109,7 @@ const Page = () => {
           </div>
         )}
         
-        {error && (
-          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-            {error}
-          </div>
-        )}
+
         
         {cartItems.length === 0 ? (
           <div className="text-center py-12">

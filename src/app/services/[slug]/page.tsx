@@ -4,8 +4,8 @@ import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 
 import Link from 'next/link';
-import Image from 'next/image';
-import { getValidImageSrc, handleImageError } from '@/utils/imageUtils';
+// import Image from 'next/image';
+// import { getValidImageSrc, handleImageError } from '@/utils/imageUtils';
 import DescriptionDropdown from '@/components/DescriptionDropdown';
 
 type Service = {
@@ -37,7 +37,7 @@ type Review = {
 const ServiceDetailPage = () => {
   const params = useParams();
   const router = useRouter();
-  const { user, isLoggedIn } = useAuth();
+  const { user: _user, isLoggedIn: _isLoggedIn } = useAuth();
 
   const [service, setService] = useState<Service | null>(null);
   const [relatedServices, setRelatedServices] = useState<Service[]>([]);
@@ -172,7 +172,7 @@ const ServiceDetailPage = () => {
 
   // Book service functionality - redirect to booking page
   const handleBookService = () => {
-    if (!isLoggedIn) {
+    if (!_isLoggedIn) {
       setBookingMessage({ type: 'error', message: 'Please login to book services' });
       setTimeout(() => setBookingMessage(null), 3000);
       return;
@@ -442,14 +442,14 @@ const ServiceDetailPage = () => {
                   <p className="mb-3 text-sm text-gray-600">Get this service scheduled at your convenience</p>
                   <button
                     onClick={handleBookService}
-                    disabled={!isLoggedIn}
+                    disabled={!_isLoggedIn}
                     className={`w-full py-3 px-4 rounded-lg font-semibold text-base ${
-                      !isLoggedIn
+                      !_isLoggedIn
                         ? 'bg-gray-400 text-white cursor-not-allowed'
                         : 'bg-[var(--global-palette10)] text-white'
                     }`}
                   >
-                    {isLoggedIn ? (
+                    {_isLoggedIn ? (
                       'Book This Service'
                     ) : (
                       'Login to Book Service'

@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { createServiceOrderNotifications } from '@/lib/notifications';
-import { serviceOrderIdGenerator } from '@/lib/serviceOrderIdGenerator';
+// import { serviceOrderIdGenerator } from '@/lib/serviceOrderIdGenerator';
 import { sendServiceOrderConfirmationEmail } from '@/lib/email';
+import mysql from 'mysql2/promise';
 
 export async function POST(request: NextRequest) {
   try {
@@ -71,7 +72,6 @@ export async function POST(request: NextRequest) {
     }
 
     // Generate unique service order ID using user-based logic
-    const mysql = require('mysql2/promise');
     const connection = await mysql.createConnection({
       host: process.env.DB_HOST || 'localhost',
       user: process.env.DB_USER || 'root',
@@ -102,7 +102,7 @@ export async function POST(request: NextRequest) {
       );
 
       // Extract existing service order numbers for this user
-      const existingServiceOrderNumbers = existingUserServiceOrders
+      const existingServiceOrderNumbers = (existingUserServiceOrders as any[])
         .map((row: any) => row.service_order_id)
         .filter((id: string) => id.startsWith(`SRVD${userNumber}`))
         .map((id: string) => {
@@ -136,10 +136,10 @@ export async function POST(request: NextRequest) {
       
       uniqueServiceOrderId = proposedServiceOrderId;
       
-      if (existingServiceOrder.length > 0) {
+      if ((existingServiceOrder as any[]).length > 0) {
         // If ID exists, find the next available one in the sequence
         let attemptNumber = nextServiceOrderNumber + 1;
-        let maxAttempts = 100;
+        const maxAttempts = 100;
         
         while (attemptNumber < nextServiceOrderNumber + maxAttempts) {
           const alternativeId = `SRVD${userNumber}${attemptNumber}`;
@@ -148,7 +148,7 @@ export async function POST(request: NextRequest) {
             [alternativeId]
           );
           
-          if (checkExisting.length === 0) {
+          if ((checkExisting as any[]).length === 0) {
             uniqueServiceOrderId = alternativeId;
             console.log(`Generated service order ID: ${alternativeId} (alternative)`);
             break;

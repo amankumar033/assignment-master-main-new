@@ -10,28 +10,6 @@ import { useToast } from '@/contexts/ToastContext';
 import { getValidImageSrc } from '@/utils/imageUtils';
 import CheckoutProcessingPage from '@/components/CheckoutProcessingPage';
 
-
-type CartItem = {
-  product_id: number;
-  name: string;
-  price: number; // This is the price stored when item was added to cart
-  quantity: number;
-  image?: string;
-  description?: string;
-  original_price?: number;
-  rating?: number;
-  brand?: string;
-  stock_quantity?: number;
-  product?: {
-    product_id: number;
-    name: string;
-    image: string;
-    stock_quantity: number;
-    sale_price: number;
-    [key: string]: any;
-  };
-};
-
 type CheckoutForm = {
   customer_name: string;
   customer_email: string;
@@ -58,12 +36,12 @@ const CheckoutPage = () => {
   const { showToast } = useToast();
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, _setError] = useState<string | null>(null);
 
   const [localCouponCode, setLocalCouponCode] = useState('');
   const [couponMessage, setCouponMessage] = useState('');
-  const [shippingCost, setShippingCost] = useState(0);
-  const [taxAmount, setTaxAmount] = useState(0);
+  const [shippingCost, _setShippingCost] = useState(0);
+  const [taxAmount, _setTaxAmount] = useState(0);
   const [orderSuccess, setOrderSuccess] = useState(false);
   const [orderData, setOrderData] = useState<any>(null);
   
@@ -150,7 +128,6 @@ const CheckoutPage = () => {
   };
 
   const calculateTotal = () => {
-    const subtotal = getTotalPrice();
     const discountedSubtotal = getDiscountedPrice();
     return discountedSubtotal + shippingCost + taxAmount;
   };
@@ -184,7 +161,6 @@ const CheckoutPage = () => {
 
     for (const field of requiredFields) {
       if (!formData[field as keyof CheckoutForm]) {
-        setError(`${field.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())} is required`);
         return false;
       }
     }
@@ -192,14 +168,12 @@ const CheckoutPage = () => {
     // Email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(formData.customer_email)) {
-      setError('Please enter a valid email address');
       return false;
     }
 
     // Phone validation
     const phoneRegex = /^[0-9]{10}$/;
     if (!phoneRegex.test(formData.customer_phone)) {
-      setError('Please enter a valid 10-digit phone number');
       return false;
     }
 
@@ -216,13 +190,13 @@ const CheckoutPage = () => {
     }
 
     if (cartItems.length === 0) {
-      setError('Your cart is empty');
+      _setError('Your cart is empty');
       showToast('error', 'Your cart is empty');
       return;
     }
 
     setSubmitting(true);
-    setError(null);
+    _setError(null);
     setShowProgress(true);
     setProgress(0);
     setProgressMessage('Starting order processing...');
@@ -266,7 +240,7 @@ const CheckoutPage = () => {
         total_amount: calculateTotal(),
         tax_amount: taxAmount,
         shipping_cost: shippingCost,
-        discount_amount: calculateSubtotal() - getDiscountedPrice(),
+        discount_amount: getTotalPrice() - getDiscountedPrice(),
         payment_method: formData.payment_method,
         payment_status: 'Pending',
         transaction_id: null
@@ -322,13 +296,13 @@ const CheckoutPage = () => {
         console.log('Order placed successfully, redirecting to profile in 3 seconds...');
       } else {
         setShowProgress(false);
-        setError(data.message || 'Failed to place order');
+        _setError(data.message || 'Failed to place order');
         showToast('error', data.message || 'Failed to place order');
       }
     } catch (error) {
       console.error('Error placing order:', error);
       setShowProgress(false);
-      setError('Failed to place order. Please try again.');
+              _setError('Failed to place order. Please try again.');
       showToast('error', 'Failed to place order. Please try again.');
     } finally {
       setSubmitting(false);

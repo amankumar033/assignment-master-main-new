@@ -1,6 +1,6 @@
 "use client";
 import { useState } from 'react';
-import { specialGothic } from '../fonts';
+// import { specialGothic } from '../fonts';
 
 export default function Home() {
   const [position, setPosition] = useState({ x: 0, y: 0 });

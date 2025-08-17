@@ -25,7 +25,7 @@ type MultiOrderData = {
 };
 
 const MultiOrderConfirmationPage = () => {
-  const router = useRouter();
+  // const router = useRouter();
   const searchParams = useSearchParams();
   const { user, isLoggedIn } = useAuth();
   const [orderData, setOrderData] = useState<MultiOrderData | null>(null);
@@ -235,7 +235,7 @@ const MultiOrderConfirmationPage = () => {
         <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
           <h2 className="text-xl font-bold text-black mb-4">Your Orders</h2>
           <div className="space-y-4">
-            {orderData.orders.map((order, index) => (
+                                    {orderData.orders.map((order, _index) => (
               <div key={order.order_id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-4">

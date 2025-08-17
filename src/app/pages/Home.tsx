@@ -10,7 +10,7 @@ export default function Home() {
   const slides = [<Slider1 key={0} />, <Slider2 key={1} />, <Slider3 key={2} />];
   const autoSlideInterval = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const goToSlide = (index: number) => {
+  const _goToSlide = (index: number) => {
     setCurrentSlide(index);
     resetAutoSlide();
   };
@@ -20,7 +20,7 @@ export default function Home() {
     resetAutoSlide();
   };
 
-  const goToPrev = () => {
+  const _goToPrev = () => {
     setCurrentSlide((prev) => (prev === 0 ? slides.length - 1 : prev - 1));
     resetAutoSlide();
   };

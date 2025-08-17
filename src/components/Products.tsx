@@ -16,7 +16,6 @@ const Products = () => {
     // Immediate prefetch - don't block UI
     const prefetchRoutes = () => {
       try {
-        // @ts-ignore
         router.prefetch?.('/shop');
         router.prefetch?.('/location');
       } catch {}

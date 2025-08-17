@@ -1,11 +1,12 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import Image from 'next/image';
-import { useCart } from '@/contexts/CartContext';
-import { useAuth } from '@/contexts/AuthContext';
+import Link from 'next/link';
 import { getValidImageSrc, handleImageError } from '@/utils/imageUtils';
 import { formatPrice } from '@/utils/priceUtils';
+import { useCart } from '@/contexts/CartContext';
+import { useAuth } from '@/contexts/AuthContext';
 
 type CartDropdownProps = {
   onNavigate: (href: string) => void;
@@ -31,6 +32,7 @@ const CartDropdown: React.FC<CartDropdownProps> = ({ onNavigate, onClose }) => {
 
   const [localCouponCode, setLocalCouponCode] = useState('');
   const [couponMessage, setCouponMessage] = useState('');
+  // const couponCode = localCouponCode; // Unused variable
 
   const subtotal = getTotalPrice();
   const total = getDiscountedPrice();
@@ -144,14 +146,14 @@ const CartDropdown: React.FC<CartDropdownProps> = ({ onNavigate, onClose }) => {
             const isLoading = loadingItems.has(item.product_id);
             const imgSrc = getValidImageSrc(item.image || item.product?.image_1 || '/engine1.png');
             const stock: number | undefined = (item as any).stock_quantity ?? (item as any).product?.stock_quantity ?? stockById[item.product_id];
-            const stockClass =
-              stock === undefined
-                ? 'hidden'
-                : stock === 0
-                ? 'bg-red-100 text-red-700'
-                : stock <= 5
-                ? 'bg-amber-100 text-amber-700'
-                : 'bg-green-100 text-green-700';
+            // const stockClass =
+            //   stock === undefined
+            //     ? 'hidden'
+            //     : stock === 0
+            //     ? 'bg-red-100 text-red-700'
+            //     : stock <= 5
+            //     ? 'bg-amber-100 text-amber-700'
+            //     : 'bg-green-100 text-green-700';
             return (
               <div key={item.product_id} className="grid grid-cols-12 p-2 sm:p-3 border-b border-gray-200 items-center hover:bg-amber-50/60 hover:shadow-sm hover:ring-1 ring-amber-300 rounded-md transition-all">
                 <div className="col-span-12 md:col-span-5 flex items-center">

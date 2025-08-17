@@ -34,7 +34,6 @@ export const useInstantNavigation = () => {
     try {
       // Prefetch to speed up navigation
       try {
-        // @ts-ignore - Next Router prefetch is available in app router
         router.prefetch?.(href);
       } catch {}
 

@@ -61,7 +61,7 @@ export async function PUT(
   try {
     const { serviceOrderId } = await params;
     const body = await request.json();
-    const { new_status, updated_by, vendor_id } = body;
+    const { new_status } = body;
 
     if (!serviceOrderId || serviceOrderId.trim() === '') {
       return NextResponse.json(

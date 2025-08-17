@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 
 // Simple in-memory cache
@@ -20,7 +20,7 @@ function setCachedData(data: any): void {
   });
 }
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     // Check cache first
     const cachedResult = getCachedData();

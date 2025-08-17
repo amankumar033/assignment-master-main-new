@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { createOrderCancellationNotifications } from '@/lib/notifications';
 import { sendOrderCancellationEmail, sendDealerOrderCancellationEmail } from '@/lib/email';
-import { processImageData } from '@/lib/imageUtils';
+// import { processImageData } from '@/lib/imageUtils';
 
 export async function PUT(
   request: NextRequest,
@@ -163,10 +163,17 @@ export async function PUT(
           dealer_email: order.dealer_email,
           customer_name: order.customer_name,
           customer_email: order.customer_email,
+          customer_phone: order.customer_phone,
           product_name: order.product_name,
           total_amount: Number(order.total_amount),
           order_date: order.order_date,
-          cancellation_date: new Date().toISOString()
+          cancellation_date: new Date().toISOString(),
+          items: [{
+            product_id: order.product_id,
+            name: order.product_name,
+            price: Number(order.product_price),
+            quantity: Number(order.quantity)
+          }]
         };
 
         const dealerEmailSent = await sendDealerOrderCancellationEmail(dealerEmailData);

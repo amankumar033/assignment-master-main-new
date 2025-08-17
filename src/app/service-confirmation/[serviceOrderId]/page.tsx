@@ -36,7 +36,7 @@ const ServiceConfirmationPage = () => {
   const { user, isLoggedIn } = useAuth();
   const [ServiceOrder, setServiceOrder] = useState<ServiceOrder | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [error, _setError] = useState<string | null>(null);
 
   const ServiceOrderId = params.serviceOrderId;
 
@@ -52,11 +52,11 @@ const ServiceConfirmationPage = () => {
       if (data.success) {
         setServiceOrder(data.order);
       } else {
-        setError(data.message || 'Failed to fetch service order details');
+        _setError(data.message || 'Failed to fetch service order details');
       }
     } catch (error) {
       console.error('Error fetching service order:', error);
-      setError('Failed to fetch service order details');
+      _setError('Failed to fetch service order details');
     } finally {
       setLoading(false);
     }

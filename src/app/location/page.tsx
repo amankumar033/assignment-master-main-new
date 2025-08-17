@@ -50,7 +50,7 @@ const LocationPage = () => {
   const [selectedDistance, setSelectedDistance] = useState<string>('10');
   const [filteringMode, setFilteringMode] = useState<'distance_based' | 'all_services'>('distance_based');
   
-  const router = useRouter();
+  // const router = useRouter();
 
   // Derive a category label for filters: prefer category, then type, then name; fallback 'Other'
   const getCategoryLabel = (service: Service): string => {

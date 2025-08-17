@@ -1,14 +1,13 @@
 'use client';
 
-import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
 import { getValidImageSrc, handleImageError } from '@/utils/imageUtils';
 import { formatPrice } from '@/utils/priceUtils';
-import { useAuth } from '@/contexts/AuthContext';
+// import { useAuth } from '@/contexts/AuthContext';
 import { useCart } from '@/contexts/CartContext';
-
 
 import ProductSkeleton from '@/components/ProductSkeleton';
 
@@ -61,10 +60,9 @@ type Product = {
 // Top carousel: clickable category images
 
 export default function ShopPage() {
-  const { user, isLoggedIn } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { addToCart, cartItems, loading: cartLoading, error: cartError, loadingItems } = useCart();
+  const { addToCart, cartItems, loadingItems } = useCart();
 
   const [startIndex, setStartIndex] = useState(0);
   const [visibleItems, setVisibleItems] = useState(6);
@@ -83,7 +81,7 @@ export default function ShopPage() {
   const [openListCategoryId, setOpenListCategoryId] = useState<string | null>(null);
   const contentRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
-    const [isNavigating, setIsNavigating] = useState(false);
+  const [isNavigating, setIsNavigating] = useState(false);
   
   // Filter states
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
@@ -96,8 +94,6 @@ export default function ShopPage() {
   const [selectedRatings, setSelectedRatings] = useState<number[]>([]);
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 1000]);
   const [inStockOnly, setInStockOnly] = useState(false);
-  const [brandSearch, setBrandSearch] = useState('');
-
   
   // Search state
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -132,9 +128,6 @@ export default function ShopPage() {
     'Mitsubishi', 'Nissan', 'Peugeot', 'Porsche', 'PSA', 'Renault', 
     'Robert Bosch GmbH', 'Suzuki', 'Tata'
   ];
-
-
-
 
   // Function to get product status
   const getProductStatus = (product: Product) => {
@@ -438,7 +431,6 @@ export default function ShopPage() {
     // Immediate UI setup - don't block navigation
     const setupUI = () => {
       try {
-        // @ts-ignore optional prefetch on app router
         router.prefetch?.('/shop');
         router.prefetch?.('/location');
       } catch {}
@@ -469,7 +461,7 @@ export default function ShopPage() {
     const dataTimer = setTimeout(loadData, 20); // Reduced from 100ms to 20ms
     
     return () => clearTimeout(dataTimer);
-  }, []);
+  }, [loading, router]);
 
   // Keep brands list stable based on baseline; refresh when baseline changes (set inside fetch)
   // No-op effect here on products to prevent flicker in brand list
@@ -524,7 +516,7 @@ export default function ShopPage() {
       isCancelled = true;
       clearTimeout(prefetchTimer);
     };
-  }, [categories]);
+  }, [categories, subcategoriesByCategory]);
 
 
 
@@ -557,7 +549,7 @@ export default function ShopPage() {
       isCancelled = true;
       clearTimeout(prefetchTimer);
     };
-  }, [brandsFromApi, brandCounts]);
+  }, [brandsFromApi, brandCounts, subBrandsByBrand]);
 
   // No hover timeouts needed
 
@@ -680,7 +672,7 @@ export default function ShopPage() {
     }, 300);
 
     return () => clearTimeout(timeoutId);
-  }, [filtersInitialized, selectedCategories, selectedSubcategories, selectedBrands, selectedSubBrands, selectedManufacturers, selectedRatings, priceRange, inStockOnly, searchQuery]);
+  }, [filtersInitialized, selectedCategories, selectedSubcategories, selectedBrands, selectedSubBrands, selectedManufacturers, selectedRatings, priceRange, inStockOnly, searchQuery, fetchProducts]);
 
   // Sync selected filters to URL without triggering Next.js route change (prevents remount/flicker)
   useEffect(() => {
@@ -707,8 +699,6 @@ export default function ShopPage() {
     return () => clearTimeout(timeoutId);
   }, [filtersInitialized, selectedCategories, selectedSubcategories, selectedBrands, selectedSubBrands, selectedManufacturers, priceRange, selectedRatings, inStockOnly, searchQuery]);
 
-  // Extract unique values for filters from products
-  const filterCategories = [...new Set(allFeaturedProductsRef.current.map(p => p.category_name))];
   // Base brand list from API (stable order)
   const brands = brandsFromApi;
   // Manufacturers are static - always show all
@@ -748,11 +738,7 @@ export default function ShopPage() {
     });
   };
 
-  const toggleFilterOption = (value: string, selected: string[], setSelected: React.Dispatch<React.SetStateAction<string[]>>) => {
-    setSelected(prev => 
-      prev.includes(value) ? prev.filter(item => item !== value) : [...prev, value]
-    );
-  };
+
 
   const toggleRating = (rating: number) => {
     setSelectedRatings(prev => 
@@ -764,10 +750,8 @@ export default function ShopPage() {
   const filteredProducts = products.filter(product => {
     // Convert string values to numbers for comparison
     const salePrice = parseFloat(product.sale_price) || 0;
-    const originalPrice = parseFloat(product.original_price) || 0;
     const rating = parseFloat(product.rating) || 0;
     const stockQuantity = parseInt(product.stock_quantity) || 0;
-    const isActive = parseInt(product.is_active) || 0;
     
     // Only apply filters if they are actually selected
     // If subcategories are selected, ignore category filter; otherwise use category filter
@@ -1150,12 +1134,11 @@ export default function ShopPage() {
                   {hasSubcategories && listSubcategories.length > 0 && (
                     <div className="bg-gray-50 border-t border-gray-200">
                       <div className="max-h-[60vh] overflow-y-auto" ref={(el) => { contentRefs.current[category.category_id] = el; }}>
-                        {listSubcategories.map((subcategory, index) => (
+                        {listSubcategories.map((subcategory) => (
                           <button
                             key={subcategory.sub_category_id}
                             onClick={() => {
                               // Handle subcategory selection
-                              const parentCategory = categories.find(cat => cat.category_id === subcategory.category_id);
                               
                               if (selectedSubcategories.includes(subcategory.slug)) {
                                 // Remove subcategory
@@ -1504,7 +1487,6 @@ export default function ShopPage() {
               setSelectedRatings([]);
               setPriceRange([0, 1000]);
               setInStockOnly(false);
-              setBrandSearch('');
             }}
             className="w-full py-2 bg-gray-200 rounded-lg font-medium mt-6"
           >

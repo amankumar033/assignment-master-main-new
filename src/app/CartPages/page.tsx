@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useAuth } from '@/contexts/AuthContext';
@@ -8,35 +8,12 @@ import { formatPrice } from '@/utils/priceUtils';
 import LoadingPage from '@/components/LoadingPage';
 import { getValidImageSrc, handleImageError } from '@/utils/imageUtils';
 
-type CartItem = {
-  product_id: string;
-  name: string;
-  price: number; // This is the price stored when item was added to cart
-  quantity: number;
-  image?: string;
-  description?: string;
-  original_price?: number;
-  rating?: number;
-  brand?: string;
-  stock_quantity?: number;
-  product?: {
-    product_id: string;
-    name: string;
-    image_1: string;
-    image_2?: string;
-    image_3?: string;
-    image_4?: string;
-    stock_quantity: number;
-    sale_price: number;
-    [key: string]: any;
-  };
-};
 
-const Page = () => {
+
+const CartPages = () => {
   const { user, isLoggedIn } = useAuth();
   const { cartItems, updateQuantity, removeFromCart, clearCart, loading: cartLoading } = useCart();
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<{ type: 'success' | 'error' | 'warning', message: string } | null>(null);
   const [couponCode, setCouponCode] = useState('');
   const [discount, setDiscount] = useState(0);
@@ -127,11 +104,7 @@ const Page = () => {
 
         <h1 className="text-3xl font-bold mb-8 text-black">Shopping Cart</h1>
         
-        {error && (
-          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-            {error}
-          </div>
-        )}
+
         
         {cartItems.length === 0 ? (
           <div className="text-center py-12">
@@ -332,4 +305,4 @@ const Page = () => {
   );
 };
 
-export default Page;
+export default CartPages;

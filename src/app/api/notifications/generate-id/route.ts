@@ -1,7 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { notificationIdGenerator } from '@/lib/notificationIdGenerator';
+import { NextResponse } from 'next/server';
+import { notificationIdGenerator, NotificationIdGenerator } from '@/lib/notificationIdGenerator';
 
-export async function POST(request: NextRequest) {
+export async function POST() {
   try {
     // Generate a unique notification ID
     const notificationId = await notificationIdGenerator.generateNotificationId();
@@ -14,8 +14,8 @@ export async function POST(request: NextRequest) {
       message: 'Notification ID generated successfully',
       data: {
         notification_id: notificationId,
-        notification_number: notificationIdGenerator.extractNotificationNumber(notificationId),
-        range_info: notificationIdGenerator.getRangeInfo(notificationIdGenerator.extractNotificationNumber(notificationId)),
+        notification_number: NotificationIdGenerator.extractNotificationNumber(notificationId),
+        range_info: NotificationIdGenerator.getRangeInfo(NotificationIdGenerator.extractNotificationNumber(notificationId)),
         statistics: {
           total_notifications: statistics.totalNotifications,
           next_available_number: statistics.nextAvailableNumber,
@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     // Get statistics about notification ID usage
     const statistics = await notificationIdGenerator.getNotificationIdStatistics();
