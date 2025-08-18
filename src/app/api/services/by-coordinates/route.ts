@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
         s.service_pincodes,
         s.created_at,
         s.updated_at,
-        sp.pincode
+        sp.service_pincodes as pincode
       FROM kriptocar.services s
       INNER JOIN kriptocar.service_pincodes sp ON s.service_id = sp.service_id
       LEFT JOIN kriptocar.service_categories sc ON s.service_category_id = sc.service_category_id

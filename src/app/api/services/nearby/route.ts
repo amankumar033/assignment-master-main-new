@@ -146,8 +146,8 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    // Fetch all services with their pincodes and category information
-    const rows = await query(`
+    // Fetch services based on pincode from service_pincodes table
+    let sqlQuery = `
       SELECT 
         s.service_id,
         s.vendor_id,
@@ -162,17 +162,30 @@ export async function POST(request: NextRequest) {
         s.service_pincodes,
         s.created_at,
         s.updated_at,
-        sp.pincode
+        sp.service_pincodes as pincode
       FROM kriptocar.services s
       INNER JOIN kriptocar.service_pincodes sp ON s.service_id = sp.service_id
       LEFT JOIN kriptocar.service_categories sc ON s.service_category_id = sc.service_category_id
       WHERE s.is_available = 1
-    `);
+    `;
+
+    const queryParams: any[] = [];
+
+    // If showAllServices is false and pincode is provided, filter by it
+    // If showAllServices is true, don't filter by pincode to show all services
+    if (!showAllServices && userPincode) {
+      sqlQuery += ' AND sp.service_pincodes = ?';
+      queryParams.push(userPincode);
+    }
+
+    sqlQuery += ' ORDER BY s.base_price ASC';
+
+    const rows = await query(sqlQuery, queryParams);
 
     console.log(`📊 Database query executed successfully`);
     console.log(`   Total services found: ${(rows as any[]).length}`);
 
-    // Filter services by distance
+    // Process services based on filtering mode
     const servicesWithinRadius: any[] = [];
     const processedServices = new Set();
 
@@ -181,16 +194,29 @@ export async function POST(request: NextRequest) {
         continue; // Skip if we've already processed this service
       }
 
-      // Get coordinates for service pincode
-      const serviceCoords = await getCoordinatesFromPincode(service.pincode);
-      
       console.log(`🔍 Processing service: ${service.name}`);
       console.log(`   Service pincode: ${service.pincode}`);
-      
-      if (!serviceCoords) {
-        console.log(`⚠️  Could not get coordinates for service pincode: ${service.pincode}`);
-        // If showAllServices is true, include the service even without coordinates
-        if (showAllServices) {
+
+      // If showAllServices is true, include all services with distance calculation for display
+      if (showAllServices) {
+        // Calculate distance for display purposes even when showing all services
+        const serviceCoords = await getCoordinatesFromPincode(service.pincode);
+        
+        if (serviceCoords) {
+          const distance = calculateDistance(
+            userLat, userLng,
+            serviceCoords.lat, serviceCoords.lng
+          );
+          
+          servicesWithinRadius.push({
+            ...service,
+            category: service.category_name, // Map category_name to category for backward compatibility
+            distance: Math.round(distance * 10) / 10, // Round to 1 decimal place
+            pincode: service.pincode
+          });
+          console.log(`✅ Service added to results (showing all services - distance: ${distance.toFixed(2)} km)`);
+        } else {
+          // If coordinates not available, still include the service
           servicesWithinRadius.push({
             ...service,
             category: service.category_name, // Map category_name to category for backward compatibility
@@ -199,38 +225,35 @@ export async function POST(request: NextRequest) {
           });
           console.log(`✅ Service added to results (showing all services - no coordinates available)`);
         }
-        continue;
-      }
-
-      // Calculate distance
-      const distance = calculateDistance(
-        userLat, userLng,
-        serviceCoords.lat, serviceCoords.lng
-      );
-
-      console.log(`   Service coordinates: [${serviceCoords.lat}, ${serviceCoords.lng}]`);
-      console.log(`   Distance from user: ${distance.toFixed(2)} km`);
-
-      // If showAllServices is true, include all services regardless of distance
-      if (showAllServices) {
-        servicesWithinRadius.push({
-          ...service,
-          category: service.category_name, // Map category_name to category for backward compatibility
-          distance: Math.round(distance * 10) / 10, // Round to 1 decimal place
-          pincode: service.pincode
-        });
-        console.log(`✅ Service added to results (showing all services - distance: ${distance.toFixed(2)} km)`);
-      } else if (distance <= radius) {
-        // Only apply distance filtering when showAllServices is false
-        servicesWithinRadius.push({
-          ...service,
-          category: service.category_name, // Map category_name to category for backward compatibility
-          distance: Math.round(distance * 10) / 10, // Round to 1 decimal place
-          pincode: service.pincode
-        });
-        console.log(`✅ Service added to results (within ${radius} km radius - distance: ${distance.toFixed(2)} km)`);
       } else {
-        console.log(`❌ Service skipped (outside ${radius} km radius - distance: ${distance.toFixed(2)} km)`);
+        // Distance-based filtering
+        const serviceCoords = await getCoordinatesFromPincode(service.pincode);
+        
+        if (!serviceCoords) {
+          console.log(`⚠️  Could not get coordinates for service pincode: ${service.pincode}`);
+          continue;
+        }
+
+        // Calculate distance
+        const distance = calculateDistance(
+          userLat, userLng,
+          serviceCoords.lat, serviceCoords.lng
+        );
+
+        console.log(`   Service coordinates: [${serviceCoords.lat}, ${serviceCoords.lng}]`);
+        console.log(`   Distance from user: ${distance.toFixed(2)} km`);
+
+        if (distance <= radius) {
+          servicesWithinRadius.push({
+            ...service,
+            category: service.category_name, // Map category_name to category for backward compatibility
+            distance: Math.round(distance * 10) / 10, // Round to 1 decimal place
+            pincode: service.pincode
+          });
+          console.log(`✅ Service added to results (within ${radius} km radius - distance: ${distance.toFixed(2)} km)`);
+        } else {
+          console.log(`❌ Service skipped (outside ${radius} km radius - distance: ${distance.toFixed(2)} km)`);
+        }
       }
 
       processedServices.add(service.service_id);

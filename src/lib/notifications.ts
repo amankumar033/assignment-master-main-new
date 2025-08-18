@@ -188,16 +188,46 @@ const buildDescriptionFromMetadata = (
     const parts: string[] = [];
 
     if (metadata && typeof metadata === 'object') {
-      // Basic order information
+      // Basic order/service information
       if (metadata.order_id) parts.push(`Order ID: ${metadata.order_id}.`);
       if (metadata.service_order_id) parts.push(`Service Order ID: ${metadata.service_order_id}.`);
-      if (metadata.customer_name) parts.push(`Customer: ${metadata.customer_name}.`);
-      if (metadata.customer_email) parts.push(`Email: ${metadata.customer_email}.`);
-      if (metadata.total_amount) parts.push(`Total: $${toTwoDecimals(metadata.total_amount)}.`);
-      if (metadata.final_price) parts.push(`Amount: $${toTwoDecimals(metadata.final_price)}.`);
+      
+      // Enhanced customer information
+      if (metadata.customer_details) {
+        const customer = metadata.customer_details;
+        parts.push(`Customer: ${customer.name || metadata.customer_name}.`);
+        if (customer.phone) parts.push(`Phone: ${customer.phone}.`);
+        if (customer.email) parts.push(`Email: ${customer.email}.`);
+        if (customer.user_id) parts.push(`User ID: ${customer.user_id}.`);
+      } else {
+        if (metadata.customer_name) parts.push(`Customer: ${metadata.customer_name}.`);
+        if (metadata.customer_email) parts.push(`Email: ${metadata.customer_email}.`);
+        if (metadata.customer_phone) parts.push(`Phone: ${metadata.customer_phone}.`);
+        if (metadata.user_id) parts.push(`User ID: ${metadata.user_id}.`);
+      }
+      
+      // Price information
+      if (metadata.price_breakdown) {
+        const price = metadata.price_breakdown;
+        parts.push(`Price: $${toTwoDecimals(price.total || price.final_price)}.`);
+        if (price.subtotal && price.subtotal !== price.total) parts.push(`Subtotal: $${toTwoDecimals(price.subtotal)}.`);
+        if (price.tax && price.tax > 0) parts.push(`Tax: $${toTwoDecimals(price.tax)}.`);
+        if (price.discount && price.discount > 0) parts.push(`Discount: $${toTwoDecimals(price.discount)}.`);
+      } else {
+        if (metadata.total_amount) parts.push(`Total: $${toTwoDecimals(metadata.total_amount)}.`);
+        if (metadata.final_price) parts.push(`Amount: $${toTwoDecimals(metadata.final_price)}.`);
+      }
+      
+      // Status information
       if (metadata.order_status) parts.push(`Status: ${metadata.order_status}.`);
+      if (metadata.service_status) parts.push(`Service Status: ${metadata.service_status}.`);
       if (metadata.payment_status) parts.push(`Payment: ${metadata.payment_status}.`);
+      
+      // Service information
       if (metadata.service_name) parts.push(`Service: ${metadata.service_name}.`);
+      if (metadata.service_category) parts.push(`Category: ${metadata.service_category}.`);
+      if (metadata.service_type) parts.push(`Type: ${metadata.service_type}.`);
+      if (metadata.service_duration) parts.push(`Duration: ${metadata.service_duration} minutes.`);
       
       // Enhanced multiple product/order information
       if (metadata.is_multiple_orders && metadata.total_orders && metadata.total_orders > 1) {
@@ -227,19 +257,35 @@ const buildDescriptionFromMetadata = (
       }
       
       // Address information
-      if (metadata.shipping_address || metadata.service_address) {
+      if (metadata.customer_details?.address) {
+        const customer = metadata.customer_details;
+        parts.push(`Address: ${customer.address}${customer.pincode ? `, ${customer.pincode}` : ''}.`);
+      } else if (metadata.shipping_address || metadata.service_address) {
         const addr = metadata.shipping_address || metadata.service_address;
         const pin = metadata.shipping_pincode || metadata.service_pincode;
         parts.push(`Address: ${addr}${pin ? `, ${pin}` : ''}.`);
       }
       
-      // Date information
-      if (metadata.order_date) parts.push(`Date: ${metadata.order_date}.`);
-      if (metadata.booking_date) parts.push(`Booked: ${metadata.booking_date}.`);
+      // Enhanced date and time information
+      if (metadata.order_date) parts.push(`Order Date: ${metadata.order_date}.`);
+      if (metadata.order_time) parts.push(`Order Time: ${metadata.order_time}.`);
+      if (metadata.booking_date) parts.push(`Booking Date: ${metadata.booking_date}.`);
+      if (metadata.booking_time) parts.push(`Booking Time: ${metadata.booking_time}.`);
+      if (metadata.service_date) parts.push(`Service Date: ${metadata.service_date}.`);
+      if (metadata.service_time) parts.push(`Service Time: ${metadata.service_time}.`);
       
-      // Dealer information
+      // Dealer/Vendor information
       if (metadata.dealer_details) {
-        parts.push(`Dealer: ${metadata.dealer_details.dealer_name}.`);
+        const dealer = metadata.dealer_details;
+        parts.push(`Dealer: ${dealer.dealer_name}${dealer.dealer_id ? ` (ID: ${dealer.dealer_id})` : ''}.`);
+      }
+      if (metadata.vendor_name) {
+        parts.push(`Vendor: ${metadata.vendor_name}${metadata.vendor_id ? ` (ID: ${metadata.vendor_id})` : ''}.`);
+      }
+      
+      // Additional notes
+      if (metadata.additional_notes && metadata.additional_notes.trim()) {
+        parts.push(`Notes: ${metadata.additional_notes}.`);
       }
     }
 
@@ -432,10 +478,13 @@ export const createOrderNotifications = async (
     order_id: orderId,
     customer_name: orderData.customer_name,
     customer_email: orderData.customer_email,
+    customer_phone: orderData.customer_phone,
+    user_id: orderData.user_id,
     total_amount: orderData.total_amount,
     order_status: orderData.order_status,
     payment_status: orderData.payment_status,
     order_date: currentTime,
+    order_time: new Date().toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata' }),
     items: orderData.items || [],
     shipping_address: orderData.shipping_address,
     shipping_pincode: orderData.shipping_pincode,
@@ -448,12 +497,31 @@ export const createOrderNotifications = async (
       product_name: item.name,
       quantity: item.quantity,
       unit_price: item.price,
-      total_price: (item.price || 0) * (item.quantity || 1)
+      total_price: (item.price || 0) * (item.quantity || 1),
+      product_image: item.image_1 || null
     })) : []),
     dealer_details: orderData.dealer_name ? {
       dealer_name: orderData.dealer_name,
-      dealer_id: dealerId
+      dealer_id: dealerId,
+      dealer_email: orderData.dealer_email
     } : null,
+    // Price breakdown
+    price_breakdown: {
+      subtotal: orderData.subtotal || orderData.total_amount,
+      tax: orderData.tax || 0,
+      shipping: orderData.shipping || 0,
+      discount: orderData.discount || 0,
+      total: orderData.total_amount
+    },
+    // Customer details
+    customer_details: {
+      name: orderData.customer_name,
+      email: orderData.customer_email,
+      phone: orderData.customer_phone,
+      user_id: orderData.user_id,
+      address: orderData.shipping_address,
+      pincode: orderData.shipping_pincode
+    },
     is_multiple_orders: isMultipleOrders,
     is_multiple_products: hasMultipleProducts
   };
@@ -791,6 +859,8 @@ export const createServiceOrderNotifications = async (
     service_order_id: serviceOrderId,
     customer_name: serviceOrderData.customer_name,
     customer_email: serviceOrderData.customer_email,
+    customer_phone: serviceOrderData.customer_phone,
+    user_id: serviceOrderData.user_id,
     service_name: serviceOrderData.service_name,
     service_category: serviceOrderData.service_category,
     service_type: serviceOrderData.service_type,
@@ -800,20 +870,40 @@ export const createServiceOrderNotifications = async (
     service_status: serviceOrderData.service_status,
     payment_status: serviceOrderData.payment_status,
     booking_date: currentTime,
+    booking_time: new Date().toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata' }),
     service_address: serviceOrderData.service_address,
     service_pincode: serviceOrderData.service_pincode,
     additional_notes: serviceOrderData.additional_notes,
     // Enhanced metadata for service orders
     vendor_id: vendorId,
     vendor_name: vendorDetails?.name || null,
+    vendor_email: vendorDetails?.email || null,
     service_duration: serviceOrderData.duration_minutes || null,
+    // Price breakdown
+    price_breakdown: {
+      base_price: serviceOrderData.base_price || serviceOrderData.final_price,
+      tax: serviceOrderData.tax || 0,
+      discount: serviceOrderData.discount || 0,
+      final_price: serviceOrderData.final_price
+    },
+    // Customer details
+    customer_details: {
+      name: serviceOrderData.customer_name,
+      email: serviceOrderData.customer_email,
+      phone: serviceOrderData.customer_phone,
+      user_id: serviceOrderData.user_id,
+      address: serviceOrderData.service_address,
+      pincode: serviceOrderData.service_pincode
+    },
+    // Service details
     service_details: {
       service_name: serviceOrderData.service_name,
       service_category: serviceOrderData.service_category,
       service_type: serviceOrderData.service_type,
       duration_minutes: serviceOrderData.duration_minutes,
       base_price: serviceOrderData.base_price,
-      final_price: serviceOrderData.final_price
+      final_price: serviceOrderData.final_price,
+      service_description: serviceOrderData.service_description
     }
   };
 

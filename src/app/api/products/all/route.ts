@@ -7,6 +7,7 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const search = searchParams.get('search');
     const category = searchParams.get('category');
+    const subcategories = searchParams.get('subcategories');
     // const brand = searchParams.get('brand');
     const minPrice = searchParams.get('minPrice');
     const maxPrice = searchParams.get('maxPrice');
@@ -68,12 +69,33 @@ export async function GET(request: Request) {
 
     // Add filters
     if (category) {
-      // Support both category name and slug for backwards compatibility
-      sqlQuery += ` AND (c.name = ? OR c.slug = ?)`;
-      params.push(category, category);
+      // Support multiple categories separated by commas
+      const categories = category.split(',').map(cat => cat.trim()).filter(Boolean);
+      if (categories.length > 0) {
+        const placeholders = categories.map(() => '(c.name = ? OR c.slug = ?)').join(' OR ');
+        sqlQuery += ` AND (${placeholders})`;
+        // Add each category twice (once for name, once for slug)
+        categories.forEach(cat => {
+          params.push(cat, cat);
+        });
+      }
     }
 
-    // Note: Brand filter is handled client-side to allow multiple selections. Only category filtering is done server-side.
+    // Add subcategory filters
+    if (subcategories) {
+      // Support multiple subcategories separated by commas
+      const subcategoryList = subcategories.split(',').map(sub => sub.trim()).filter(Boolean);
+      if (subcategoryList.length > 0) {
+        const placeholders = subcategoryList.map(() => 'sc.slug = ?').join(' OR ');
+        sqlQuery += ` AND (${placeholders})`;
+        // Add each subcategory
+        subcategoryList.forEach(sub => {
+          params.push(sub);
+        });
+      }
+    }
+
+    // Note: Brand filter is handled client-side to allow multiple selections. Only category and subcategory filtering is done server-side.
 
     if (minPrice) {
       sqlQuery += ` AND p.sale_price >= ?`;
@@ -118,19 +140,22 @@ export async function GET(request: Request) {
     console.log('Final query:', sqlQuery);
     console.log('Final params:', params);
 
-    // Execute query
-    const products = await query(sqlQuery, params);
-
-    console.log('Returning products:', (products as any[]).length);
-    if (search) {
-      console.log('Sample products for search debugging:');
-      (products as any[]).slice(0, 5).forEach((product: any) => {
-        console.log(`- Name: "${product.name}", Brand: "${product.brand_name}", Category: "${product.category_name}"`);
-      });
-    }
+    const result = await query(sqlQuery, params);
     
+    // Debug: Log subcategory data
+    console.log('=== API RESPONSE DEBUG ===');
+    console.log('Total products returned:', result.length);
+    console.log('Sample products with subcategory data:');
+    result.slice(0, 5).forEach((product: any, index: number) => {
+      console.log(`Product ${index + 1}: ${product.name}`);
+      console.log(`  - category_slug: "${product.category_slug}"`);
+      console.log(`  - subcategory_slug: "${product.subcategory_slug}"`);
+      console.log(`  - sub_category_id: "${product.sub_category_id}"`);
+    });
+    console.log('=== END API DEBUG ===');
+
     // Convert Buffer images to base64 strings
-    const processedProducts = (products as any[]).map(product => ({
+    const processedProducts = (result as any[]).map(product => ({
       ...product,
       image_1: product.image_1 ? (Buffer.isBuffer(product.image_1) ? product.image_1.toString('base64') : product.image_1) : null,
       image_2: product.image_2 ? (Buffer.isBuffer(product.image_2) ? product.image_2.toString('base64') : product.image_2) : null,
@@ -140,7 +165,8 @@ export async function GET(request: Request) {
 
     return NextResponse.json({
       success: true,
-      products: processedProducts
+      products: processedProducts,
+      total: result.length
     });
 
   } catch (error: any) {

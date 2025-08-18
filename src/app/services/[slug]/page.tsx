@@ -45,6 +45,8 @@ const ServiceDetailPage = () => {
   const [relatedLoading, setRelatedLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [bookingMessage, setBookingMessage] = useState<{ type: 'success' | 'error', message: string } | null>(null);
+  const [bookingLoading, setBookingLoading] = useState(false);
+  const [viewDetailsLoading, setViewDetailsLoading] = useState<string | null>(null);
 
   const serviceId = params.slug;
 
@@ -144,34 +146,45 @@ const ServiceDetailPage = () => {
     
     console.log('Related service clicked:', serviceId);
     
-    // Show immediate visual feedback
-    const target = event.currentTarget as HTMLElement;
-    target.style.transform = 'scale(0.98)';
-    target.style.transition = 'transform 0.1s ease';
+    setViewDetailsLoading(serviceId);
     
-    // Set a timeout to detect slow navigation
-    const slowNavigationTimeout = setTimeout(() => {
-      console.log(`🐌 Slow navigation detected for service: ${serviceId}`);
-      document.dispatchEvent(new CustomEvent('navigationStart'));
-    }, 300); // Show progress bar if navigation takes longer than 300ms
-    
-    // Navigate with direct router
-    router.push(`/services/${serviceId}`);
-    
-    // Clear timeout if navigation was fast
-    setTimeout(() => {
-      clearTimeout(slowNavigationTimeout);
-    }, 500);
-    
-    // Reset transform after navigation
-    setTimeout(() => {
-      target.style.transform = '';
-      target.style.transition = '';
-    }, 100);
+    try {
+      // Show immediate visual feedback
+      const target = event.currentTarget as HTMLElement;
+      target.style.transform = 'scale(0.98)';
+      target.style.transition = 'transform 0.1s ease';
+      
+      // Add a small delay for visual feedback
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
+      // Set a timeout to detect slow navigation
+      const slowNavigationTimeout = setTimeout(() => {
+        console.log(`🐌 Slow navigation detected for service: ${serviceId}`);
+        document.dispatchEvent(new CustomEvent('navigationStart'));
+      }, 300); // Show progress bar if navigation takes longer than 300ms
+      
+      // Navigate with direct router
+      router.push(`/services/${serviceId}`);
+      
+      // Clear timeout if navigation was fast
+      setTimeout(() => {
+        clearTimeout(slowNavigationTimeout);
+      }, 500);
+      
+      // Reset transform after navigation
+      setTimeout(() => {
+        target.style.transform = '';
+        target.style.transition = '';
+      }, 100);
+    } catch (error) {
+      console.error('Error navigating to service detail:', error);
+    } finally {
+      setViewDetailsLoading(null);
+    }
   };
 
   // Book service functionality - redirect to booking page
-  const handleBookService = () => {
+  const handleBookService = async () => {
     if (!_isLoggedIn) {
       setBookingMessage({ type: 'error', message: 'Please login to book services' });
       setTimeout(() => setBookingMessage(null), 3000);
@@ -180,8 +193,21 @@ const ServiceDetailPage = () => {
 
     if (!service) return;
 
-    // Redirect to the service booking page
-    router.push(`/service-booking/${service.service_id}`);
+    setBookingLoading(true);
+    
+    try {
+      // Add a small delay for visual feedback
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Redirect to the service booking page
+      router.push(`/service-booking/${service.service_id}`);
+    } catch (error) {
+      console.error('Error navigating to booking page:', error);
+      setBookingMessage({ type: 'error', message: 'Failed to navigate to booking page' });
+      setTimeout(() => setBookingMessage(null), 3000);
+    } finally {
+      setBookingLoading(false);
+    }
   };
 
   // Format price
@@ -442,14 +468,21 @@ const ServiceDetailPage = () => {
                   <p className="mb-3 text-sm text-gray-600">Get this service scheduled at your convenience</p>
                   <button
                     onClick={handleBookService}
-                    disabled={!_isLoggedIn}
-                    className={`w-full py-3 px-4 rounded-lg font-semibold text-base ${
+                    disabled={!_isLoggedIn || bookingLoading}
+                    className={`w-full py-3 px-4 rounded-lg font-semibold text-base flex items-center justify-center gap-2 ${
                       !_isLoggedIn
                         ? 'bg-gray-400 text-white cursor-not-allowed'
+                        : bookingLoading
+                        ? 'bg-blue-400 text-white cursor-wait'
                         : 'bg-[var(--global-palette10)] text-white'
                     }`}
                   >
-                    {_isLoggedIn ? (
+                    {bookingLoading ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
+                        Booking...
+                      </>
+                    ) : _isLoggedIn ? (
                       'Book This Service'
                     ) : (
                       'Login to Book Service'
@@ -556,14 +589,25 @@ const ServiceDetailPage = () => {
 
                       {/* View Service Button */}
                       <button
-                        disabled={!relatedService.is_available}
-                        className={`w-full py-2 rounded-md font-medium ${
-                          relatedService.is_available 
-                            ? 'bg-[var(--global-palette10)] text-white' 
-                            : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                        disabled={!relatedService.is_available || viewDetailsLoading === relatedService.service_id.toString()}
+                        className={`w-full py-2 rounded-md font-medium flex items-center justify-center gap-2 ${
+                          !relatedService.is_available 
+                            ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                            : viewDetailsLoading === relatedService.service_id.toString()
+                            ? 'bg-blue-400 text-white cursor-wait'
+                            : 'bg-[var(--global-palette10)] text-white'
                         }`}
                       >
-                        {relatedService.is_available ? 'View Details' : 'Currently Unavailable'}
+                        {viewDetailsLoading === relatedService.service_id.toString() ? (
+                          <>
+                            <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
+                            Loading...
+                          </>
+                        ) : relatedService.is_available ? (
+                          'View Details'
+                        ) : (
+                          'Currently Unavailable'
+                        )}
                       </button>
                     </div>
                   </div>

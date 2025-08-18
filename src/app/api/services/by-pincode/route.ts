@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Query to get services within specified distance of the given pincode
+    // Query to get services for the given pincode
     const sqlQuery = `
       SELECT DISTINCT 
         s.service_id,
@@ -37,11 +37,12 @@ export async function GET(request: NextRequest) {
         s.is_available,
         s.service_pincodes,
         s.created_at,
-        s.updated_at
+        s.updated_at,
+        sp.service_pincodes as pincode
       FROM kriptocar.services s
       INNER JOIN kriptocar.service_pincodes sp ON s.service_id = sp.service_id
       LEFT JOIN kriptocar.service_categories sc ON s.service_category_id = sc.service_category_id
-      WHERE sp.pincode = ?
+      WHERE sp.service_pincodes = ?
       AND s.is_available = 1
       ORDER BY s.base_price ASC
     `;
@@ -60,6 +61,7 @@ export async function GET(request: NextRequest) {
       duration_minutes: service.duration_minutes,
       is_available: Boolean(service.is_available),
       service_pincodes: service.service_pincodes,
+      pincode: service.pincode,
       created_at: service.created_at,
       updated_at: service.updated_at
     })) : [];
@@ -98,10 +100,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Query to get services within 10km radius of the given pincode
-    // This is a simplified approach - in a real application, you'd need a proper geocoding service
-    // to convert pincodes to coordinates and calculate distances accurately
-    
+    // Query to get services for the given pincode
     const sqlQuery = `
       SELECT DISTINCT 
         s.service_id,
@@ -116,11 +115,12 @@ export async function POST(request: NextRequest) {
         s.is_available,
         s.service_pincodes,
         s.created_at,
-        s.updated_at
+        s.updated_at,
+        sp.service_pincodes as pincode
       FROM kriptocar.services s
       INNER JOIN kriptocar.service_pincodes sp ON s.service_id = sp.service_id
       LEFT JOIN kriptocar.service_categories sc ON s.service_category_id = sc.service_category_id
-      WHERE sp.pincode = ?
+      WHERE sp.service_pincodes = ?
       AND s.is_available = 1
       ORDER BY s.base_price ASC
     `;

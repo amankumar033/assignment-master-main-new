@@ -65,7 +65,7 @@ export default function ShopPage() {
   const { addToCart, cartItems, loadingItems } = useCart();
 
   const [startIndex, setStartIndex] = useState(0);
-  const [visibleItems, setVisibleItems] = useState(6);
+  const [visibleItems, setVisibleItems] = useState(12);
   const [activeFilter, setActiveFilter] = useState<number | null>(null);
   
   // Data states
@@ -98,6 +98,7 @@ export default function ShopPage() {
   // Search state
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [filtersInitialized, setFiltersInitialized] = useState(false);
+  const [isManualSubcategorySelection, setIsManualSubcategorySelection] = useState(false);
   const fetchCounterRef = useRef(0);
   
   // Pagination state
@@ -223,7 +224,7 @@ export default function ShopPage() {
   }, [router]);
 
   // Fetch categories
-  const fetchCategories = async () => {
+  const fetchCategories = useCallback(async () => {
     try {
       const response = await fetch('/api/categories');
       const data = await response.json();
@@ -236,10 +237,15 @@ export default function ShopPage() {
       console.error('Error fetching categories:', error);
       setError('Failed to fetch categories');
     }
-  };
+  }, []);
 
   // Fetch baseline: all featured products (no filters) for stable counts and filter options
-  const fetchAllFeaturedProducts = async () => {
+  const fetchAllFeaturedProducts = useCallback(async () => {
+    // Prevent multiple calls - only fetch once
+    if (allFeaturedProductsRef.current.length > 0) {
+      return;
+    }
+    
     try {
       const url = `/api/products/all?isFeatured=true`;
       const resp = await fetch(url);
@@ -259,15 +265,16 @@ export default function ShopPage() {
         });
         setBrandCounts(featuredBrandCounts);
         
-        // Do not overwrite brands list here; rely on /api/brands for brand names and counts
+        // IMPORTANT: Do NOT update the main products state here
+        // This function is only for baseline data, not for displaying products
       }
     } catch (e) {
       console.error('Failed to fetch baseline featured products', e);
     }
-  };
+  }, []);
 
   // Fetch all brands from the brands API
-  const fetchAllBrands = async () => {
+  const fetchAllBrands = useCallback(async () => {
     try {
       console.log('Fetching brands from API...');
       const response = await fetch('/api/brands');
@@ -324,10 +331,10 @@ export default function ShopPage() {
       setBrandsFromApi(fallbackBrands);
       // Counts will be set from featured products fetch
     }
-  };
+  }, []);
 
   // Fetch subcategories for a specific category and cache them
-  const fetchSubcategories = async (categoryId: string) => {
+  const fetchSubcategories = useCallback(async (categoryId: string) => {
     if (subcategoriesByCategory[categoryId]) return;
     setLoadingSubcategories(prev => ({ ...prev, [categoryId]: true }));
     try {
@@ -337,6 +344,10 @@ export default function ShopPage() {
       }
       const data = await response.json();
       if (data.success) {
+        console.log(`=== SUBCATEGORIES LOADED FOR CATEGORY ${categoryId} ===`);
+        console.log('Subcategories data:', data.subcategories);
+        console.log('Number of subcategories:', data.subcategories.length);
+        console.log('First subcategory:', data.subcategories[0]);
         setSubcategoriesByCategory(prev => ({ ...prev, [categoryId]: data.subcategories }));
       } else {
         console.error('Failed to fetch subcategories:', data.message);
@@ -351,13 +362,51 @@ export default function ShopPage() {
     finally {
       setLoadingSubcategories(prev => ({ ...prev, [categoryId]: false }));
     }
-  };
+  }, [subcategoriesByCategory]);
 
   // Store original stock values to track changes
   const [originalStockValues, setOriginalStockValues] = useState<{ [key: string]: number }>({});
 
+  // Handle cart updates to refresh products (for stock updates)
+  const handleCartUpdate = useCallback((event: CustomEvent) => {
+    console.log('Shop page received cart update, updating products locally for stock updates');
+    console.log('Cart update event detail:', event.detail);
+    
+    // Update products locally instead of reloading from server
+    if (event.detail && event.detail.cartItems) {
+      console.log('Cart items found:', event.detail.cartItems);
+      setProducts(prevProducts => {
+        return prevProducts.map(product => {
+          // Find if this product is in the cart
+          const cartItem = event.detail.cartItems.find((item: any) => item.product_id === product.product_id);
+          if (cartItem) {
+            // Product is in cart, calculate available stock using original stock value
+            const originalStock = originalStockValues[product.product_id] || 0;
+            const cartQuantity = cartItem.quantity || 0;
+            const availableStock = Math.max(0, originalStock - cartQuantity);
+            console.log(`Product ${product.name}: Original stock ${originalStock}, Cart quantity ${cartQuantity}, Available stock ${availableStock}`);
+            return { ...product, stock_quantity: availableStock.toString() };
+          } else {
+            // Product is not in cart, restore original stock
+            const originalStock = originalStockValues[product.product_id] || 0;
+            return { ...product, stock_quantity: originalStock.toString() };
+          }
+        });
+      });
+    } else {
+      // If no cart items, restore all products to original stock
+      console.log('No cart items in event detail, restoring all products to original stock');
+      setProducts(prevProducts => {
+        return prevProducts.map(product => {
+          const originalStock = originalStockValues[product.product_id] || 0;
+          return { ...product, stock_quantity: originalStock.toString() };
+        });
+      });
+    }
+  }, [originalStockValues]);
+
   // Fetch products with filters
-  const fetchProducts = async () => {
+  const fetchProducts = useCallback(async () => {
     try {
       setLoading(true);
       // Show progress bar for product loading
@@ -372,8 +421,19 @@ export default function ShopPage() {
       
       // Add filter parameters
       if (selectedCategories.length > 0) {
-        params.append('category', selectedCategories[0]);
+        params.append('category', selectedCategories.join(','));
       }
+      if (selectedSubcategories.length > 0) {
+        params.append('subcategories', selectedSubcategories.join(','));
+      }
+      
+      // Debug logging
+      console.log('=== FETCH PRODUCTS DEBUG ===');
+      console.log('Selected categories:', selectedCategories);
+      console.log('Selected subcategories:', selectedSubcategories);
+      console.log('API URL params:', params.toString());
+      console.log('Full API URL:', `/api/products/all?${params.toString()}`);
+      console.log('=== END FETCH PRODUCTS DEBUG ===');
       if (priceRange[0] > 0) {
         params.append('minPrice', priceRange[0].toString());
       }
@@ -419,7 +479,7 @@ export default function ShopPage() {
       // Hide progress bar when products finish loading
       document.dispatchEvent(new CustomEvent('navigationComplete'));
     }
-  };
+  }, [searchQuery, selectedCategories, selectedSubcategories, priceRange, selectedRatings, inStockOnly]);
 
   // Prefetch frequent routes and load data on component mount
   useEffect(() => {
@@ -467,7 +527,7 @@ export default function ShopPage() {
   // No-op effect here on products to prevent flicker in brand list
 
   // API helper for sub-brands
-  const fetchSubBrands = async (brandName: string) => {
+  const fetchSubBrands = useCallback(async (brandName: string) => {
     if (subBrandsByBrand[brandName]) return;
     setLoadingSubBrands(prev => ({ ...prev, [brandName]: true }));
     try {
@@ -481,7 +541,7 @@ export default function ShopPage() {
     } finally {
       setLoadingSubBrands(prev => ({ ...prev, [brandName]: false }));
     }
-  };
+  }, [subBrandsByBrand]);
 
 
 
@@ -568,7 +628,7 @@ export default function ShopPage() {
     const inStockOnlyParam = searchParams.get('inStockOnly');
 
     setSearchQuery(searchParam || '');
-    setSelectedCategories(categoryParam ? [categoryParam] : []);
+    setSelectedCategories(categoryParam ? categoryParam.split(',').filter(Boolean) : []);
     setSelectedSubcategories(subcategoriesParam ? subcategoriesParam.split(',').filter(Boolean) : []);
     setSelectedBrands(brandsParam ? brandsParam.split(',').filter(Boolean) : []);
     setSelectedSubBrands(subbrandsParam ? subbrandsParam.split(',').filter(Boolean) : []);
@@ -584,49 +644,12 @@ export default function ShopPage() {
 
   // Listen for cart updates to refresh products (for stock updates)
   useEffect(() => {
-    const handleCartUpdate = (event: CustomEvent) => {
-      console.log('Shop page received cart update, updating products locally for stock updates');
-      console.log('Cart update event detail:', event.detail);
-      
-      // Update products locally instead of reloading from server
-      if (event.detail && event.detail.cartItems) {
-        console.log('Cart items found:', event.detail.cartItems);
-        setProducts(prevProducts => {
-          return prevProducts.map(product => {
-            // Find if this product is in the cart
-            const cartItem = event.detail.cartItems.find((item: any) => item.product_id === product.product_id);
-            if (cartItem) {
-              // Product is in cart, calculate available stock using original stock value
-              const originalStock = originalStockValues[product.product_id] || 0;
-              const cartQuantity = cartItem.quantity || 0;
-              const availableStock = Math.max(0, originalStock - cartQuantity);
-              console.log(`Product ${product.name}: Original stock ${originalStock}, Cart quantity ${cartQuantity}, Available stock ${availableStock}`);
-              return { ...product, stock_quantity: availableStock.toString() };
-            } else {
-              // Product is not in cart, restore original stock
-              const originalStock = originalStockValues[product.product_id] || 0;
-              return { ...product, stock_quantity: originalStock.toString() };
-            }
-          });
-        });
-      } else {
-        // If no cart items, restore all products to original stock
-        console.log('No cart items in event detail, restoring all products to original stock');
-        setProducts(prevProducts => {
-          return prevProducts.map(product => {
-            const originalStock = originalStockValues[product.product_id] || 0;
-            return { ...product, stock_quantity: originalStock.toString() };
-          });
-        });
-      }
-    };
-
     window.addEventListener('cartUpdated', handleCartUpdate as EventListener);
 
     return () => {
       window.removeEventListener('cartUpdated', handleCartUpdate as EventListener);
     };
-  }, [originalStockValues]); // Add originalStockValues to dependency array
+  }, [handleCartUpdate]);
 
 
 
@@ -667,9 +690,17 @@ export default function ShopPage() {
   useEffect(() => {
     if (!filtersInitialized) return;
     
+    console.log('=== FETCH PRODUCTS EFFECT TRIGGERED ===');
+    console.log('selectedCategories:', selectedCategories);
+    console.log('selectedSubcategories:', selectedSubcategories);
+    
+    // Use longer timeout for subcategory changes to ensure state updates complete
+    const timeout = selectedSubcategories.length > 0 ? 500 : 300;
+    
     const timeoutId = setTimeout(() => {
+      console.log('=== CALLING FETCH PRODUCTS ===');
       fetchProducts();
-    }, 300);
+    }, timeout);
 
     return () => clearTimeout(timeoutId);
   }, [filtersInitialized, selectedCategories, selectedSubcategories, selectedBrands, selectedSubBrands, selectedManufacturers, selectedRatings, priceRange, inStockOnly, searchQuery, fetchProducts]);
@@ -680,8 +711,17 @@ export default function ShopPage() {
     const timeoutId = setTimeout(() => {
       if (typeof window === 'undefined') return;
       const params = new URLSearchParams();
-      if (selectedCategories[0]) params.set('category', selectedCategories[0]);
-      if (selectedSubcategories.length) params.set('subcategories', selectedSubcategories.join(','));
+      
+      // URL logic: When categories are selected, subcategories are automatically cleared
+      // So we only show one type of filter in the URL at a time
+      if (selectedCategories.length > 0) {
+        // When categories are selected, show only categories in URL
+        params.set('category', selectedCategories.join(','));
+      } else if (selectedSubcategories.length > 0) {
+        // When only subcategories are selected, show subcategories in URL
+        params.set('subcategories', selectedSubcategories.join(','));
+      }
+      
       if (selectedBrands.length) params.set('brands', selectedBrands.join(','));
       if (selectedSubBrands.length) params.set('subbrands', selectedSubBrands.join(','));
       if (selectedManufacturers.length) params.set('manufacturers', selectedManufacturers.join(','));
@@ -711,11 +751,11 @@ export default function ShopPage() {
   useEffect(() => {
     const updateVisibleItems = () => {
       if (window.innerWidth >= 1024) {
-        setVisibleItems(6); // Desktop: show 6 items
+        setVisibleItems(12); // Desktop: show 12 items
       } else if (window.innerWidth >= 768) {
-        setVisibleItems(4); // Tablet: show 4 items
+        setVisibleItems(8); // Tablet: show 8 items
       } else {
-        setVisibleItems(2); // Mobile: show 2 items
+        setVisibleItems(4); // Mobile: show 4 items
       }
     };
 
@@ -753,27 +793,33 @@ export default function ShopPage() {
     const rating = parseFloat(product.rating) || 0;
     const stockQuantity = parseInt(product.stock_quantity) || 0;
     
-    // Only apply filters if they are actually selected
-    // If subcategories are selected, ignore category filter; otherwise use category filter
-    const categoryMatch = selectedSubcategories.length > 0
-      ? true
-      : selectedCategories.length === 0 || selectedCategories.includes(product.category_slug);
-    // Note: Subcategory filtering is currently handled through category selection
-    // TODO: Add subcategory_id to products table and update API to include subcategory data
+    // Category filter - if categories are selected, product must match one of them
+    const categoryMatch = selectedCategories.length === 0 || 
+      selectedCategories.includes(product.category_slug);
+    
+    // Subcategory filter - if subcategories are selected, product must match one of them
+    const subcategoryMatch = selectedSubcategories.length === 0 || 
+      (product.subcategory_slug && 
+       selectedSubcategories.includes(product.subcategory_slug));
+
+    // Product passes if:
+    // - No filters selected (show all), OR
+    // - Categories are selected and product matches, OR
+    // - Subcategories are selected and product matches
+    const passesFilters = 
+      (selectedCategories.length === 0 && selectedSubcategories.length === 0) ||
+      (selectedCategories.length > 0 && categoryMatch) ||
+      (selectedSubcategories.length > 0 && subcategoryMatch);
+    
+    // Other filters
     const brandMatch = selectedBrands.length === 0 || selectedBrands.includes(product.brand_name);
-            // For manufacturers, check against manufacture field
-        const manufacturerMatch = selectedManufacturers.length === 0 || selectedManufacturers.includes(product.manufacture || '');
+    const manufacturerMatch = selectedManufacturers.length === 0 || selectedManufacturers.includes(product.manufacture || '');
     const ratingMatch = selectedRatings.length === 0 || selectedRatings.some(r => Math.floor(rating) === r);
     const priceMatch = salePrice >= priceRange[0] && salePrice <= priceRange[1];
     const stockMatch = !inStockOnly || stockQuantity > 0;
-    
-    // If subcategories selected, additionally match by product subcategory if available
-    const subcategoryMatch = selectedSubcategories.length === 0 || selectedSubcategories.includes(product.subcategory_slug || '');
-    // If subbrands selected, match by product sub_brand_name
     const subBrandMatch = selectedSubBrands.length === 0 || selectedSubBrands.includes((product as any).sub_brand_name || '');
-    const passes = categoryMatch && subcategoryMatch && subBrandMatch && brandMatch && manufacturerMatch && ratingMatch && priceMatch && stockMatch;
     
-    return passes;
+    return passesFilters && brandMatch && manufacturerMatch && ratingMatch && priceMatch && stockMatch && subBrandMatch;
   }).sort((a, b) => {
     // Sort products: available first, then unavailable, then out-of-stock
     const statusA = getProductStatus(a);
@@ -804,6 +850,57 @@ export default function ShopPage() {
   // Debug: Log final counts
   console.log(`Products: ${products.length} fetched, ${filteredProducts.length} displayed`);
   console.log('Current filters:', { selectedCategories, selectedSubcategories, selectedBrands, selectedConditions, selectedMaterials, priceRange, selectedRatings, inStockOnly });
+
+  // Debug: Track state changes and filtering
+  useEffect(() => {
+    console.log('=== CURRENT FILTERS ===');
+    console.log('Selected Categories:', selectedCategories);
+    console.log('Selected Subcategories:', selectedSubcategories);
+    console.log('Filtered Products Count:', filteredProducts.length);
+    console.log('Sample Filtered Products:', filteredProducts.slice(0, 3).map(p => ({
+      name: p.name,
+      category: p.category_slug,
+      subcategory: p.subcategory_slug
+    })));
+  }, [selectedCategories, selectedSubcategories, filteredProducts]);
+
+  // Debug: Track state changes
+  useEffect(() => {
+    console.log('Current subcategories:', selectedSubcategories);
+    console.log('Current categories:', selectedCategories);
+  }, [selectedSubcategories, selectedCategories]);
+
+  // Subcategory click handler - removes category filters when subcategory is selected
+  const handleSubcategoryClick = useCallback((subcategorySlug: string) => {
+    console.log('=== SUBCATEGORY CLICK START ===');
+    console.log('Clicked subcategory:', subcategorySlug);
+    
+    setSelectedSubcategories(prev => {
+      console.log('Previous selectedSubcategories:', prev);
+      // Create new array that either adds or removes the subcategory
+      const newSubcategories = prev.includes(subcategorySlug)
+        ? prev.filter(s => s !== subcategorySlug) // Remove if already present
+        : [...prev, subcategorySlug]; // Add if not present
+      
+      console.log('Subcategories updated:', newSubcategories);
+      console.log('=== SUBCATEGORY CLICK END ===');
+      return newSubcategories;
+    });
+    
+    // When subcategory is selected, clear category filters
+    if (!selectedSubcategories.includes(subcategorySlug)) {
+      console.log('Clearing category filters because subcategory was selected');
+      setSelectedCategories([]);
+    }
+  }, [selectedSubcategories]);
+
+  // Debug: Track subcategory persistence
+  useEffect(() => {
+    console.log('=== SUBCATEGORY STATE CHANGED ===');
+    console.log('New selectedSubcategories:', selectedSubcategories);
+    console.log('Stack trace:', new Error().stack);
+    console.log('=== END SUBCATEGORY STATE CHANGE ===');
+  }, [selectedSubcategories]);
 
 
 
@@ -961,14 +1058,16 @@ export default function ShopPage() {
               <div key={category.category_id} className="relative">
                 <button
                   onClick={() => {
-                    // Immediate visual feedback
-                    const newCategory = selectedCategories[0] === category.slug ? [] : [category.slug];
-                    setSelectedCategories(newCategory);
+                    // Multiple category selection
+                    const newCategories = selectedCategories.includes(category.slug) 
+                      ? selectedCategories.filter(cat => cat !== category.slug)
+                      : [...selectedCategories, category.slug];
+                    setSelectedCategories(newCategories);
                     
                     // Show loading state immediately
                     setLoading(true); // Resume after 3 seconds
                   }}
-                  className={`flex-shrink-0 w-40 sm:w-58 gap-3 sm:gap-5 h-16 sm:h-22 bg-white overflow-hidden flex items-center p-3 sm:p-5 py-4 sm:py-7 border rounded-lg cursor-pointer transition-all duration-200 ${selectedCategories[0] === category.slug ? 'ring-2 ring-blue-500 bg-blue-50' : 'hover:bg-gray-50'}`}
+                  className={`flex-shrink-0 w-40 sm:w-58 gap-3 sm:gap-5 h-16 sm:h-22 bg-white overflow-hidden flex items-center p-3 sm:p-5 py-4 sm:py-7 border rounded-lg cursor-pointer transition-all duration-200 ${selectedCategories.includes(category.slug) ? 'ring-2 ring-blue-500 bg-blue-50' : 'hover:bg-gray-50'}`}
                 >
                   <div className="w-12 h-12 sm:w-18 sm:h-18 relative mr-2">
                     <Image
@@ -1078,6 +1177,15 @@ export default function ShopPage() {
               const isExpanded = openListCategoryId === category.category_id;
               const listSubcategories = subcategoriesByCategory[category.category_id] || [];
               const hasSubcategories = listSubcategories.length > 0;
+              
+              // Debug logging for subcategory rendering
+              console.log(`=== CATEGORY RENDERING DEBUG: ${category.name} ===`);
+              console.log('Category ID:', category.category_id);
+              console.log('Is expanded:', isExpanded);
+              console.log('List subcategories:', listSubcategories);
+              console.log('Has subcategories:', hasSubcategories);
+              console.log('Subcategories by category:', subcategoriesByCategory);
+              console.log('=== END CATEGORY RENDERING DEBUG ===');
               return (
               <li 
                 key={category.category_id} 
@@ -1086,23 +1194,40 @@ export default function ShopPage() {
                 {/* Main Category Row */}
                 <button
                   onClick={() => {
-                    // Handle category selection with immediate feedback
-                    const newCategory = selectedCategories[0] === category.slug ? [] : [category.slug];
-                    setSelectedCategories(newCategory);
+                    console.log('=== CATEGORY CLICK START ===');
+                    console.log('Clicked category:', category.name);
                     
-                    // Show loading state immediately
-                    setLoading(true);
-                    
-                    // Single-open: open this one, close previous
+                    // Load subcategories if not loaded yet
                     if (!hasSubcategories && !loadingSubcategories[category.category_id]) {
-                      // No subcategories loaded yet; attempt to load once
                       fetchSubcategories(category.category_id);
                       return;
                     }
-                    const willOpen = openListCategoryId !== category.category_id;
-                    setOpenListCategoryId(willOpen ? category.category_id : null);
+                    
+                    // Toggle category selection
+                    const newCategories = selectedCategories.includes(category.slug) 
+                      ? selectedCategories.filter(cat => cat !== category.slug)
+                      : [...selectedCategories, category.slug];
+                    
+                    console.log('New categories will be:', newCategories);
+                    setSelectedCategories(newCategories);
+                    
+                    // When category is selected, clear subcategory filters
+                    if (!selectedCategories.includes(category.slug)) {
+                      console.log('Clearing subcategory filters because category was selected');
+                      setSelectedSubcategories([]);
+                    }
+                    
+                    // If category has subcategories, also toggle expansion
+                    if (hasSubcategories) {
+                      const willOpen = openListCategoryId !== category.category_id;
+                      setOpenListCategoryId(willOpen ? category.category_id : null);
+                    }
+                    
+                    // Show loading state immediately
+                    setLoading(true);
+                    console.log('=== CATEGORY CLICK END ===');
                   }}
-                  className={`w-full px-4 py-3 text-left flex justify-between items-center transition-all duration-200 ${selectedCategories[0] === category.slug ? 'bg-blue-100 text-blue-700 font-bold' : 'hover:bg-gray-50'}`}
+                  className={`w-full px-4 py-3 text-left flex justify-between items-center transition-all duration-200 ${selectedCategories.includes(category.slug) ? 'bg-blue-100 text-blue-700 font-bold' : 'hover:bg-gray-50'}`}
                   aria-expanded={isExpanded}
                 >
                   <span className="flex items-center gap-2">
@@ -1134,24 +1259,18 @@ export default function ShopPage() {
                   {hasSubcategories && listSubcategories.length > 0 && (
                     <div className="bg-gray-50 border-t border-gray-200">
                       <div className="max-h-[60vh] overflow-y-auto" ref={(el) => { contentRefs.current[category.category_id] = el; }}>
+                        {(() => {
+                          console.log(`Rendering ${listSubcategories.length} subcategories for category ${category.name}`);
+                          return null;
+                        })()}
                         {listSubcategories.map((subcategory) => (
                           <button
                             key={subcategory.sub_category_id}
-                            onClick={() => {
-                              // Handle subcategory selection
-                              
-                              if (selectedSubcategories.includes(subcategory.slug)) {
-                                // Remove subcategory
-                                setSelectedSubcategories(selectedSubcategories.filter(sc => sc !== subcategory.slug));
-                              } else {
-                                // Add subcategory and ensure parent category is selected
-                                setSelectedSubcategories([...selectedSubcategories, subcategory.slug]);
-                                // Remove category filter when a subcategory is selected
-                                if (selectedCategories.length > 0) {
-                                  setSelectedCategories([]);
-                                }
-                              }
-                              // Don't close the expansion when selecting subcategory
+                            data-testid={`subcategory-${subcategory.slug}`}
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              handleSubcategoryClick(subcategory.slug);
                             }}
                             className={`w-full px-6 py-3 text-left flex items-center border-b border-gray-100 last:border-b-0 border-l-4 ${
                               selectedSubcategories.includes(subcategory.slug) ? 'bg-orange-50 text-orange-600 font-medium border-orange-500' : 'text-gray-700 border-transparent'
