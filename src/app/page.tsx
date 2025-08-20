@@ -3,7 +3,7 @@ import Products from "@/components/Products";
 import Categories from "@/components/Categories";
 import Brands from "@/components/Brands";
 import Deals from "@/components/Deals";
-import Guide from "@/components/Guidelines";
+// import Guide from "@/components/Guidelines";
 
 export default function HomePage() {
   return (

@@ -37,7 +37,7 @@ type Review = {
 const ServiceDetailPage = () => {
   const params = useParams();
   const router = useRouter();
-  const { user: _user, isLoggedIn: _isLoggedIn } = useAuth();
+  const { user, isLoggedIn } = useAuth();
 
   const [service, setService] = useState<Service | null>(null);
   const [relatedServices, setRelatedServices] = useState<Service[]>([]);
@@ -185,7 +185,7 @@ const ServiceDetailPage = () => {
 
   // Book service functionality - redirect to booking page
   const handleBookService = async () => {
-    if (!_isLoggedIn) {
+    if (!isLoggedIn) {
       setBookingMessage({ type: 'error', message: 'Please login to book services' });
       setTimeout(() => setBookingMessage(null), 3000);
       return;
@@ -468,9 +468,9 @@ const ServiceDetailPage = () => {
                   <p className="mb-3 text-sm text-gray-600">Get this service scheduled at your convenience</p>
                   <button
                     onClick={handleBookService}
-                    disabled={!_isLoggedIn || bookingLoading}
+                    disabled={!isLoggedIn || bookingLoading}
                     className={`w-full py-3 px-4 rounded-lg font-semibold text-base flex items-center justify-center gap-2 ${
-                      !_isLoggedIn
+                      !isLoggedIn
                         ? 'bg-gray-400 text-white cursor-not-allowed'
                         : bookingLoading
                         ? 'bg-blue-400 text-white cursor-wait'
@@ -482,7 +482,7 @@ const ServiceDetailPage = () => {
                         <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
                         Booking...
                       </>
-                    ) : _isLoggedIn ? (
+                    ) : isLoggedIn ? (
                       'Book This Service'
                     ) : (
                       'Login to Book Service'

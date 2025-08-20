@@ -47,7 +47,7 @@ export async function POST(request: Request) {
 
     const token = Buffer.from(`${user.user_id}:${Date.now()}`).toString('base64');
 
-    const { password: _userPassword, ...userData } = user;
+    const { password: userPassword, ...userData } = user;
 
     console.log('✅ Login successful for user:', user.user_id);
 

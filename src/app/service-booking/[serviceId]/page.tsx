@@ -47,7 +47,7 @@ const ServiceBookingPage = () => {
   const [bookingProgress, setBookingProgress] = useState(0);
   const [bookingMessage, setBookingMessage] = useState('Initializing booking...');
   const [showSuccess, setShowSuccess] = useState(false);
-  const [redirectCountdown, _setRedirectCountdown] = useState(3);
+  const [redirectCountdown] = useState(3);
 
   const [formData, setFormData] = useState<BookingForm>({
     service_date: '',
@@ -243,17 +243,10 @@ const ServiceBookingPage = () => {
         setBookingMessage('Booking completed successfully!');
         showToast('success', 'Service booked successfully!');
         setShowSuccess(true);
-        // Auto-redirect after short countdown
-        const countdownTimer = setInterval(() => {
-          _setRedirectCountdown(prev => {
-            if (prev <= 1) {
-              clearInterval(countdownTimer);
-              router.push(`/service-confirmation/${data.service_order_id}`);
-              return 0;
-            }
-            return prev - 1;
-          });
-        }, 1000);
+        // Auto-redirect after short delay
+        setTimeout(() => {
+          router.push(`/service-confirmation/${data.service_order_id}`);
+        }, 3000);
       } else {
         setError(data.message || 'Failed to book service');
         showToast('error', data.message || 'Failed to book service');

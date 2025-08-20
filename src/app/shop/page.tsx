@@ -98,7 +98,7 @@ export default function ShopPage() {
   // Search state
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [filtersInitialized, setFiltersInitialized] = useState(false);
-  const [isManualSubcategorySelection, setIsManualSubcategorySelection] = useState(false);
+  const [isManualSubcategorySelection] = useState(false);
   const fetchCounterRef = useRef(0);
   
   // Pagination state

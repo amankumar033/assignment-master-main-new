@@ -121,7 +121,7 @@ const CustomDatePicker: React.FC<CustomDatePickerProps> = ({
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    let value = e.target.value;
+    const value = e.target.value;
     
     // Reset invalid state when user starts typing
     setIsInvalid(false);
@@ -295,7 +295,7 @@ const CustomDatePicker: React.FC<CustomDatePickerProps> = ({
           placeholder="DD/MM/YYYY"
           onChange={handleInputChange}
           onBlur={handleInputBlur}
-          onFocus={(e) => {
+          onFocus={() => {
             // Don't blur on focus, allow typing
           }}
           onClick={(e) => {

@@ -40,8 +40,8 @@ const CheckoutPage = () => {
 
   const [localCouponCode, setLocalCouponCode] = useState('');
   const [couponMessage, setCouponMessage] = useState('');
-  const [shippingCost, _setShippingCost] = useState(0);
-  const [taxAmount, _setTaxAmount] = useState(0);
+  const [shippingCost] = useState(0);
+  const [taxAmount] = useState(0);
   const [orderSuccess, setOrderSuccess] = useState(false);
   const [orderData, setOrderData] = useState<any>(null);
   
@@ -302,7 +302,7 @@ const CheckoutPage = () => {
     } catch (error) {
       console.error('Error placing order:', error);
       setShowProgress(false);
-              _setError('Failed to place order. Please try again.');
+      _setError('Failed to place order. Please try again.');
       showToast('error', 'Failed to place order. Please try again.');
     } finally {
       setSubmitting(false);

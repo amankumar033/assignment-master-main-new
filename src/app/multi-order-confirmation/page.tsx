@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import LoadingPage from '@/components/LoadingPage';
 import { formatPrice } from '@/utils/priceUtils';
@@ -235,7 +235,7 @@ const MultiOrderConfirmationPage = () => {
         <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
           <h2 className="text-xl font-bold text-black mb-4">Your Orders</h2>
           <div className="space-y-4">
-                                    {orderData.orders.map((order, _index) => (
+                                    {orderData.orders.map((order) => (
               <div key={order.order_id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
                 <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
                   <div className="flex items-start space-x-4">

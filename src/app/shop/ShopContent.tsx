@@ -53,25 +53,25 @@ type Product = {
 };
 
 export default function ShopContent() {
-  const { user, isLoggedIn } = useAuth();
+  const { isLoggedIn } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { addToCart, cartItems, loading: cartLoading, error: cartError, loadingItems } = useCart();
-  const [startIndex, setStartIndex] = useState(0);
+  const { addToCart, cartItems, loadingItems } = useCart();
+  const [startIndex] = useState(0);
   const visibleItems = 5;
-  const [activeFilter, setActiveFilter] = useState<number | null>(null);
+  const [activeFilter] = useState<number | null>(null);
   
   // Data states
   const [categories, setCategories] = useState<Category[]>([]);
   const [subcategoriesByCategory, setSubcategoriesByCategory] = useState<Record<string, SubCategory[]>>({});
-  const [loadingSubcategories, setLoadingSubcategories] = useState<Record<string, boolean>>({});
+  const [loadingSubcategories] = useState<Record<string, boolean>>({});
   const [products, setProducts] = useState<Product[]>([]);
   const productsRef = useRef<Product[]>([]);
   // Stable baseline of ALL featured products for counts and filter lists (not affected by current filters)
   const allFeaturedProductsRef = useRef<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [openListCategoryId, setOpenListCategoryId] = useState<string | null>(null);
+  const [openListCategoryId] = useState<string | null>(null);
   const contentRefs = useRef<Record<string, HTMLDivElement | null>>({});
   
   // Filter states
@@ -79,8 +79,8 @@ export default function ShopContent() {
   const [selectedSubcategories, setSelectedSubcategories] = useState<string[]>([]);
   const [selectedBrands, setSelectedBrands] = useState<string[]>([]);
   const [selectedSubBrands, setSelectedSubBrands] = useState<string[]>([]);
-  const [selectedConditions, setSelectedConditions] = useState<string[]>([]);
-  const [selectedMaterials, setSelectedMaterials] = useState<string[]>([]);
+  const [selectedConditions] = useState<string[]>([]);
+  const [selectedMaterials] = useState<string[]>([]);
   const [selectedRatings, setSelectedRatings] = useState<number[]>([]);
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 1000]);
   const [inStockOnly, setInStockOnly] = useState(false);
@@ -88,13 +88,13 @@ export default function ShopContent() {
   
   // Search state
   const [searchQuery, setSearchQuery] = useState<string>('');
-  const [filtersInitialized, setFiltersInitialized] = useState(false);
+  const [filtersInitialized] = useState(false);
   const fetchCounterRef = useRef(0);
 
   // Brands accordion states
-  const [brandsFromApi, setBrandsFromApi] = useState<string[]>([]);
+  const [brandsFromApi] = useState<string[]>([]);
   const [subBrandsByBrand, setSubBrandsByBrand] = useState<Record<string, { sub_brand_name: string; brand_name: string }[]>>({});
-  const [loadingSubBrands, setLoadingSubBrands] = useState<Record<string, boolean>>({});
+  const [loadingSubBrands] = useState<Record<string, boolean>>({});
 
   // Product status helper
   const getProductStatus = (product: Product) => {
@@ -169,22 +169,22 @@ export default function ShopContent() {
   };
 
   // Fetch subcategories for a category
-  const fetchSubcategories = async (categoryId: string) => {
-    if (subcategoriesByCategory[categoryId]) return;
+  // const fetchSubcategories = async (categoryId: string) => {
+  //   if (subcategoriesByCategory[categoryId]) return;
     
-    setLoadingSubcategories(prev => ({ ...prev, [categoryId]: true }));
-    try {
-      const response = await fetch(`/api/subcategories?category_id=${categoryId}`);
-      const data = await response.json();
-      if (data.success) {
-        setSubcategoriesByCategory(prev => ({ ...prev, [categoryId]: data.subcategories }));
-      }
-    } catch (error) {
-      console.error('Error fetching subcategories:', error);
-    } finally {
-      setLoadingSubcategories(prev => ({ ...prev, [categoryId]: false }));
-    }
-  };
+  //   setLoadingSubcategories(prev => ({ ...prev, [categoryId]: true }));
+  //   try {
+  //     const response = await fetch(`/api/subcategories?category_id=${categoryId}`);
+  //     const data = await response.json();
+  //     if (data.success) {
+  //       setSubcategoriesByCategory(prev => ({ ...prev, [categoryId]: data.subcategories }));
+  //   }
+  //   } catch (error) {
+  //     console.error('Error fetching subcategories:', error);
+  //   } finally {
+  //     setLoadingSubcategories(prev => ({ ...prev, [categoryId]: false }));
+  //   }
+  // };
 
   // Fetch products with filters
   const fetchProducts = async () => {
@@ -251,22 +251,22 @@ export default function ShopContent() {
   };
 
   // Fetch sub-brands for a brand
-  const fetchSubBrands = async (brandName: string) => {
-    if (subBrandsByBrand[brandName]) return;
+  // const fetchSubBrands = async (brandName: string) => {
+  //   if (subBrandsByBrand[brandName]) return;
     
-    setLoadingSubBrands(prev => ({ ...prev, [brandName]: true }));
-    try {
-      const response = await fetch(`/api/subbrands?brand_name=${encodeURIComponent(brandName)}`);
-      const data = await response.json();
-      if (data.success) {
-        setSubBrandsByBrand(prev => ({ ...prev, [brandName]: data.subbrands }));
-      }
-    } catch (error) {
-      console.error('Error fetching sub-brands:', error);
-    } finally {
-      setLoadingSubBrands(prev => ({ ...prev, [brandName]: false }));
-    }
-  };
+  //   setLoadingSubBrands(prev => ({ ...prev, [brandName]: true }));
+  //   try {
+  //     const response = await fetch(`/api/subbrands?brand_name=${encodeURIComponent(brandName)}`);
+  //     const data = await response.json();
+  //     if (data.success) {
+  //       setSubBrandsByBrand(prev => ({ ...prev, [brandName]: data.subbrands }));
+  //     }
+  //   } catch (error) {
+  //     console.error('Error fetching sub-brands:', error);
+  //   } finally {
+  //     setLoadingSubBrands(prev => ({ ...prev, [brandName]: false }));
+  //   }
+  // };
 
   // Initialize data
   useEffect(() => {
@@ -315,12 +315,12 @@ export default function ShopContent() {
     if (inStockOnlyParam) setInStockOnly(inStockOnlyParam === '1');
     if (search) setSearchQuery(search);
     
-    setFiltersInitialized(true);
+    // setFiltersInitialized(true);
   }, [searchParams]);
 
   // Listen for cart updates
   useEffect(() => {
-    const handleCartUpdate = (event: CustomEvent) => {
+    const handleCartUpdate = () => {
       // Refresh products to update stock quantities
       fetchProducts();
     };
@@ -332,17 +332,17 @@ export default function ShopContent() {
   }, []);
 
   // Carousel navigation
-  const nextSlide = () => {
-    setStartIndex(prev => 
-      prev + 1 > categories.length - visibleItems ? 0 : prev + 1
-    );
-  };
+  // const nextSlide = () => {
+  //   setStartIndex(prev => 
+  //     prev + 1 > categories.length - visibleItems ? 0 : prev + 1
+  //   );
+  // };
 
-  const prevSlide = () => {
-    setStartIndex(prev => 
-      prev - 1 < 0 ? categories.length - visibleItems : prev - 1
-    );
-  };
+  // const prevSlide = () => {
+  //   setStartIndex(prev => 
+  //     prev - 1 < 0 ? categories.length - visibleItems : prev - 1
+  //   );
+  // };
 
   // Filter helpers
   const toggleFilterOption = (value: string, selected: string[], setSelected: React.Dispatch<React.SetStateAction<string[]>>) => {

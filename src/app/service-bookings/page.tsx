@@ -41,7 +41,7 @@ const ServiceBookingsPage = () => {
   const [serviceBookings, setServiceBookings] = useState<ServiceBooking[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [retryCount, setRetryCount] = useState(0);
+  const [retryCount] = useState(0);
 
   // Fetch service bookings
   const fetchServiceBookings = async () => {
@@ -110,13 +110,13 @@ const ServiceBookingsPage = () => {
     });
   };
 
-  const formatTime = (timeString: string) => {
-    return new Date(`2000-01-01T${timeString}`).toLocaleTimeString('en-US', {
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: true
-    });
-  };
+  // const formatTime = (timeString: string) => {
+  //   return new Date(`2000-01-01T${timeString}`).toLocaleTimeString('en-US', {
+  //     hour: '2-digit',
+  //     minute: '2-digit',
+  //     hour12: true
+  //   });
+  // };
 
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
@@ -198,7 +198,6 @@ const ServiceBookingsPage = () => {
               </div>
               <button
                 onClick={() => {
-                  setRetryCount(prev => prev + 1);
                   fetchServiceBookings();
                 }}
                 className="ml-4 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm font-medium"

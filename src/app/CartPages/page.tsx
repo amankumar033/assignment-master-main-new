@@ -18,7 +18,7 @@ const CartPages = () => {
   const [couponCode, setCouponCode] = useState('');
   const [discount, setDiscount] = useState(0);
   const [couponMessage, setCouponMessage] = useState('');
-  const [updatingQuantities, setUpdatingQuantities] = useState<{ [key: string]: boolean }>({});
+  const [updatingQuantities] = useState<{ [key: string]: boolean }>({});
 
   // Debug logging
   useEffect(() => {
