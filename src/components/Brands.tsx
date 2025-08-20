@@ -17,22 +17,67 @@ export default function Brands() {
     { id: 9, name: 'Maruti Suzuki', logo: '/brands/maruti-suzuki.png' },
   ];
 
-  const [startIndex, setStartIndex] = useState(0);
-  const visibleItems = 7; // Show 7 brands at a time
+  const brandsContainerRef = useRef<HTMLDivElement>(null);
+  const [isAutoScrolling, setIsAutoScrolling] = useState(true);
+  const autoScrollInterval = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Calculate the maximum scroll position
-  const maxScroll = Math.max(0, brands.length - visibleItems);
+  // Scroll configuration
+  const ITEM_WIDTH_PX = 160; // Brand card width
+  const ITEM_GAP_PX = 16; // Gap between brands
+  const SCROLL_STEP_PX = ITEM_WIDTH_PX + ITEM_GAP_PX; // Scroll by one brand width
 
-  const nextSlide = () => {
-    setStartIndex(prev => {
-      return prev + 1 > maxScroll ? 0 : prev + 1;
-    });
+  // Pause auto-scroll when user interacts
+  const pauseAutoScroll = () => {
+    setIsAutoScrolling(false);
+    if (autoScrollInterval.current) {
+      clearInterval(autoScrollInterval.current);
+      autoScrollInterval.current = null;
+    }
   };
 
-  const prevSlide = () => {
-    setStartIndex(prev => {
-      return prev - 1 < 0 ? maxScroll : prev - 1;
-    });
+  // Resume auto-scroll when cursor leaves
+  const resumeAutoScroll = () => {
+    setIsAutoScrolling(true);
+  };
+
+  // Resume auto-scroll after a delay (for mobile clicks)
+  const resumeAutoScrollDelayed = () => {
+    setTimeout(() => {
+      setIsAutoScrolling(true);
+    }, 1000); // Resume after 1 second
+  };
+
+  // Manual navigation with proper scrolling
+  const scrollLeft = () => {
+    pauseAutoScroll();
+    const container = brandsContainerRef.current;
+    if (!container) return;
+    
+    const currentScroll = container.scrollLeft;
+    const singleSetWidth = brands.length * SCROLL_STEP_PX;
+    
+    if (currentScroll <= SCROLL_STEP_PX) {
+      // Jump to the end of the second set for infinite scroll effect
+      container.scrollTo({ left: singleSetWidth, behavior: 'smooth' });
+    } else {
+      container.scrollBy({ left: -SCROLL_STEP_PX, behavior: 'smooth' });
+    }
+  };
+
+  const scrollRight = () => {
+    pauseAutoScroll();
+    const container = brandsContainerRef.current;
+    if (!container) return;
+    
+    const currentScroll = container.scrollLeft;
+    const singleSetWidth = brands.length * SCROLL_STEP_PX;
+    
+    if (currentScroll >= singleSetWidth - SCROLL_STEP_PX) {
+      // Jump to the beginning for infinite scroll effect
+      container.scrollTo({ left: 0, behavior: 'smooth' });
+    } else {
+      container.scrollBy({ left: SCROLL_STEP_PX, behavior: 'smooth' });
+    }
   };
 
   const promoRefs = useRef<(HTMLDivElement | null)[]>([]);
@@ -51,6 +96,10 @@ export default function Brands() {
   };
 
   const handleBrandClick = (brandName: string) => {
+    // Pause auto-scroll and resume after delay
+    pauseAutoScroll();
+    resumeAutoScrollDelayed();
+    
     // Set a timeout to detect slow navigation
     const slowNavigationTimeout = setTimeout(() => {
       console.log(`🐌 Slow navigation detected for brands`);
@@ -65,6 +114,32 @@ export default function Brands() {
       clearTimeout(slowNavigationTimeout);
     }, 500);
   };
+
+  // Auto-scroll functionality
+  useEffect(() => {
+    if (isAutoScrolling) {
+      autoScrollInterval.current = setInterval(() => {
+        const container = brandsContainerRef.current;
+        if (!container) return;
+        
+        const currentScroll = container.scrollLeft;
+        const singleSetWidth = brands.length * SCROLL_STEP_PX;
+        
+        if (currentScroll >= singleSetWidth - SCROLL_STEP_PX) {
+          // Reset to beginning for infinite scroll
+          container.scrollTo({ left: 0, behavior: 'smooth' });
+        } else {
+          container.scrollBy({ left: SCROLL_STEP_PX, behavior: 'smooth' });
+        }
+      }, 3000); // Scroll every 3 seconds
+    }
+
+    return () => {
+      if (autoScrollInterval.current) {
+        clearInterval(autoScrollInterval.current);
+      }
+    };
+  }, [isAutoScrolling, brands.length]);
 
   useEffect(() => {
     // Initial flash after 2 seconds
@@ -89,8 +164,9 @@ export default function Brands() {
         <h1 className="text-2xl sm:text-3xl font-bold text-black">Featured Brands</h1>
         <div className="flex space-x-4">
           <button 
-            onClick={prevSlide}
-            className="p-2 rounded-full hover:bg-gray-300 transition"
+            onClick={scrollLeft}
+            className="p-2 rounded-full hover:bg-gray-300 transition touch-manipulation select-none"
+            style={{ touchAction: 'manipulation' }}
             aria-label="Previous"
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -98,8 +174,9 @@ export default function Brands() {
             </svg>
           </button>
           <button 
-            onClick={nextSlide}
-            className="p-2 rounded-full hover:bg-gray-300 transition"
+            onClick={scrollRight}
+            className="p-2 rounded-full hover:bg-gray-300 transition touch-manipulation select-none"
+            style={{ touchAction: 'manipulation' }}
             aria-label="Next"
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -113,33 +190,64 @@ export default function Brands() {
       <div className="px-4 sm:px-20 mb-6 sm:mb-8">
         {/* Brand Row - Show 7 brands with navigation */}
         <div className="bg-gray-100 p-4 sm:p-6 rounded-lg">
-          <div className="relative overflow-hidden">
-            <div 
-              className="flex transition-transform duration-300 gap-3 sm:gap-4"
-              style={{ transform: `translateX(-${startIndex * (100 / visibleItems)}%)` }}
-            >
-              {brands.map((brand) => (
-                <div key={brand.id} className="flex-shrink-0 flex flex-col items-center">
-                  <div
-                    className="flex items-center justify-center bg-white shadow-md hover:shadow-lg transition-all rounded-lg p-4 sm:p-5 h-28 sm:h-32 w-36 sm:w-40 cursor-pointer"
-                    onClick={() => handleBrandClick(brand.name)}
-                  >
-                    <img 
-                      src={brand.logo} 
-                      alt={brand.name} 
-                      className="w-16 h-16 sm:w-20 sm:h-20 object-contain"
-                      onError={(e) => {
-                        // Fallback to a generic car icon if image fails to load
-                        e.currentTarget.src = '/car-bg.png';
-                      }}
-                    />
-                  </div>
-                  <p className="text-sm sm:text-base text-center font-medium text-gray-700 leading-tight mt-3">
-                    {brand.name}
-                  </p>
+          <div 
+            ref={brandsContainerRef}
+            className="flex gap-3 sm:gap-4 overflow-x-auto scrollbar-hide"
+            onMouseEnter={pauseAutoScroll}
+            onMouseLeave={resumeAutoScroll}
+            onTouchStart={pauseAutoScroll}
+            onTouchEnd={resumeAutoScrollDelayed}
+            style={{
+              scrollbarWidth: 'none',
+              msOverflowStyle: 'none',
+              WebkitOverflowScrolling: 'touch'
+            }}
+          >
+            {/* First set of brands for infinite scroll */}
+            {brands.map((brand) => (
+              <div key={`first-${brand.id}`} className="flex-shrink-0 flex flex-col items-center">
+                <div
+                  className="flex items-center justify-center bg-white shadow-md hover:shadow-lg transition-all rounded-lg p-4 sm:p-5 h-28 sm:h-32 w-36 sm:w-40 cursor-pointer"
+                  onClick={() => handleBrandClick(brand.name)}
+                >
+                  <img 
+                    src={brand.logo} 
+                    alt={brand.name} 
+                    className="w-16 h-16 sm:w-20 sm:h-20 object-contain"
+                    onError={(e) => {
+                      // Fallback to a generic car icon if image fails to load
+                      e.currentTarget.src = '/car-bg.png';
+                    }}
+                  />
                 </div>
-              ))}
-            </div>
+                <p className="text-sm sm:text-base text-center font-medium text-gray-700 leading-tight mt-3">
+                  {brand.name}
+                </p>
+              </div>
+            ))}
+            
+            {/* Second set of brands for infinite scroll */}
+            {brands.map((brand) => (
+              <div key={`second-${brand.id}`} className="flex-shrink-0 flex flex-col items-center">
+                <div
+                  className="flex items-center justify-center bg-white shadow-md hover:shadow-lg transition-all rounded-lg p-4 sm:p-5 h-28 sm:h-32 w-36 sm:w-40 cursor-pointer"
+                  onClick={() => handleBrandClick(brand.name)}
+                >
+                  <img 
+                    src={brand.logo} 
+                    alt={brand.name} 
+                    className="w-16 h-16 sm:w-20 sm:h-20 object-contain"
+                    onError={(e) => {
+                      // Fallback to a generic car icon if image fails to load
+                      e.currentTarget.src = '/car-bg.png';
+                    }}
+                  />
+                </div>
+                <p className="text-sm sm:text-base text-center font-medium text-gray-700 leading-tight mt-3">
+                  {brand.name}
+                </p>
+              </div>
+            ))}
           </div>
         </div>
       </div>

@@ -84,6 +84,7 @@ const ProfilePage = () => {
   const [editForm, setEditForm] = useState<Partial<UserProfile>>({});
   const [saveLoading, setSaveLoading] = useState(false);
   const [editLoading, _setEditLoading] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   
   // Password change states
@@ -140,6 +141,32 @@ const ProfilePage = () => {
       }
     }
   }, [user, isLoggedIn]);
+
+  // Handle URL hash for direct navigation to account settings and recent services
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const hash = window.location.hash;
+      if (hash === '#account-settings') {
+        setActiveTab('settings');
+        // Scroll to the account settings section after a short delay
+        setTimeout(() => {
+          const element = document.getElementById('account-settings');
+          if (element) {
+            element.scrollIntoView({ behavior: 'smooth' });
+          }
+        }, 100);
+      } else if (hash === '#recent-services') {
+        setActiveTab('service-bookings');
+        // Scroll to the recent services section after a longer delay to ensure tab switch completes
+        setTimeout(() => {
+          const element = document.getElementById('recent-services');
+          if (element) {
+            element.scrollIntoView({ behavior: 'smooth' });
+          }
+        }, 500); // Increased delay to ensure tab switch and data loading completes
+      }
+    }
+  }, [activeTab]); // Added activeTab dependency to re-run when tab changes
 
   // Fetch user profile data
   const fetchUserProfile = async () => {
@@ -770,37 +797,147 @@ const closeCancelConfirmation = () => {
       {/* Header */}
       <div className="bg-white shadow-lg border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-8">
-            <div className="flex items-center space-x-4">
-              <div className="w-12 h-12 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full flex items-center justify-center">
-                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="flex justify-between items-center py-4 sm:py-8">
+            <div className="flex items-center space-x-2 sm:space-x-4">
+              <div className="w-8 h-8 sm:w-12 sm:h-12 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full flex items-center justify-center">
+                <svg className="w-4 h-4 sm:w-6 sm:h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                 </svg>
               </div>
               <div>
-                <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                <h1 className="text-xl sm:text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
                   My Profile
                 </h1>
-                <p className="text-gray-600 mt-1">Manage your account and preferences</p>
+                <p className="text-gray-600 mt-1 text-xs sm:text-sm">Manage your account and preferences</p>
               </div>
             </div>
+            
+            {/* Desktop Back Button */}
             <Link 
               href="/"
-              className="flex items-center space-x-2 text-blue-600 hover:text-blue-700 font-medium bg-blue-50 hover:bg-blue-100 px-4 py-2 rounded-lg transition-all duration-200"
+              className="hidden sm:flex items-center space-x-2 text-blue-600 hover:text-blue-700 font-medium bg-blue-50 hover:bg-blue-100 px-4 py-2 rounded-lg transition-all duration-200"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
               </svg>
               <span>Back to Home</span>
             </Link>
+
+            {/* Mobile Menu Button */}
+            <button
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              className="sm:hidden text-gray-600 hover:text-gray-800 transition-colors p-2"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            </button>
           </div>
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      {/* Mobile Navigation Menu */}
+      {isMobileMenuOpen && (
+        <div className="sm:hidden bg-white border-b border-gray-200 shadow-lg">
+          <div className="px-4 py-4">
+            <nav className="space-y-2">
+              <button
+                onClick={() => {
+                  setActiveTab('profile');
+                  setIsMobileMenuOpen(false);
+                }}
+                className={`w-full text-left px-4 py-3 rounded-lg transition-all duration-200 ${
+                  activeTab === 'profile'
+                    ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white'
+                    : 'text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                <div className="flex items-center">
+                  <svg className="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                  </svg>
+                  <span className="font-medium">Profile Information</span>
+                </div>
+              </button>
+
+              <button
+                onClick={() => {
+                  setActiveTab('orders');
+                  setIsMobileMenuOpen(false);
+                }}
+                className={`w-full text-left px-4 py-3 rounded-lg transition-all duration-200 ${
+                  activeTab === 'orders'
+                    ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white'
+                    : 'text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                <div className="flex items-center">
+                  <svg className="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  <span className="font-medium">Recent Orders</span>
+                </div>
+              </button>
+
+              <button
+                onClick={() => {
+                  setActiveTab('service-bookings');
+                  setIsMobileMenuOpen(false);
+                }}
+                className={`w-full text-left px-4 py-3 rounded-lg transition-all duration-200 ${
+                  activeTab === 'service-bookings'
+                    ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white'
+                    : 'text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                <div className="flex items-center">
+                  <svg className="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                  </svg>
+                  <span className="font-medium">Recent Services</span>
+                </div>
+              </button>
+
+              <button
+                onClick={() => {
+                  setActiveTab('settings');
+                  setIsMobileMenuOpen(false);
+                }}
+                className={`w-full text-left px-4 py-3 rounded-lg transition-all duration-200 ${
+                  activeTab === 'settings'
+                    ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white'
+                    : 'text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                <div className="flex items-center">
+                  <svg className="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                  <span className="font-medium">Account Settings</span>
+                </div>
+              </button>
+
+              <div className="border-t border-gray-200 pt-2 mt-2">
+                <Link 
+                  href="/"
+                  className="flex items-center px-4 py-3 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                >
+                  <svg className="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                  </svg>
+                  <span className="font-medium">Back to Home</span>
+                </Link>
+              </div>
+            </nav>
+          </div>
+        </div>
+      )}
+
+              <div className="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-          {/* Sidebar */}
-          <div className="lg:col-span-1">
+          {/* Sidebar - Hidden on mobile */}
+          <div className="hidden lg:block lg:col-span-1">
             <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
               {/* User Avatar */}
               <div className="text-center mb-8">
@@ -966,33 +1103,33 @@ const closeCancelConfirmation = () => {
           </div>
 
           {/* Main Content */}
-          <div className="lg:col-span-3">
+          <div className="lg:col-span-3 w-full">
             {/* Profile Information Tab */}
             {activeTab === 'profile' && (
               <div className="bg-white rounded-xl shadow-lg border border-gray-100">
-                <div className="px-8 py-6 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-purple-50">
-                  <div className="flex justify-between items-center">
+                <div className="px-4 sm:px-8 py-4 sm:py-6 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-purple-50">
+                  <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
                     <div>
-                      <h2 className="text-2xl font-bold text-gray-900">Profile Information</h2>
-                      <p className="text-gray-600 mt-1">Manage your personal information and contact details</p>
+                      <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Profile Information</h2>
+                      <p className="text-gray-600 mt-1 text-sm sm:text-base">Manage your personal information and contact details</p>
                     </div>
                     {!isEditing && (
                       <button
                         onClick={() => setIsEditing(true)}
-                        className="flex items-center space-x-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-3 rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="flex items-center justify-center sm:justify-start space-x-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 sm:px-6 py-2 sm:py-3 rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed w-full sm:w-auto"
                         disabled={editLoading}
                       >
                         {editLoading ? (
                           <>
-                            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                            <span>Loading...</span>
+                            <div className="animate-spin rounded-full h-4 w-4 sm:h-5 sm:w-5 border-b-2 border-white"></div>
+                            <span className="text-sm sm:text-base">Loading...</span>
                           </>
                         ) : (
                           <>
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                             </svg>
-                            <span>Edit Profile</span>
+                            <span className="text-sm sm:text-base">Edit Profile</span>
                           </>
                         )}
                       </button>
@@ -1000,7 +1137,7 @@ const closeCancelConfirmation = () => {
                   </div>
                 </div>
 
-                <div className="p-8">
+                <div className="p-4 sm:p-8">
                   {error && (
                     <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl flex items-center justify-between">
                       <div className="flex items-center space-x-3">
@@ -1043,8 +1180,16 @@ const closeCancelConfirmation = () => {
                             className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 bg-gray-50 hover:bg-white text-gray-600 placeholder-gray-400"
                             placeholder="Enter your full name"
                           />
+                          </div>
+                        </div>
                         </div>
 
+                      {/* Contact Information Section */}
+                      <div className="mb-8">
+                        <h3 className="text-xl font-bold text-gray-900 mb-6 pb-2 border-b-2 border-green-200">
+                          Contact Information
+                        </h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="space-y-2">
                           <label className="block text-sm font-bold text-gray-900 mb-3">
                             Email Address
@@ -1057,16 +1202,8 @@ const closeCancelConfirmation = () => {
                             className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 bg-gray-50 hover:bg-white text-gray-900 placeholder-gray-600"
                             placeholder="Enter your email address"
                           />
-                        </div>
-                        </div>
                       </div>
 
-                      {/* Contact Information Section */}
-                      <div className="mb-8">
-                        <h3 className="text-xl font-bold text-gray-900 mb-6 pb-2 border-b-2 border-green-200">
-                          Contact Information
-                        </h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                           <div className="space-y-2">
                             <label className="block text-sm font-bold text-gray-900 mb-3">
                               Phone Number
@@ -1088,8 +1225,9 @@ const closeCancelConfirmation = () => {
                         <h3 className="text-xl font-bold text-gray-900 mb-6 pb-2 border-b-2 border-purple-200">
                           Address Information
                         </h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                          <div className="md:col-span-2 space-y-2">
+                        <div className="space-y-6">
+                          {/* Complete Address - Full Row */}
+                          <div className="space-y-2">
                             <label className="block text-sm font-bold text-gray-900 mb-3">
                               Complete Address
                             </label>
@@ -1103,6 +1241,7 @@ const closeCancelConfirmation = () => {
                             />
                           </div>
 
+                          {/* City - Full Row */}
                           <div className="space-y-2">
                             <label className="block text-sm font-bold text-gray-900 mb-3">
                               City
@@ -1117,6 +1256,8 @@ const closeCancelConfirmation = () => {
                             />
                           </div>
 
+                          {/* Row: State and Pincode */}
+                          <div className="grid grid-cols-2 gap-4 sm:gap-6">
                           <div className="space-y-2">
                             <label className="block text-sm font-bold text-gray-900 mb-3">
                               State
@@ -1143,6 +1284,7 @@ const closeCancelConfirmation = () => {
                               className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 bg-gray-50 hover:bg-white text-gray-900 placeholder-gray-600"
                               placeholder="Enter your pincode"
                             />
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -1212,8 +1354,10 @@ const closeCancelConfirmation = () => {
                         <h3 className="text-xl font-bold text-gray-900 mb-6 pb-2 border-b-2 border-purple-200">
                           Address Information
                         </h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                          <div className="md:col-span-2">
+                        <div className="space-y-6">
+                          {/* Row 1: Complete Address and City */}
+                          <div className="grid grid-cols-2 gap-4 sm:gap-6">
+                            <div>
                             <label className="block text-sm font-bold text-gray-800 mb-2">Complete Address</label>
                             <p className="text-gray-900 font-medium">{profile?.address || 'Not provided'}</p>
                           </div>
@@ -1221,8 +1365,11 @@ const closeCancelConfirmation = () => {
                           <div>
                             <label className="block text-sm font-bold text-gray-800 mb-2">City</label>
                             <p className="text-gray-900 font-medium">{profile?.city || 'Not provided'}</p>
+                            </div>
                           </div>
 
+                          {/* Row 2: State and Pincode */}
+                          <div className="grid grid-cols-2 gap-4 sm:gap-6">
                           <div>
                             <label className="block text-sm font-bold text-gray-800 mb-2">State</label>
                             <p className="text-gray-900 font-medium">{profile?.state || 'Not provided'}</p>
@@ -1231,6 +1378,7 @@ const closeCancelConfirmation = () => {
                           <div>
                             <label className="block text-sm font-bold text-gray-800 mb-2">Pincode</label>
                             <p className="text-gray-900 font-medium">{profile?.pincode || 'Not provided'}</p>
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -1325,13 +1473,19 @@ const closeCancelConfirmation = () => {
                                   </div>
                                 </div>
                               </div>
-                              <div className="mt-4 lg:mt-0 flex flex-wrap gap-3">
-                                <span className={`px-4 py-2 rounded-full text-sm font-semibold ${getStatusColor(order.order_status)}`}>
+                              <div className="mt-4 lg:mt-0 flex flex-row gap-[45px]">
+                                <div className="flex items-center">
+                                  <span className="text-sm font-medium text-gray-600 mr-2">Status:</span>
+                                  <span className={`px-3 py-1 rounded-full text-sm font-semibold bg-yellow-100 text-yellow-800`}>
                                   {order.order_status}
                                 </span>
-                                <span className={`px-4 py-2 rounded-full text-sm font-semibold ${getPaymentStatusColor(order.payment_status)}`}>
+                                </div>
+                                <div className="flex items-center">
+                                  <span className="text-sm font-medium text-gray-600 mr-2">Payment:</span>
+                                  <span className={`px-3 py-1 rounded-full text-sm font-semibold bg-yellow-100 text-yellow-800`}>
                                   {order.payment_status}
                                 </span>
+                                </div>
                               </div>
                             </div>
                           </div>
@@ -1342,9 +1496,7 @@ const closeCancelConfirmation = () => {
                               <div className="bg-white rounded-lg p-4 border border-gray-200 shadow-sm">
                                 <div className="flex items-center">
                                   <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center mr-3">
-                                    <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
-                                    </svg>
+                                    <span className="text-gray-600 font-bold text-lg">₹</span>
                                   </div>
                                                                      <div>
                                      <p className="text-xs text-gray-600 font-medium">Total Amount</p>
@@ -1410,7 +1562,7 @@ const closeCancelConfirmation = () => {
                                   </div>
                                   <h4 className="text-lg font-semibold text-gray-900">Product Information</h4>
                                 </div>
-                                <div className="flex items-center space-x-4 mb-4">
+                                <div className="flex items-center space-x-4 mb-4 ]">
                                   {order.product_image ? (
                                     <img 
                                       src={order.product_image} 
@@ -1529,20 +1681,20 @@ const closeCancelConfirmation = () => {
 
             {/* Recent Service Bookings Tab */}
             {activeTab === 'service-bookings' && (
-              <div className="bg-white rounded-lg shadow-sm">
-                <div className="px-6 py-4 border-b border-gray-200">
+              <div id="recent-services" className="bg-white rounded-lg shadow-sm">
+                <div className="px-5 py-4 border-b border-gray-200">
                   <div className="flex justify-between items-center">
                     <h2 className="text-xl font-semibold text-gray-900">Recent Service Bookings</h2>
                     <Link 
                       href="/service-bookings"
-                      className="text-blue-600 hover:text-blue-700 font-medium"
+                      className="text-blue-600 hover:text-blue-700 font-medium flex items-center whitespace-nowrap"
                     >
                       View All Bookings →
                     </Link>
                   </div>
                 </div>
 
-                <div className="p-6">
+                <div className="p-3 sm:p-6">
 
                   {serviceBookingsLoading ? (
                   <div className="text-center py-8">
@@ -1565,11 +1717,11 @@ const closeCancelConfirmation = () => {
                       </Link>
                     </div>
                   ) : (
-                    <div className="space-y-6">
+                    <div className="space-y-4 sm:space-y-6">
                       {recentServiceBookings.map((booking) => (
-                        <div key={booking.service_order_id} className="bg-white rounded-xl shadow-lg overflow-hidden border border-gray-100 hover:shadow-xl transition-shadow duration-300">
+                        <div key={booking.service_order_id} className="bg-white rounded-xl shadow-lg overflow-hidden border border-gray-100 hover:shadow-xl transition-shadow duration-300 w-full max-w-none">
                           {/* Header with Service Info and Status */}
-                          <div className="px-6 py-5 border-b border-gray-100 bg-gradient-to-r from-blue-50 to-indigo-50">
+                          <div className="px-3 sm:px-6 py-4 sm:py-5 border-b border-gray-100 bg-gradient-to-r from-blue-50 to-indigo-50">
                             <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between">
                               <div className="flex items-start space-x-4">
                                 <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
@@ -1578,7 +1730,7 @@ const closeCancelConfirmation = () => {
                                   </svg>
                                 </div>
                                 <div>
-                                  <h3 className="text-xl font-bold text-gray-900 mb-1">
+                                  <h3 className="text-xl font-bold text-gray-700 mb-1">
                                     {booking.service_name}
                                   </h3>
                                   <div className="flex items-center space-x-4 text-sm text-gray-600">
@@ -1597,20 +1749,26 @@ const closeCancelConfirmation = () => {
                                   </div>
                                 </div>
                               </div>
-                              <div className="mt-4 lg:mt-0 flex flex-wrap gap-3">
-                                <span className={`px-4 py-2 rounded-full text-sm font-semibold ${getStatusColor(booking.service_status)}`}>
+                              <div className="mt-7 lg:mt-0 flex flex-row gap-6 justify-between  flex-shrink-0">
+                                <div className="flex items-center ">
+                                  <span className="text-sm font-medium text-gray-600 mr-2">Status:</span>
+                                  <span className={`px-2 py-1 rounded-full text-sm font-semibold shadow-sm ${getStatusColor(booking.service_status)}`}>
                                   {booking.service_status}
                                 </span>
-                                <span className={`px-4 py-2 rounded-full text-sm font-semibold ${getPaymentStatusColor(booking.payment_status)}`}>
+                                </div>
+                                <div className="flex items-center">
+                                  <span className="text-sm font-medium text-gray-600 mr-2">Payment:</span>
+                                  <span className={`px-2 py-1 rounded-full text-sm font-semibold shadow-sm ${getPaymentStatusColor(booking.payment_status)}`}>
                                   {booking.payment_status}
                                 </span>
+                                </div>
                               </div>
                             </div>
                           </div>
                           
-                          <div className="p-6">
+                          <div className="p-3 sm:p-6">
                             {/* Service Summary Cards */}
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4 mb-6">
                               <div className="bg-white rounded-lg p-4 border border-gray-200 shadow-sm">
                                 <div className="flex items-center">
                                   <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center mr-3">
@@ -1620,7 +1778,7 @@ const closeCancelConfirmation = () => {
                                   </div>
                                   <div>
                                     <p className="text-xs text-gray-600 font-medium">Total Amount</p>
-                                    <p className="text-lg font-bold text-gray-900">{formatPrice(booking.final_price)}</p>
+                                    <p className="text-lg font-bold text-gray-600">{formatPrice(booking.final_price)}</p>
                                   </div>
                                 </div>
                               </div>
@@ -1634,7 +1792,7 @@ const closeCancelConfirmation = () => {
                                   </div>
                                   <div>
                                     <p className="text-xs text-gray-600 font-medium">Service Date</p>
-                                    <p className="text-lg font-bold text-gray-900">{formatDate(booking.service_date)}</p>
+                                    <p className="text-lg font-bold text-gray-600">{formatDate(booking.service_date)}</p>
                                   </div>
                                 </div>
                               </div>
@@ -1648,7 +1806,7 @@ const closeCancelConfirmation = () => {
                                   </div>
                                   <div>
                                     <p className="text-xs text-gray-600 font-medium">Service Time</p>
-                                    <p className="text-lg font-bold text-gray-900">{new Date(`2000-01-01T${booking.service_time}`).toLocaleTimeString('en-US', {
+                                    <p className="text-lg font-bold text-gray-600">{new Date(`2000-01-01T${booking.service_time}`).toLocaleTimeString('en-US', {
                                       hour: '2-digit',
                                       minute: '2-digit',
                                       hour12: true
@@ -1666,7 +1824,7 @@ const closeCancelConfirmation = () => {
                                   </div>
                                   <div>
                                     <p className="text-xs text-gray-600 font-medium">Duration</p>
-                                    <p className="text-lg font-bold text-gray-900">{booking.duration_minutes} min</p>
+                                    <p className="text-lg font-bold text-gray-600">{booking.duration_minutes} min</p>
                                   </div>
                                 </div>
                               </div>
@@ -1682,29 +1840,29 @@ const closeCancelConfirmation = () => {
                                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                                     </svg>
                                   </div>
-                                  <h4 className="text-lg font-semibold text-gray-900">Vendor Information</h4>
+                                  <h4 className="text-lg font-semibold text-blue-700 uppercase tracking-wide" style={{color: '#1d4ed8'}}>Vendor Information</h4>
                                 </div>
                                 <div className="space-y-3">
                                   <div className="flex justify-between items-center py-2 border-b border-gray-100">
-                                    <span className="text-sm text-gray-600">Vendor Name</span>
-                                    <span className="font-medium text-gray-900">{booking.vendor_name || 'N/A'}</span>
+                                    <span className="text-sm  font-bold  text-gray-800">Vendor Name</span>
+                                    <span className="font-medium text-gray-700">{booking.vendor_name || 'N/A'}</span>
                                   </div>
                                   {booking.vendor_email && (
-                                    <div className="flex justify-between items-center py-2 border-b border-gray-100">
-                                      <span className="text-sm text-gray-600">Contact Email</span>
-                                      <span className="text-gray-900">{booking.vendor_email}</span>
+                                    <div className="flex justify-between items-start py-2 border-b border-gray-100">
+                                      <span className="text-sm  font-bold  text-gray-800 flex-shrink-0 mr-4">Contact Email</span>
+                                      <span className="text-gray-700 text-right break-all font-medium">{booking.vendor_email}</span>
                                     </div>
                                   )}
                                   {booking.vendor_phone && (
                                     <div className="flex justify-between items-center py-2 border-b border-gray-100">
-                                      <span className="text-sm text-gray-600">Contact Phone</span>
-                                      <span className="text-gray-900">{booking.vendor_phone}</span>
+                                      <span className="text-sm  font-bold  text-gray-800">Contact Phone</span>
+                                      <span className="text-gray-700">{booking.vendor_phone}</span>
                                     </div>
                                   )}
                                   {booking.vendor_address && (
                                     <div className="flex justify-between items-center py-2">
-                                      <span className="text-sm text-gray-600">Address</span>
-                                      <span className="text-gray-900 text-right max-w-xs">{booking.vendor_address}</span>
+                                      <span className="text-sm  font-bold  text-gray-800">Address</span>
+                                      <span className="text-gray-700 text-right max-w-xs">{booking.vendor_address}</span>
                                     </div>
                                   )}
                                 </div>
@@ -1718,22 +1876,22 @@ const closeCancelConfirmation = () => {
                                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                                     </svg>
                                   </div>
-                                  <h4 className="text-lg font-semibold text-gray-900">Service Details</h4>
+                                  <h4 className="text-lg font-semibold text-green-700 uppercase tracking-wide" style={{color: '#15803d'}}>Service Details</h4>
                                 </div>
                                 <div className="space-y-3">
                                   <div className="flex justify-between items-center py-2 border-b border-gray-100">
-                                    <span className="text-sm text-gray-600">Payment Method</span>
-                                    <span className="font-medium text-gray-900 capitalize">
+                                    <span className="text-sm font-bold  text-gray-800">Payment Method</span>
+                                    <span className="font-medium text-gray-700 capitalize">
                                       {booking.payment_method === 'cod' ? 'Cash on Delivery' : booking.payment_method}
                                     </span>
                                   </div>
                                   <div className="flex justify-between items-center py-2 border-b border-gray-100">
-                                    <span className="text-sm text-gray-600">Service Address</span>
-                                    <span className="text-gray-900 text-right max-w-xs">{booking.service_address}</span>
+                                    <span className="text-sm font-bold  text-gray-800">Service Address</span>
+                                    <span className="text-gray-700 text-right max-w-xs">{booking.service_address}</span>
                                   </div>
                                   <div className="flex justify-between items-center py-2">
-                                    <span className="text-sm text-gray-600">Pincode</span>
-                                    <span className="font-medium text-gray-900">{booking.service_pincode}</span>
+                                    <span className="text-sm font-bold  text-gray-800">Pincode</span>
+                                    <span className="text-gray-700">{booking.service_pincode}</span>
                                   </div>
                                 </div>
                                 {booking.additional_notes && (
@@ -1798,7 +1956,7 @@ const closeCancelConfirmation = () => {
 
             {/* Account Settings Tab */}
             {activeTab === 'settings' && (
-              <div className="bg-white rounded-lg shadow-sm">
+              <div id="account-settings" className="bg-white rounded-lg shadow-sm">
                 <div className="px-6 py-4 border-b border-gray-200">
                   <h2 className="text-xl font-semibold text-gray-900">Account Settings</h2>
                 </div>

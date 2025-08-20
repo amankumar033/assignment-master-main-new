@@ -4,7 +4,7 @@ import Image from "next/image";
 
 export default function Footer() {
   return (
-    <div>
+    <div data-footer>
       {/* Footer Top Image - Hidden on mobile, visible on tablet and desktop */}
       <div className="w-full hidden md:block">
         <Image
@@ -18,12 +18,12 @@ export default function Footer() {
       </div>
       
       {/* Footer Content */}
-      <div className="bg-black text-white">
+      <div className="bg-black text-white sm:pl-7">
       <div className="mx-3 px-4 sm:px-15 py-8 sm:py-12 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6 sm:gap-8 text-center sm:text-left">
         {/* Logo and Newsletter */}
-        <div className="space-y-3 col-span-1 sm:col-span-2 lg:col-span-1 mb-8 sm:mb-0">
-          <h1 className="text-3xl sm:text-5xl font-extrabold italic">
-            <span className="text-white">MOB</span><span className="text-[#ffb221]">EX</span>
+        <div className="space-y-3 col-span-1 sm:col-span-2  lg:col-span-1 mb-8 sm:mb-0">
+          <h1 className="text-3xl sm:text-5xl font-extrabold italic flex justify-center sm:justify-start">
+            <Image src="/nav_logo.png" alt="Logo" width={100} height={100} />
           </h1>
           <p className="text-white text-xs sm:text-sm">AUTO PARTS & ACCESSORIES</p>
           <div className="flex space-x-4 sm:space-x-7 text-lg sm:text-xl mt-4 justify-center sm:justify-start">
@@ -50,7 +50,7 @@ export default function Footer() {
         {/* Middle Three Columns Container */}
         <div className="col-span-1 sm:col-span-2 lg:col-span-3 flex flex-row gap-6 sm:gap-8">
           {/* Account */}
-          <div className="font-bold text-sm sm:text-base text-center sm:text-left flex-1">
+          <div className="font-bold text-sm sm:text-base text-center flex-1">
             <h3 className="font-bold mb-3 text-white">Account</h3>
             <ul className="space-y-2 text-neutral-400">
               <li className="pt-1">Dashboard</li>
@@ -62,7 +62,7 @@ export default function Footer() {
           </div>
 
           {/* Catalog */}
-          <div className="font-bold text-sm sm:text-base text-center sm:text-left flex-1">
+          <div className="font-bold text-sm sm:text-base text-center flex-1">
             <h3 className="font-bold mb-3 text-white">Catalog</h3>
             <ul className="space-y-2 text-neutral-400">
               <li className="pt-1">Shop by parts</li>
@@ -74,7 +74,7 @@ export default function Footer() {
           </div>
 
           {/* Help */}
-          <div className="font-bold text-sm sm:text-base text-center sm:text-left flex-1">
+          <div className="font-bold text-sm sm:text-base text-center flex-1">
             <h3 className="font-bold mb-3 text-white">Help</h3>
             <ul className="space-y-2 text-neutral-400">
               <li className="pt-1">Features</li>
@@ -111,34 +111,71 @@ export default function Footer() {
       </div>
 
       {/* Footer Bottom */}
-      <div className="border-t border-gray-700 py-4 sm:py-6 flex flex-col md:flex-row items-center justify-between max-w-screen-xl mx-4 sm:mx-20 text-xs sm:text-sm text-white">
-        <div className="flex flex-col sm:flex-row items-center space-y-2 sm:space-y-0 sm:space-x-4 mb-4 md:mb-0">
-          <span className="font-semibold">Languages</span>
-          <div className="flex flex-wrap gap-2 sm:gap-4">
-            <span className="flex items-center space-x-1"><img src="https://flagcdn.com/gb.svg" className="w-4 sm:w-5" /> <span>English</span></span>
-            <span className="flex items-center space-x-1"><img src="https://flagcdn.com/de.svg" className="w-4 sm:w-5" /> <span>Deutsch</span></span>
-            <span className="flex items-center space-x-1"><img src="https://flagcdn.com/fr.svg" className="w-4 sm:w-5" /> <span>Français</span></span>
+      <div className="border-t border-gray-700 py-4 sm:py-6 max-w-screen-xl sm:max-w-screen-2xl mx-4 sm:mr-[60px] text-xs sm:text-sm text-white">
+        {/* Mobile Layout: Two rows */}
+        <div className="flex flex-col gap-4 sm:hidden ">
+          {/* First row: Languages and Payment options */}
+          <div className="flex items-start justify-between gap-4 mx-10 mb-2">
+            <div className="flex flex-col items-center">
+              <span className="font-semibold mb-2">Languages</span>
+              <div className="flex gap-2">
+                <span className="flex items-center space-x-1"><img src="https://flagcdn.com/gb.svg" className="w-4" /> <span>English</span></span>
+              </div>
+            </div>
+            <div className="flex flex-col items-center">
+              <span className="font-semibold mb-2">Payment options</span>
+              <div className="flex gap-1">
+                <img src="https://img.icons8.com/ios-filled/50/apple-pay.png" className="w-5 h-4" />
+                <img src="https://img.icons8.com/color/48/google-pay-india.png" className="w-5 h-4" />
+                <img src="https://img.icons8.com/color/48/mastercard-logo.png" className="w-5 h-4" />
+                <img src="https://img.icons8.com/color/48/paypal.png" className="w-5 h-4" />
+                <img src="https://img.icons8.com/color/48/visa.png" className="w-5 h-4" />
+                <img src="https://img.icons8.com/color/48/amex.png" className="w-5 h-4" />
+              </div>
+            </div>
+          </div>
+          
+          {/* Second row: Legal links */}
+          <div className="flex flex-col items-center">
+      
+            <div className="flex flex-wrap justify-center gap-5 font-medium text-neutral-200">
+              <span>Terms of Use</span>
+              <span>Privacy Policy</span>
+              <span>Interest-Based Ads</span>
+              <span>Accessibility</span>
+            </div>
           </div>
         </div>
-        <div className="flex flex-col sm:flex-row items-center space-y-2 sm:space-y-0 sm:space-x-4">
-          <span className="font-semibold text-sm sm:text-base">Payment options</span>
-          <div className="flex flex-wrap gap-2">
-            <img src="https://img.icons8.com/ios-filled/50/apple-pay.png" className="w-6 h-5 sm:w-8 sm:h-6" />
-            <img src="https://img.icons8.com/color/48/google-pay-india.png" className="w-6 h-5 sm:w-8 sm:h-6" />
-            <img src="https://img.icons8.com/color/48/mastercard-logo.png" className="w-6 h-5 sm:w-8 sm:h-6" />
-            <img src="https://img.icons8.com/color/48/paypal.png" className="w-6 h-5 sm:w-8 sm:h-6" />
-            <img src="https://img.icons8.com/color/48/visa.png" className="w-6 h-5 sm:w-8 sm:h-6" />
-            <img src="https://img.icons8.com/color/48/amex.png" className="w-6 h-5 sm:w-8 sm:h-6" />
+
+        {/* Desktop Layout: Original structure */}
+        <div className="hidden sm:flex flex-col md:flex-row items-center justify-between">
+          <div className="flex flex-col sm:flex-row items-center space-y-2 sm:space-y-0 sm:space-x-4 mb-4 md:mb-0">
+            <span className="font-semibold">Languages</span>
+            <div className="flex flex-wrap gap-2 sm:gap-4">
+              <span className="flex items-center space-x-1"><img src="https://flagcdn.com/gb.svg" className="w-4 sm:w-5" /> <span>English</span></span>
+            </div>
+          </div>
+          <div className="flex flex-col sm:flex-row items-center space-y-2 sm:space-y-0 sm:space-x-4">
+            <span className="font-semibold text-sm sm:text-base">Payment options</span>
+            <div className="flex flex-wrap gap-2">
+              <img src="https://img.icons8.com/ios-filled/50/apple-pay.png" className="w-6 h-5 sm:w-8 sm:h-6" />
+              <img src="https://img.icons8.com/color/48/google-pay-india.png" className="w-6 h-5 sm:w-8 sm:h-6" />
+              <img src="https://img.icons8.com/color/48/mastercard-logo.png" className="w-6 h-5 sm:w-8 sm:h-6" />
+              <img src="https://img.icons8.com/color/48/paypal.png" className="w-6 h-5 sm:w-8 sm:h-6" />
+              <img src="https://img.icons8.com/color/48/visa.png" className="w-6 h-5 sm:w-8 sm:h-6" />
+              <img src="https://img.icons8.com/color/48/amex.png" className="w-6 h-5 sm:w-8 sm:h-6" />
+            </div>
           </div>
         </div>
       </div>
 
-      <div className="py-3 flex flex-col md:flex-row items-center justify-between mx-4 sm:mx-20 text-xs sm:text-sm text-white">
-        <div className="flex items-center mb-2 md:mb-0">
-            <p>Copyright © 2025 Mobex. All Rights Reserved</p>
+      {/* Copyright Section */}
+      <div className="py-3 flex flex-col md:flex-row items-center justify-between mx-4 sm:mx-4 text-xs sm:text-sm text-white">
+        <div className="flex items-center mb-2 md:mb-0 ">
+            <p>Copyright © 2025 Sri Sai Car Decor. All Rights Reserved</p>
         </div>
-        <div className="flex items-center">
-          <span className="flex flex-col sm:flex-row font-medium gap-2 sm:gap-5 text-neutral-200">
+        <div className="hidden sm:flex items-center sm:mr-10">
+          <span className="flex flex-col sm:flex-row font-medium gap-2  sm:gap-5 text-neutral-200">
             <p>Terms of Use</p>
             <p>Privacy Policy</p>
             <p>Interest-Based Ads</p>

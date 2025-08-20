@@ -9,6 +9,7 @@ import { useCart } from '@/contexts/CartContext';
 import { useToast } from '@/contexts/ToastContext';
 import { getValidImageSrc, handleImageError } from '@/utils/imageUtils';
 import { formatPrice } from '@/utils/priceUtils';
+import ProductSkeleton from './ProductSkeleton';
 
 const Products = () => {
   const router = useRouter();
@@ -270,11 +271,10 @@ const Products = () => {
 
       {/* Loading State */}
       {loading && (
-        <div className="text-center py-6 sm:py-8">
-          <div className="flex items-center justify-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#034c8c] mr-3" aria-hidden="true"></div>
-            <div className="text-lg sm:text-xl font-semibold text-gray-700">Loading products...</div>
-          </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          {[...Array(6)].map((_, index) => (
+            <ProductSkeleton key={index} />
+          ))}
         </div>
       )}
 
@@ -363,7 +363,7 @@ const Products = () => {
 
       {/* Advertisement Section - IDs 6 and 7 */}
       {!adsLoading && (
-        <div className="mt-12 sm:mt-16 px-4 sm:px-8 md:px-12 lg:px-16">
+        <div className="mt-12 sm:mt-16 px-4 sm:px-4 md:px-8 lg:px-10">
           {(() => {
             const targetAds = advertisements.filter(ad => [6, 7].includes(ad.id));
             if (targetAds.length === 0) return null;

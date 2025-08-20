@@ -751,11 +751,11 @@ export default function ShopPage() {
   useEffect(() => {
     const updateVisibleItems = () => {
       if (window.innerWidth >= 1024) {
-        setVisibleItems(12); // Desktop: show 12 items
+        setVisibleItems(4); // Desktop: show 4 items (larger cards)
       } else if (window.innerWidth >= 768) {
-        setVisibleItems(8); // Tablet: show 8 items
+        setVisibleItems(3); // Tablet: show 3 items
       } else {
-        setVisibleItems(4); // Mobile: show 4 items
+        setVisibleItems(2); // Mobile: show 2 items
       }
     };
 
@@ -1022,31 +1022,43 @@ export default function ShopPage() {
 
         {/* Carousel Container */}
         <div className="relative overflow-hidden">
-          {/* Right-side navigation arrows (icon-only) */}
-          {categories.length > 0 && (
-            <div className="absolute top-[8px]  -translate-y-1/2 right-0 z-10 flex items-center gap-3 p-2">
-              <button
-                type="button"
-                onClick={prevSlide}
-                aria-label="Previous categories"
-                className="p-2 text-gray-700 hover:text-black focus:outline-none"
-              >
-                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-                </svg>
-              </button>
-              <button
-                type="button"
-                onClick={nextSlide}
-                aria-label="Next categories"
-                className="p-2 text-gray-700 hover:text-black focus:outline-none"
-              >
-                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                </svg>
-              </button>
-            </div>
-          )}
+                      {/* Right-side navigation arrows (icon-only) */}
+            {categories.length > visibleItems && (
+              <div className="absolute top-[6px] -translate-y-1/2 right-0 z-10 flex items-center gap-3 p-2">
+                <button
+                  type="button"
+                  onClick={prevSlide}
+                  onTouchStart={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    prevSlide();
+                  }}
+                  aria-label="Previous categories"
+                  className="p-2 text-gray-700 hover:text-black focus:outline-none touch-manipulation select-none"
+                  style={{ touchAction: 'manipulation' }}
+                >
+                  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+                  </svg>
+                </button>
+                <button
+                  type="button"
+                  onClick={nextSlide}
+                  onTouchStart={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    nextSlide();
+                  }}
+                  aria-label="Next categories"
+                  className="p-2 text-gray-700 hover:text-black focus:outline-none touch-manipulation select-none"
+                  style={{ touchAction: 'manipulation' }}
+                >
+                  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                  </svg>
+                </button>
+              </div>
+            )}
 
 
 
@@ -1067,19 +1079,19 @@ export default function ShopPage() {
                     // Show loading state immediately
                     setLoading(true); // Resume after 3 seconds
                   }}
-                  className={`flex-shrink-0 w-40 sm:w-58 gap-3 sm:gap-5 h-16 sm:h-22 bg-white overflow-hidden flex items-center p-3 sm:p-5 py-4 sm:py-7 border rounded-lg cursor-pointer transition-all duration-200 ${selectedCategories.includes(category.slug) ? 'ring-2 ring-blue-500 bg-blue-50' : 'hover:bg-gray-50'}`}
+                  className={`flex-shrink-0 w-[200px] sm:w-[200px] lg:w-[240px] gap-2 h-[80px] bg-white overflow-hidden flex items-center p-3 border rounded-lg cursor-pointer transition-all duration-200 ${selectedCategories.includes(category.slug) ? 'ring-2 ring-blue-500 bg-blue-50' : 'hover:bg-gray-50'}`}
                 >
-                  <div className="w-12 h-12 sm:w-18 sm:h-18 relative mr-2">
+                  <div className="w-[80px] h-[70px] relative mr-2 flex-shrink-0 bg-white  overflow-hidden">
                     <Image
                       src={`/api/categories/image/${category.category_id}`}
                       alt={category.name}
                       fill
-                      className="object-cover rounded"
+                      className="object-cover"
                       onError={handleImageError}
                       unoptimized
                     />
                   </div>
-                  <h3 className="text-sm sm:text-lg font-semibold text-gray-800">
+                  <h3 className="text-sm sm:text-base lg:text-sm font-semibold text-gray-800 truncate flex-1">
                     {category.name}
                   </h3>
                 </button>
@@ -1658,93 +1670,93 @@ export default function ShopPage() {
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
-            {paginatedProducts.map(product => (
-  <div key={product.product_id} className="bg-white rounded-lg shadow overflow-hidden flex flex-col h-full">
-    {/* Product Image and Name as Link */}
-    <div 
-      className="flex flex-col flex-grow cursor-pointer hover:scale-105 transition-transform duration-200"
-      onClick={(e) => handleProductClick(product.slug, e)}
-    > 
-      <div className="relative h-40 sm:h-48 w-full">
-        <Image
-                          src={getValidImageSrc(product.image_1)}
-          alt={product.name}
-          fill
-          className="object-cover"
-          onError={handleImageError}
+              {paginatedProducts.map(product => (
+                <div key={product.product_id} className="bg-white rounded-lg shadow overflow-hidden flex flex-col h-full">
+                  {/* Product Image and Name as Link */}
+                  <div 
+                    className="flex flex-col flex-grow cursor-pointer hover:scale-105 transition-transform duration-200"
+                    onClick={(e) => handleProductClick(product.slug, e)}
+                  > 
+                    <div className="relative h-40 sm:h-48 w-full">
+                      <Image
+                        src={getValidImageSrc(product.image_1)}
+                        alt={product.name}
+                        fill
+                        className="object-cover"
+                        onError={handleImageError}
                         unoptimized={(() => { const src = getValidImageSrc(product.image_1 as any); return src.startsWith('http://') || src.startsWith('https://'); })()}
-        />
-        {/* Hot Deal Badge */}
-        {product.is_hot_deal === "1" && (
-          <div className="absolute top-2 left-2 bg-red-500 text-white px-2 py-1 rounded text-xs font-bold">
-            HOT DEAL
-          </div>
-        )}
-      </div>
-      <div className="p-3 sm:p-4 flex flex-col flex-grow">
-        <h3 className="font-semibold text-base sm:text-lg mb-1 line-clamp-2">{product.name}</h3>
-        <p className="text-xs sm:text-sm text-gray-500 mb-1 line-clamp-1">{product.brand_name} • {product.category_name} • {product.stock_quantity} in stock</p>
-        {/* Rating */}
-        <div className="flex items-center mb-2">
-          {[...Array(5)].map((_, i) => (
-            <svg
-              key={i}
-              className={`w-3 h-3 sm:w-4 sm:h-4 ${i < Math.floor(Number(product.rating) || 0) ? 'text-yellow-400' : 'text-gray-300'}`}
-              fill="currentColor"
-              viewBox="0 0 20 20"
-            >
-              <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118l-2.8-2.034c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-            </svg>
-          ))}
-          <span className="text-xs text-gray-500 ml-1">({Number(product.rating || 0).toFixed(1)})</span>
-        </div>
-        {/* Price */}
-        <div className="mb-3">
-                          <p className="text-base sm:text-lg font-bold text-gray-800">{formatPrice(product.sale_price)}</p>
-        </div>
-      </div>
-    </div>
-    {/* Add to Cart Button (outside Link) */}
-    <div className="p-3 sm:p-4 pt-0 mt-auto">
-      {(() => {
-        const isLoading = loadingItems.has(product.product_id);
-        const status = getProductStatus(product);
-        if (status.status === 'unavailable') {
-          return (
-            <button disabled className={`w-full py-2 rounded-md text-sm sm:text-base flex items-center justify-center ${status.bgColor} ${status.color}`}>
-              {status.text}
-            </button>
-          );
-        }
-        if (status.status === 'out-of-stock') {
-          return (
-            <div className="w-full py-2 text-center text-red-600 font-medium">Out of Stock</div>
-          );
-        }
-        return (
-          <button
-            onClick={(e) => {
-              if (isLoading) return;
-              handleAddToCart(product.product_id.toString(), e)
-            }}
-            disabled={isLoading}
-            className={`w-full py-2 rounded-md text-sm sm:text-base flex items-center justify-center ${isLoading ? 'bg-blue-400 cursor-wait' : status.bgColor} ${status.color}`}
-          >
-            {isLoading ? (
-              <span className="inline-flex items-center gap-2">
-                <span className="inline-block h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                Adding...
-              </span>
-            ) : (
-              status.text
-            )}
-          </button>
-        );
-      })()}
-    </div>
-  </div>
-            ))}
-          </div>
+                      />
+                      {/* Hot Deal Badge */}
+                      {product.is_hot_deal === "1" && (
+                        <div className="absolute top-2 left-2 bg-red-500 text-white px-2 py-1 rounded text-xs font-bold">
+                          HOT DEAL
+                        </div>
+                      )}
+                    </div>
+                    <div className="p-3 sm:p-4 flex flex-col flex-grow">
+                      <h3 className="font-semibold text-base sm:text-lg mb-1 line-clamp-2">{product.name}</h3>
+                      <p className="text-xs sm:text-sm text-gray-500 mb-1 line-clamp-1">{product.brand_name} • {product.category_name} • {product.stock_quantity} in stock</p>
+                      {/* Rating */}
+                      <div className="flex items-center mb-2">
+                        {[...Array(5)].map((_, i) => (
+                          <svg
+                            key={i}
+                            className={`w-3 h-3 sm:w-4 sm:h-4 ${i < Math.floor(Number(product.rating) || 0) ? 'text-yellow-400' : 'text-gray-300'}`}
+                            fill="currentColor"
+                            viewBox="0 0 20 20"
+                          >
+                            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-.364-1.118l-2.8-2.034c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                          </svg>
+                        ))}
+                        <span className="text-xs text-gray-500 ml-1">({Number(product.rating || 0).toFixed(1)})</span>
+                      </div>
+                      {/* Price */}
+                      <div className="mb-3">
+                        <p className="text-base sm:text-lg font-bold text-gray-800">{formatPrice(product.sale_price)}</p>
+                      </div>
+                    </div>
+                  </div>
+                  {/* Add to Cart Button (outside Link) */}
+                  <div className="p-3 sm:p-4 pt-0 mt-auto">
+                    {(() => {
+                      const isLoading = loadingItems.has(product.product_id);
+                      const status = getProductStatus(product);
+                      if (status.status === 'unavailable') {
+                        return (
+                          <button disabled className={`w-full py-2 rounded-md text-sm sm:text-base flex items-center justify-center ${status.bgColor} ${status.color}`}>
+                            {status.text}
+                          </button>
+                        );
+                      }
+                      if (status.status === 'out-of-stock') {
+                        return (
+                          <div className="w-full py-2 text-center text-red-600 font-medium">Out of Stock</div>
+                        );
+                      }
+                      return (
+                        <button
+                          onClick={(e) => {
+                            if (isLoading) return;
+                            handleAddToCart(product.product_id.toString(), e)
+                          }}
+                          disabled={isLoading}
+                          className={`w-full py-2 rounded-md text-sm sm:text-base flex items-center justify-center ${isLoading ? 'bg-blue-400 cursor-wait' : status.bgColor} ${status.color}`}
+                        >
+                          {isLoading ? (
+                            <span className="inline-flex items-center gap-2">
+                              <span className="inline-block h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                              Adding...
+                            </span>
+                          ) : (
+                            status.text
+                          )}
+                        </button>
+                      );
+                    })()}
+                  </div>
+                </div>
+              ))}
+            </div>
           )}
 
           {/* Pagination Controls */}

@@ -205,10 +205,7 @@ const OrdersPage = () => {
   }
 
   return (
-    <>
-
-
-      <div className="min-h-screen bg-gray-50 py-8">
+    <div className="min-h-screen bg-gray-50 py-8">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center space-x-2 text-sm text-black mb-6">
           <Link href="/" className="hover:text-gray-700">Home</Link>
@@ -216,17 +213,22 @@ const OrdersPage = () => {
           <span className="text-black">My Orders</span>
         </div>
 
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold text-black">My Orders</h1>
-          <p className="text-gray-600 mt-2">Track and manage your orders</p>
+        <div className="flex items-center justify-between mb-6">
+          <h1 className="text-3xl font-bold text-gray-800">Recent Orders</h1>
+          <Link 
+            href="/orders" 
+            className="text-blue-600 hover:text-blue-700 font-medium flex items-center"
+          >
+            View All Orders →
+          </Link>
         </div>
 
         {orders.length === 0 ? (
           <div className="text-center py-12">
-            <p className="text-xl mb-4 text-black">No orders found</p>
+            <p className="text-xl mb-4 text-gray-600">No orders found</p>
             <Link 
               href="/"
-              className="inline-block bg-amber-700 text-white px-6 py-3 rounded hover:bg-black transition"
+              className="inline-block bg-amber-700 text-white px-6 py-3 rounded-lg hover:bg-black transition"
             >
               Start Shopping
             </Link>
@@ -234,16 +236,47 @@ const OrdersPage = () => {
         ) : (
           <div className="space-y-6">
             {orders.map((order) => (
-              <div key={order.order_id} className="bg-white rounded-lg shadow-lg overflow-hidden">
-                <div className="px-6 py-4 border-b border-gray-200">
-                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
-                    <div className="flex items-center space-x-4">
-                      <h3 className="text-lg font-semibold text-black">Order #{order.order_id}</h3>
-                      <div className="flex flex-wrap gap-2">
-                        <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(order.order_status)}`}>
+              <div key={order.order_id} className="bg-white rounded-xl shadow-lg overflow-hidden">
+                                {/* Order Header */}
+                <div className="bg-white px-6 py-4 border-b border-gray-200">
+                  <div className="space-y-3">
+                    {/* First Row - Order Info */}
+                    <div className="flex items-center space-x-3 mb-[20px]">
+                      <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center">
+                        <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-bold text-gray-800">Order #{order.order_id}</h3>
+                        <div className="flex items-center space-x-4 text-sm text-gray-600 mt-1">
+                          <span className="flex items-center">
+                            <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                            {new Date(order.order_date).toLocaleDateString()}
+                          </span>
+                          <span className="flex items-center">
+                            <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                            </svg>
+                            {order.product_name}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* Second Row - Status Information */}
+                    <div className="flex flex-row gap-[45px] mt-4 sm:mt-0">
+                      <div className="flex items-center">
+                        <span className="text-sm font-medium text-gray-600 mr-2">Status:</span>
+                        <span className={`px-3 py-1 rounded-full text-sm font-semibold bg-yellow-100 text-yellow-800`}>
                           {order.order_status}
                         </span>
-                        <span className={`px-3 py-1 rounded-full text-sm font-medium ${getPaymentStatusColor(order.payment_status)}`}>
+                      </div>
+                      <div className="flex items-center">
+                        <span className="text-sm font-medium text-gray-600 mr-2">Payment:</span>
+                        <span className={`px-3 py-1 rounded-full text-sm font-semibold bg-yellow-100 text-yellow-800`}>
                           {order.payment_status}
                         </span>
                       </div>
@@ -252,205 +285,219 @@ const OrdersPage = () => {
                 </div>
                 
                 <div className="p-6">
-                  {/* Product Details */}
-                  <div className="mb-6 p-4 bg-gray-50 rounded-lg">
-                    <h4 className="font-semibold text-black mb-3">Product Details</h4>
-                    <div className="flex items-center space-x-4">
-                      <div className="flex-1">
-                        <h5 className="font-semibold text-black text-lg mb-1">{order.product_name}</h5>
-                        <p className="text-sm text-gray-600 mb-2">{order.product_description}</p>
-                        <div className="flex justify-between items-center">
-                          <span className="text-sm text-gray-600 bg-gray-100 px-2 py-1 rounded">
-                            Qty: {order.quantity}
-                          </span>
-                          <span className="font-semibold text-black text-lg">
-                            {formatPrice(order.product_price)} each
-                          </span>
+                  {/* Order Summary - 2x2 Grid Cards */}
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                    <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+                          <span className="text-blue-600 font-bold text-lg">₹</span>
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-600">Total Amount</p>
+                          <p className="font-bold text-gray-800">{formatPriceNumber(order.total_amount)}</p>
                         </div>
                       </div>
+                    </div>
+                    
+                    <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
+                          <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                          </svg>
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-600">Quantity</p>
+                          <p className="font-bold text-gray-800">{order.quantity}</p>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
+                          <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                          </svg>
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-600">Payment Method</p>
+                          <p className="font-bold text-gray-800 text-sm">
+                            {order.payment_method === 'cod' ? 'Cash On Delivery' : order.payment_method}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center">
+                          <svg className="w-5 h-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                          </svg>
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-600">Order Date</p>
+                          <p className="font-bold text-gray-800 text-sm">{new Date(order.order_date).toLocaleDateString()}</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Product Information Section */}
+                  <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm mb-6">
+                    <div className="flex items-center space-x-2 mb-4">
+                      <div className="w-6 h-6 bg-blue-100 rounded-lg flex items-center justify-center">
+                        <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                        </svg>
+                      </div>
+                      <h4 className="font-bold text-gray-800">Product Information</h4>
+                    </div>
+                    <div className="flex items-start space-x-7">
                       {order.product_image ? (
                         <div className="flex-shrink-0">
                           <img 
                             src={order.product_image} 
                             alt={order.product_name}
-                            className="w-24 h-24 object-cover rounded-lg border"
+                            className="w-20 h-20 object-cover rounded-lg border border-gray-200"
                             onError={(e) => {
                               e.currentTarget.style.display = 'none';
                             }}
                           />
                         </div>
                       ) : (
-                        <div className="flex-shrink-0 w-24 h-24 bg-gray-200 rounded-lg border flex items-center justify-center">
-                          <svg className="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <div className="flex-shrink-0 w-20 h-20 bg-gray-200 rounded-lg border border-gray-200 flex items-center justify-center">
+                          <svg className="w-10 h-10 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                           </svg>
                         </div>
                       )}
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    {/* Order Details */}
-                    <div className="bg-white p-4 rounded-lg border">
-                      <h4 className="font-semibold text-black mb-3">Order Details</h4>
-                      <div className="space-y-2 text-sm">
-                        <div className="flex justify-between items-center">
-                          <span className="text-gray-600">Total Amount:</span>
-                          <span className="font-semibold text-black">{formatPriceNumber(order.total_amount)}</span>
-                        </div>
-                        <div className="flex justify-between items-center">
-                          <span className="text-gray-600">Payment Method:</span>
-                          <span className="text-black capitalize">
-                            {order.payment_method === 'cod' ? 'Cash on Delivery' : order.payment_method}
+                      <div className="flex-1">
+                        <h5 className="font-bold text-gray-800 text-lg mb-1">{order.product_name}</h5>
+                        <p className="text-gray-600 text-sm mb-3">{order.product_description}</p>
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm text-gray-600 bg-gray-100 px-2 py-1 rounded">
+                            Qty: {order.quantity}
                           </span>
-                        </div>
-                        {(Number(order.discount_amount) || 0) > 0 && (
-                          <div className="flex justify-between items-center">
-                            <span className="text-gray-600">Discount:</span>
-                            <span className="text-green-600 font-medium">-{formatPrice(order.discount_amount)}</span>
-                          </div>
-                        )}
-                        <div className="flex justify-between items-center">
-                          <span className="text-gray-600">Order Date:</span>
-                          <span className="text-black">
-                            {new Date(order.order_date).toLocaleDateString()}
+                          <span className="font-bold text-gray-800">
+                            {formatPrice(order.product_price)} each
                           </span>
                         </div>
                       </div>
                     </div>
+                    {(Number(order.discount_amount) || 0) > 0 && (
+                      <div className="mt-4 p-3 bg-green-50 rounded-lg border border-green-200">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-medium text-green-800">Discount Applied</span>
+                          <span className="text-green-600 font-bold">-{formatPrice(order.discount_amount)}</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
 
-                    {/* Shipping Information and Actions */}
-                    {(order.order_status.toLowerCase() === 'pending' || order.order_status.toLowerCase() === 'processing') && showCancelConfirm === order.order_id.toString() ? (
-                      /* Popup Content - Replaces the entire shipping and actions section */
-                      <div className="bg-black rounded-lg shadow-2xl border border-gray-700 overflow-hidden transform transition-all duration-300">
-                        {/* Dark Header */}
-                        <div className="bg-gray-900 px-6 py-4 border-b border-gray-700">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center space-x-3">
-                              <div className="w-8 h-8 bg-red-600 rounded-full flex items-center justify-center">
-                                <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
-                                </svg>
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {/* Shipping Information */}
+                    <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
+                      <div className="flex items-center space-x-2 mb-4">
+                        <div className="w-6 h-6 bg-red-100 rounded-lg flex items-center justify-center">
+                          <svg className="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                          </svg>
+                        </div>
+                        <h4 className="font-bold text-gray-800">Shipping Information</h4>
+                      </div>
+                      <div className="space-y-3 text-sm">
+                        <div className="flex justify-between items-center">
+                          <span className="text-gray-600">Address:</span>
+                          <span className="text-gray-800 font-medium">{order.shipping_address}</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-gray-600">Postal Code:</span>
+                          <span className="text-gray-800 font-medium">{order.shipping_pincode}</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-gray-600">Phone:</span>
+                          <span className="text-gray-800 font-medium">{order.customer_phone}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Actions */}
+                    <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
+                      <h4 className="font-bold text-gray-800 mb-4">Actions</h4>
+                      <div className="space-y-3">
+                        <Link
+                          href={`/order-confirmation/${order.order_id}`}
+                          className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-700 transition-colors text-center font-medium flex items-center justify-center space-x-2"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                          </svg>
+                          <span>View Details</span>
+                        </Link>
+                        {(order.order_status.toLowerCase() === 'pending' || order.order_status.toLowerCase() === 'processing') && (
+                          <button 
+                            className="w-full bg-red-600 text-white py-3 px-4 rounded-lg hover:bg-red-700 transition-colors font-medium flex items-center justify-center space-x-2"
+                            onClick={() => openCancelConfirmation(order.order_id.toString())}
+                            disabled={cancellingOrderId === order.order_id.toString()}
+                          >
+                            {cancellingOrderId === order.order_id.toString() ? (
+                              <div className="flex items-center justify-center space-x-2">
+                                <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                                <span>Processing...</span>
                               </div>
-                              <h3 className="text-lg font-bold text-white">Cancel Order</h3>
-                            </div>
-                            <button
-                              onClick={closeCancelConfirmation}
-                              className="text-gray-400 hover:text-white transition-colors"
-                            >
-                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            ) : (
+                              <>
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                                <span>Cancel Order</span>
+                              </>
+                            )}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Cancel Confirmation Popup */}
+                  {(order.order_status.toLowerCase() === 'pending' || order.order_status.toLowerCase() === 'processing') && showCancelConfirm === order.order_id.toString() && (
+                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                      <div className="bg-white rounded-xl shadow-2xl max-w-md w-full">
+                        <div className="p-6">
+                          <div className="flex items-center space-x-3 mb-4">
+                            <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
+                              <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
                               </svg>
-                            </button>
-                          </div>
-                        </div>
-                        
-                        {/* Dark Content */}
-                        <div className="px-6 py-8 bg-black">
-                          <div className="space-y-6">
-                            <p className="text-sm text-gray-300 leading-relaxed">
-                              Are you sure you want to cancel this order? This action cannot be undone and will notify the dealer.
-                            </p>
-                            <div className="bg-gray-800 border-l-4 border-red-500 p-4 rounded-r-lg">
-                              <div className="flex items-center space-x-2">
-                                <svg className="w-4 h-4 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
-                                </svg>
-                                <span className="text-xs text-red-300 font-medium">This action is irreversible</span>
-                              </div>
                             </div>
-                            <div className="bg-gray-800 border-l-4 border-blue-500 p-4 rounded-r-lg">
-                              <div className="flex items-center space-x-2">
-                                <svg className="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                </svg>
-                                <span className="text-xs text-blue-300 font-medium">The dealer will be notified immediately</span>
-                              </div>
-                            </div>
+                            <h3 className="text-lg font-bold text-gray-800">Cancel Order</h3>
                           </div>
-                        </div>
-                        
-                        {/* Dark Actions */}
-                        <div className="px-6 py-6 bg-gray-900 border-t border-gray-700">
-                          <div className="space-y-3">
+                          <p className="text-gray-600 mb-6">
+                            Are you sure you want to cancel this order? This action cannot be undone.
+                          </p>
+                          <div className="flex space-x-3">
                             <button
                               onClick={closeCancelConfirmation}
-                              disabled={cancellingOrderId === order.order_id.toString()}
-                              className="w-full bg-gray-700 text-white py-3 px-4 rounded-lg hover:bg-gray-600 transition-all duration-200 font-semibold text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                              className="flex-1 bg-gray-200 text-gray-800 py-2 px-4 rounded-lg hover:bg-gray-300 transition-colors font-medium"
                             >
                               Keep Order
                             </button>
-                            
                             <button
                               onClick={() => handleCancelOrder(order.order_id.toString())}
                               disabled={cancellingOrderId === order.order_id.toString()}
-                              className="w-full bg-red-600 text-white py-3 px-4 rounded-lg hover:bg-red-700 transition-all duration-200 font-semibold text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                              className="flex-1 bg-red-600 text-white py-2 px-4 rounded-lg hover:bg-red-700 transition-colors font-medium disabled:opacity-50"
                             >
-                              {cancellingOrderId === order.order_id.toString() ? (
-                                <div className="flex items-center justify-center space-x-2">
-                                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
-                                  <span>Processing...</span>
-                                </div>
-                              ) : (
-                                'Yes, Cancel Order'
-                              )}
+                              {cancellingOrderId === order.order_id.toString() ? 'Processing...' : 'Cancel Order'}
                             </button>
                           </div>
                         </div>
                       </div>
-                    ) : (
-                      /* Original Shipping Information and Actions */
-                      <>
-                        {/* Shipping Information */}
-                        <div className="bg-white p-4 rounded-lg border">
-                          <h4 className="font-semibold text-black mb-3">Shipping Information</h4>
-                          <div className="text-sm text-gray-600 space-y-2">
-                            <div>
-                              <span className="font-medium text-black">Address:</span>
-                              <p className="text-gray-700">{order.shipping_address || 'Not provided'}</p>
-                            </div>
-                            <div>
-                              <span className="font-medium text-black">Postal Code:</span>
-                              <p className="text-gray-700">{order.shipping_pincode || 'Not provided'}</p>
-                            </div>
-                            <div>
-                              <span className="font-medium text-black">Phone:</span>
-                              <p className="text-gray-700">{order.customer_phone || 'Not provided'}</p>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Actions */}
-                        <div className="bg-white p-4 rounded-lg border">
-                          <h4 className="font-semibold text-black mb-3">Actions</h4>
-                          <div className="space-y-2">
-                            <Link
-                              href={`/order-confirmation/${order.order_id}`}
-                              className="block w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition text-center text-sm font-medium"
-                            >
-                              View Details
-                            </Link>
-                            {(order.order_status.toLowerCase() === 'pending' || order.order_status.toLowerCase() === 'processing') && (
-                              <button 
-                                className="block w-full bg-red-600 text-white py-2 px-4 rounded-lg hover:bg-red-700 transition text-sm font-medium"
-                                onClick={() => openCancelConfirmation(order.order_id.toString())}
-                                disabled={cancellingOrderId === order.order_id.toString()}
-                              >
-                                {cancellingOrderId === order.order_id.toString() ? (
-                                  <div className="flex items-center justify-center space-x-2">
-                                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                                    <span>Cancelling...</span>
-                                  </div>
-                                ) : (
-                                  'Cancel Order'
-                                )}
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      </>
-                    )}
-                  </div>
+                    </div>
+                  )}
                 </div>
               </div>
             ))}
@@ -458,7 +505,6 @@ const OrdersPage = () => {
         )}
       </div>
     </div>
-    </>
   );
 };
 

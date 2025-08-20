@@ -26,60 +26,25 @@ export class NotificationIdGenerator {
       // Create database connection
       connection = await mysql.createConnection(this.config);
       
-      // Start transaction for atomic operations
-      await connection.beginTransaction();
+      // Get the maximum notification number from the database
+      const [result] = await connection.execute(
+        'SELECT MAX(CAST(SUBSTRING(id, 4) AS UNSIGNED)) as max_number FROM notifications WHERE id LIKE "NOT%"'
+      );
       
-      try {
-        // Step 1: Get all existing notification IDs from the database
-        const [existingNotifications] = await connection.execute(
-          'SELECT notification_id FROM notifications ORDER BY notification_id FOR UPDATE'
-        );
-        
-        // Step 2: Extract existing notification numbers
-        const existingNotificationNumbers = (existingNotifications as any[])
-          .map((row: any) => row.notification_id)
-          .filter(notificationId => notificationId.match(/^NOT\d{3}$/))
-          .map(notificationId => {
-            const match = notificationId.match(/^NOT(\d{3})$/);
-            return match ? parseInt(match[1]) : 0;
-          })
-          .sort((a: number, b: number) => a - b);
-        
-        console.log(`Existing notification numbers: ${existingNotificationNumbers.join(', ')}`);
-        
-        // Step 3: Find the next available number using range-based approach
-        const nextNotificationNumber = this.findNextAvailableNumber(existingNotificationNumbers);
-        
-        // Step 4: Generate the notification ID
-        const notificationId = `NOT${nextNotificationNumber.toString().padStart(3, '0')}`;
-        
-        // Step 5: Double-check this ID doesn't exist (race condition protection)
-        const [existingNotification] = await connection.execute(
-          'SELECT notification_id FROM notifications WHERE notification_id = ?',
-          [notificationId]
-        );
-        
-        if ((existingNotification as any[]).length > 0) {
-          // If ID exists, find the next available one
-          const alternativeNotificationId = await this.findAlternativeNotificationId(connection, existingNotificationNumbers);
-          await connection.commit();
-          console.log(`Generated notification ID: ${alternativeNotificationId} (alternative)`);
-          return alternativeNotificationId;
-        }
-        
-        // Step 6: Commit transaction
-        await connection.commit();
-        console.log(`Generated notification ID: ${notificationId}`);
-        return notificationId;
-        
-      } catch (error) {
-        await connection.rollback();
-        throw error;
-      }
+      const maxNumber = (result as any[])[0]?.max_number || 0;
+      const nextNumber = maxNumber + 1;
+      const notificationId = `NOT${nextNumber.toString().padStart(3, '0')}`;
+      
+      console.log(`Generated notification ID: ${notificationId}`);
+      return notificationId;
       
     } catch (error) {
       console.error('Error generating notification ID:', error);
-      throw new Error('Failed to generate unique notification ID');
+      // Fallback: use timestamp-based ID if the above fails
+      const timestamp = Date.now();
+      const fallbackId = `NOT${(timestamp % 1000).toString().padStart(3, '0')}`;
+      console.log(`Using fallback notification ID: ${fallbackId}`);
+      return fallbackId;
     } finally {
       if (connection) {
         await connection.end();
@@ -130,7 +95,7 @@ export class NotificationIdGenerator {
       const alternativeNotificationId = `NOT${attemptNumber.toString().padStart(3, '0')}`;
       
       const [checkExisting] = await connection.execute(
-        'SELECT notification_id FROM notifications WHERE notification_id = ?',
+        'SELECT id FROM notifications WHERE id = ?',
         [alternativeNotificationId]
       );
       
@@ -192,7 +157,7 @@ export class NotificationIdGenerator {
       connection = await mysql.createConnection(this.config);
       
       const [existingNotification] = await connection.execute(
-        'SELECT notification_id FROM notifications WHERE notification_id = ?',
+        'SELECT id FROM notifications WHERE id = ?',
         [notificationId]
       );
       
@@ -225,11 +190,11 @@ export class NotificationIdGenerator {
       connection = await mysql.createConnection(this.config);
       
       const [existingNotifications] = await connection.execute(
-        'SELECT notification_id FROM notifications ORDER BY notification_id'
+        'SELECT id FROM notifications ORDER BY id'
       );
       
       const existingNotificationNumbers = (existingNotifications as any[])
-        .map((row: any) => row.notification_id)
+        .map((row: any) => row.id)
         .filter(notificationId => notificationId.match(/^NOT\d{3}$/))
         .map(notificationId => {
           const match = notificationId.match(/^NOT(\d{3})$/);
@@ -299,36 +264,43 @@ export class NotificationIdGenerator {
     
     try {
       connection = await mysql.createConnection(this.config);
-      await connection.beginTransaction();
       
-      try {
-        // Generate unique notification ID
-        const notificationId = await this.generateNotificationId();
-        
-        // Insert notification with generated ID
-        await connection.execute(
-          `INSERT INTO notifications (
-            notification_id, user_id, notification_type, title, message, is_read, created_at
-          ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-          [
-            notificationId,
-            notificationData.user_id,
-            notificationData.notification_type,
-            notificationData.title,
-            notificationData.message,
-            notificationData.is_read || false,
-            new Date()
-          ]
-        );
-        
-        await connection.commit();
-        console.log(`✅ Created notification with ID: ${notificationId}`);
-        return notificationId;
-        
-      } catch (error) {
-        await connection.rollback();
-        throw error;
+      // Try up to 3 times to generate a unique ID
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        try {
+          // Generate unique notification ID
+          const notificationId = await this.generateNotificationId();
+          
+          // Insert notification with generated ID
+          await connection.execute(
+            `INSERT INTO notifications (
+              id, user_id, type, title, message, is_read, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+            [
+              notificationId,
+              notificationData.user_id,
+              notificationData.notification_type,
+              notificationData.title,
+              notificationData.message,
+              notificationData.is_read || false,
+              new Date()
+            ]
+          );
+          
+          console.log(`✅ Created notification with ID: ${notificationId}`);
+          return notificationId;
+          
+        } catch (insertError: any) {
+          // If it's a duplicate key error, try again with a different ID
+          if (insertError.code === 'ER_DUP_ENTRY' && attempt < 3) {
+            console.log(`Duplicate key error, retrying... (attempt ${attempt})`);
+            continue;
+          }
+          throw insertError;
+        }
       }
+      
+      throw new Error('Failed to create notification after 3 attempts');
       
     } catch (error) {
       console.error('Error creating notification:', error);

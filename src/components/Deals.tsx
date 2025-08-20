@@ -9,6 +9,7 @@ import { useCart } from '@/contexts/CartContext';
 import { useToast } from '@/contexts/ToastContext';
 import { getValidImageSrc, handleImageError } from '@/utils/imageUtils';
 import { formatPrice } from '@/utils/priceUtils';
+import ProductSkeleton from './ProductSkeleton';
 
 
 const Deals = () => {
@@ -228,7 +229,7 @@ const Deals = () => {
   };
 
   return (
-    <div className="container mx-auto px-10 sm:px-8 md:px-16 lg:px-24 bg-gradient-to-b from-amber-400 via-orange-500 to-red-500 py-6 sm:py-10">
+    <div className="container sm:px-[75px] px-[16px] bg-gradient-to-b from-amber-400 via-orange-500 to-red-500 py-6 sm:py-10">
       {/* Header with countdown and navigation */}
       <div className="flex flex-col md:flex-row  justify-between items-center mb-4 sm:mb-6">
         <div className="flex flex-col md:flex-row items-center mb-4 md:mb-0 md:gap-[5px]">
@@ -282,12 +283,18 @@ const Deals = () => {
           <div className="flex space-x-2">
             <button
               onClick={navigateLeft}
+              onTouchStart={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (canNavigateLeft) navigateLeft();
+              }}
               disabled={!canNavigateLeft}
-              className={`p-2 rounded-full transition-colors ${
+              className={`p-2 rounded-full transition-colors touch-manipulation select-none ${
                 canNavigateLeft 
                   ? 'hover:bg-black/30 text-black bg-black/20' 
                   : 'text-black/40 cursor-not-allowed bg-black/10'
               }`}
+              style={{ touchAction: 'manipulation' }}
               aria-label="Previous columns"
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -296,12 +303,18 @@ const Deals = () => {
             </button>
             <button
               onClick={navigateRight}
+              onTouchStart={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (canNavigateRight) navigateRight();
+              }}
               disabled={!canNavigateRight}
-              className={`p-2 rounded-full transition-colors ${
+              className={`p-2 rounded-full transition-colors touch-manipulation select-none ${
                 canNavigateRight 
                   ? 'hover:bg-black/30 text-black bg-black/20' 
                   : 'text-black/40 cursor-not-allowed bg-black/10'
               }`}
+              style={{ touchAction: 'manipulation' }}
               aria-label="Next columns"
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -314,11 +327,10 @@ const Deals = () => {
 
       {/* Loading State */}
       {loading && (
-        <div className="text-center py-6 sm:py-8">
-          <div className="flex items-center justify-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white mr-3"></div>
-            <div className="text-lg sm:text-xl font-semibold text-white">Loading hot deals...</div>
-          </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          {[...Array(9)].map((_, index) => (
+            <ProductSkeleton key={index} />
+          ))}
         </div>
       )}
 

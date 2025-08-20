@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useEffect, useState } from 'react';
 
 export default function Manufacturers() {
   // Balance the manufacturers into two equal rows
@@ -32,25 +32,95 @@ export default function Manufacturers() {
   const manufacturers1 = allManufacturers.slice(0, 11);
   const manufacturers2 = allManufacturers.slice(11);
 
-  const [startIndex, setStartIndex] = useState(0);
-  const visibleItems = 9; // Items visible at once
+  const manufacturers1ContainerRef = useRef<HTMLDivElement>(null);
+  const manufacturers2ContainerRef = useRef<HTMLDivElement>(null);
+  const [isAutoScrolling, setIsAutoScrolling] = useState(true);
+  const autoScrollInterval = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Calculate the maximum scroll position
-  const maxScroll = Math.max(0, Math.max(manufacturers1.length, manufacturers2.length) - visibleItems);
+  // Scroll configuration
+  const ITEM_WIDTH_PX = 116; // Manufacturer circle width
+  const ITEM_GAP_PX = 16; // Gap between manufacturers
+  const SCROLL_STEP_PX = ITEM_WIDTH_PX + ITEM_GAP_PX; // Scroll by one manufacturer width
 
-  const nextSlide = () => {
-    setStartIndex(prev => {
-      return prev + 1 > maxScroll ? 0 : prev + 1;
-    });
+  // Pause auto-scroll when user interacts
+  const pauseAutoScroll = () => {
+    setIsAutoScrolling(false);
+    if (autoScrollInterval.current) {
+      clearInterval(autoScrollInterval.current);
+      autoScrollInterval.current = null;
+    }
   };
 
-  const prevSlide = () => {
-    setStartIndex(prev => {
-      return prev - 1 < 0 ? maxScroll : prev - 1;
-    });
+  // Resume auto-scroll when cursor leaves
+  const resumeAutoScroll = () => {
+    setIsAutoScrolling(true);
+  };
+
+  // Resume auto-scroll after a delay (for mobile clicks)
+  const resumeAutoScrollDelayed = () => {
+    setTimeout(() => {
+      setIsAutoScrolling(true);
+    }, 1000); // Resume after 1 second
+  };
+
+  // Manual navigation with proper scrolling
+  const scrollLeft = () => {
+    pauseAutoScroll();
+    const container1 = manufacturers1ContainerRef.current;
+    const container2 = manufacturers2ContainerRef.current;
+    if (!container1 || !container2) return;
+    
+    const currentScroll1 = container1.scrollLeft;
+    const currentScroll2 = container2.scrollLeft;
+    const singleSetWidth1 = manufacturers1.length * SCROLL_STEP_PX;
+    const singleSetWidth2 = manufacturers2.length * SCROLL_STEP_PX;
+    
+    // Scroll first row
+    if (currentScroll1 <= SCROLL_STEP_PX) {
+      container1.scrollTo({ left: singleSetWidth1, behavior: 'smooth' });
+    } else {
+      container1.scrollBy({ left: -SCROLL_STEP_PX, behavior: 'smooth' });
+    }
+    
+    // Scroll second row
+    if (currentScroll2 <= SCROLL_STEP_PX) {
+      container2.scrollTo({ left: singleSetWidth2, behavior: 'smooth' });
+    } else {
+      container2.scrollBy({ left: -SCROLL_STEP_PX, behavior: 'smooth' });
+    }
+  };
+
+  const scrollRight = () => {
+    pauseAutoScroll();
+    const container1 = manufacturers1ContainerRef.current;
+    const container2 = manufacturers2ContainerRef.current;
+    if (!container1 || !container2) return;
+    
+    const currentScroll1 = container1.scrollLeft;
+    const currentScroll2 = container2.scrollLeft;
+    const singleSetWidth1 = manufacturers1.length * SCROLL_STEP_PX;
+    const singleSetWidth2 = manufacturers2.length * SCROLL_STEP_PX;
+    
+    // Scroll first row
+    if (currentScroll1 >= singleSetWidth1 - SCROLL_STEP_PX) {
+      container1.scrollTo({ left: 0, behavior: 'smooth' });
+    } else {
+      container1.scrollBy({ left: SCROLL_STEP_PX, behavior: 'smooth' });
+    }
+    
+    // Scroll second row
+    if (currentScroll2 >= singleSetWidth2 - SCROLL_STEP_PX) {
+      container2.scrollTo({ left: 0, behavior: 'smooth' });
+    } else {
+      container2.scrollBy({ left: SCROLL_STEP_PX, behavior: 'smooth' });
+    }
   };
 
   const handleBrandClick = (manufacturerName: string) => {
+    // Pause auto-scroll and resume after delay
+    pauseAutoScroll();
+    resumeAutoScrollDelayed();
+    
     // Set a timeout to detect slow navigation
     const slowNavigationTimeout = setTimeout(() => {
       console.log(`🐌 Slow navigation detected for manufacturers`);
@@ -66,15 +136,52 @@ export default function Manufacturers() {
     }, 500);
   };
 
+  // Auto-scroll functionality
+  useEffect(() => {
+    if (isAutoScrolling) {
+      autoScrollInterval.current = setInterval(() => {
+        const container1 = manufacturers1ContainerRef.current;
+        const container2 = manufacturers2ContainerRef.current;
+        if (!container1 || !container2) return;
+        
+        const currentScroll1 = container1.scrollLeft;
+        const currentScroll2 = container2.scrollLeft;
+        const singleSetWidth1 = manufacturers1.length * SCROLL_STEP_PX;
+        const singleSetWidth2 = manufacturers2.length * SCROLL_STEP_PX;
+        
+        // Auto-scroll first row
+        if (currentScroll1 >= singleSetWidth1 - SCROLL_STEP_PX) {
+          container1.scrollTo({ left: 0, behavior: 'smooth' });
+        } else {
+          container1.scrollBy({ left: SCROLL_STEP_PX, behavior: 'smooth' });
+        }
+        
+        // Auto-scroll second row
+        if (currentScroll2 >= singleSetWidth2 - SCROLL_STEP_PX) {
+          container2.scrollTo({ left: 0, behavior: 'smooth' });
+        } else {
+          container2.scrollBy({ left: SCROLL_STEP_PX, behavior: 'smooth' });
+        }
+      }, 3000); // Scroll every 3 seconds
+    }
+
+    return () => {
+      if (autoScrollInterval.current) {
+        clearInterval(autoScrollInterval.current);
+      }
+    };
+  }, [isAutoScrolling, manufacturers1.length, manufacturers2.length]);
+
   return (
-    <div className="container mx-auto pt-20 bg-white text-black px-1 sm:px-20 pb-10">
+    <div className="container mx-auto pt-20 bg-white text-black px-1 sm:px-20 px-5 pb-10">
       {/* Header with arrows */}
       <div className="flex justify-between items-center mb-8 mt-9 sm:mt-0">
         <h2 className="text-3xl font-bold">Featured Manufacturers</h2>
         <div className="flex space-x-4">
           <button 
-            onClick={prevSlide}
-            className="p-2 rounded-full hover:bg-gray-300 transition"
+            onClick={scrollLeft}
+            className="p-2 rounded-full hover:bg-gray-300 transition touch-manipulation select-none"
+            style={{ touchAction: 'manipulation' }}
             aria-label="Previous"
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -82,8 +189,9 @@ export default function Manufacturers() {
             </svg>
           </button>
           <button 
-            onClick={nextSlide}
-            className="p-2 rounded-full hover:bg-gray-300 transition"
+            onClick={scrollRight}
+            className="p-2 rounded-full hover:bg-gray-300 transition touch-manipulation select-none"
+            style={{ touchAction: 'manipulation' }}
             aria-label="Next"
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -94,13 +202,42 @@ export default function Manufacturers() {
       </div>
 
       {/* Carousel */}
-      <div className="relative overflow-hidden">
+      <div className="relative">
         {/* First Row */}
-        <div className="flex transition-transform duration-300" style={{ transform: `translateX(-${startIndex * 11.11}%)` }}>
+        <div 
+          ref={manufacturers1ContainerRef}
+          className="flex gap-4 overflow-x-auto scrollbar-hide"
+          onMouseEnter={pauseAutoScroll}
+          onMouseLeave={resumeAutoScroll}
+          onTouchStart={pauseAutoScroll}
+          onTouchEnd={resumeAutoScrollDelayed}
+          style={{
+            scrollbarWidth: 'none',
+            msOverflowStyle: 'none',
+            WebkitOverflowScrolling: 'touch'
+          }}
+        >
+          {/* First set of manufacturers for infinite scroll */}
           {manufacturers1.map((brand) => (
-            <div key={brand.id} className="flex-shrink-0 mr-4 cursor-pointer" onClick={() => handleBrandClick(brand.name)}>
+            <div key={`first-${brand.id}`} className="flex-shrink-0 cursor-pointer" onClick={() => handleBrandClick(brand.name)}>
               <div className="flex flex-col items-center">
-                <div className="w-30 h-30 rounded-full border-2 border-gray-200 p-2 flex items-center justify-center shadow-md hover:shadow-lg transition-all hover:border-2 hover:border-[#f29f05] bg-white overflow-hidden">
+                <div className="w-[116px] h-[116px] rounded-full border-2 border-gray-200 p-2 flex items-center justify-center shadow-md hover:shadow-lg transition-all hover:border-2 hover:border-[#f29f05] bg-white overflow-hidden">
+                  <img 
+                    src={brand.logo} 
+                    alt={brand.name} 
+                    className="w-full h-full object-contain"
+                  />
+                </div>
+                <p className="text-sm text-center mt-2 font-medium text-gray-700">{brand.name}</p>
+              </div>
+            </div>
+          ))}
+          
+          {/* Second set of manufacturers for infinite scroll */}
+          {manufacturers1.map((brand) => (
+            <div key={`second-${brand.id}`} className="flex-shrink-0 cursor-pointer" onClick={() => handleBrandClick(brand.name)}>
+              <div className="flex flex-col items-center">
+                <div className="w-[116px] h-[116px] rounded-full border-2 border-gray-200 p-2 flex items-center justify-center shadow-md hover:shadow-lg transition-all hover:border-2 hover:border-[#f29f05] bg-white overflow-hidden">
                   <img 
                     src={brand.logo} 
                     alt={brand.name} 
@@ -114,11 +251,40 @@ export default function Manufacturers() {
         </div>
         
         {/* Second Row */}
-        <div className="flex transition-transform duration-300 mt-5" style={{ transform: `translateX(-${startIndex * 11.11}%)` }}>
+        <div 
+          ref={manufacturers2ContainerRef}
+          className="flex gap-4 overflow-x-auto scrollbar-hide mt-5"
+          onMouseEnter={pauseAutoScroll}
+          onMouseLeave={resumeAutoScroll}
+          onTouchStart={pauseAutoScroll}
+          onTouchEnd={resumeAutoScrollDelayed}
+          style={{
+            scrollbarWidth: 'none',
+            msOverflowStyle: 'none',
+            WebkitOverflowScrolling: 'touch'
+          }}
+        >
+          {/* First set of manufacturers for infinite scroll */}
           {manufacturers2.map((brand) => (
-            <div key={brand.id} className="flex-shrink-0 mr-4 cursor-pointer" onClick={() => handleBrandClick(brand.name)}>
+            <div key={`first-${brand.id}`} className="flex-shrink-0 cursor-pointer" onClick={() => handleBrandClick(brand.name)}>
               <div className="flex flex-col items-center">
-                <div className="w-30 h-30 rounded-full border-2 border-gray-200 p-2 flex items-center justify-center shadow-md hover:shadow-lg transition-all hover:border-2 hover:border-[#f29f05] bg-white overflow-hidden">
+                <div className="w-[116px] h-[116px] rounded-full border-2 border-gray-200 p-2 flex items-center justify-center shadow-md hover:shadow-lg transition-all hover:border-2 hover:border-[#f29f05] bg-white overflow-hidden">
+                  <img 
+                    src={brand.logo} 
+                    alt={brand.name} 
+                    className="w-full h-full object-contain"
+                  />
+                </div>
+                <p className="text-sm text-center mt-2 font-medium text-gray-700">{brand.name}</p>
+              </div>
+            </div>
+          ))}
+          
+          {/* Second set of manufacturers for infinite scroll */}
+          {manufacturers2.map((brand) => (
+            <div key={`second-${brand.id}`} className="flex-shrink-0 cursor-pointer" onClick={() => handleBrandClick(brand.name)}>
+              <div className="flex flex-col items-center">
+                <div className="w-[116px] h-[116px] rounded-full border-2 border-gray-200 p-2 flex items-center justify-center shadow-md hover:shadow-lg transition-all hover:border-2 hover:border-[#f29f05] bg-white overflow-hidden">
                   <img 
                     src={brand.logo} 
                     alt={brand.name} 

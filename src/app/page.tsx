@@ -13,7 +13,7 @@ export default function HomePage() {
         <Products />
         <Brands />
         <Deals />
-        <Guide />
+      
       </main>
     </div>
   );

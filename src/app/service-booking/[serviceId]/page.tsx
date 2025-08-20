@@ -6,6 +6,9 @@ import { useAuth } from '@/contexts/AuthContext';
 import LoadingPage from '@/components/LoadingPage';
 import ServiceBookingProgress from '@/components/ServiceBookingProgress';
 import { formatPrice } from '@/utils/priceUtils';
+import CustomDatePicker from '@/components/CustomDatePicker';
+import CustomTimePicker from '@/components/CustomTimePicker';
+import CustomDropdown from '@/components/CustomDropdown';
 
 type Service = {
   service_id: string; // Changed from number to string to match varchar type
@@ -114,6 +117,44 @@ const ServiceBookingPage = () => {
       setError('Please select a service date');
       return false;
     }
+
+    // Enhanced date validation
+    const selectedDate = new Date(formData.service_date);
+    
+    // Check if the date is valid
+    if (isNaN(selectedDate.getTime())) {
+      setError('Please select a valid service date');
+      return false;
+    }
+    
+    // Create tomorrow's date in local timezone
+    const today = new Date();
+    const tomorrow = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
+    
+    // Create selected date in local timezone for comparison
+    const selectedDateLocal = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate());
+    
+
+    
+    if (selectedDateLocal < tomorrow) {
+      setError('Service date must be from tomorrow onwards. Please select a future date.');
+      return false;
+    }
+
+    // Check if year is more than 4 digits (unlikely but good to validate)
+    const year = selectedDate.getFullYear();
+    if (year.toString().length > 4) {
+      setError('Invalid year format. Please select a valid date.');
+      return false;
+    }
+
+    // Check if date is too far in the future (e.g., more than 1 year)
+    const oneYearFromNow = new Date(today.getFullYear() + 1, today.getMonth(), today.getDate());
+    if (selectedDateLocal > oneYearFromNow) {
+      setError('Service date cannot be more than 1 year in the future.');
+      return false;
+    }
+
     if (!formData.service_time) {
       setError('Please select a service time');
       return false;
@@ -157,18 +198,9 @@ const ServiceBookingPage = () => {
     setSubmitting(true);
     setError(null);
     setBookingProgress(0);
-    setBookingMessage('Initializing booking...');
+    setBookingMessage('Processing booking...');
 
     try {
-      // Step 1: Validation
-      setBookingProgress(10);
-      setBookingMessage('Validating service availability...');
-      await new Promise(resolve => setTimeout(resolve, 300));
-      
-      setBookingProgress(20);
-      setBookingMessage('Preparing booking data...');
-      await new Promise(resolve => setTimeout(resolve, 200));
-
       console.log('🔍 Service object:', service);
       console.log('🔍 Service vendor_id:', service.vendor_id);
     
@@ -193,8 +225,8 @@ const ServiceBookingPage = () => {
       
       console.log('🔍 Booking data being sent:', bookingData);
 
-      setBookingProgress(40);
-      setBookingMessage('Processing booking request...');
+      setBookingProgress(50);
+      setBookingMessage('Submitting booking...');
 
       const response = await fetch('/api/service-booking', {
         method: 'POST',
@@ -204,17 +236,9 @@ const ServiceBookingPage = () => {
         body: JSON.stringify(bookingData),
       });
 
-      setBookingProgress(70);
-      setBookingMessage('Sending notifications...');
-      await new Promise(resolve => setTimeout(resolve, 400));
-
       const data = await response.json();
 
       if (data.success) {
-        setBookingProgress(90);
-        setBookingMessage('Finalizing booking...');
-        await new Promise(resolve => setTimeout(resolve, 300));
-        
         setBookingProgress(100);
         setBookingMessage('Booking completed successfully!');
         showToast('success', 'Service booked successfully!');
@@ -303,41 +327,111 @@ const ServiceBookingPage = () => {
         </div>
 
         {/* Service Details */}
-        <div className="bg-white rounded-lg shadow-md p-6 mb-8">
-          <h2 className="text-xl font-semibold mb-4">Service Details</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <p className="text-sm text-gray-600">Service Name</p>
-              <p className="font-medium">{service.name}</p>
+        <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-4 sm:p-6 mb-6">
+          <div className="flex items-center mb-4">
+            <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-amber-500 rounded-lg flex items-center justify-center mr-3">
+              <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
             </div>
-            <div>
-              <p className="text-sm text-gray-600">Category</p>
-              <p className="font-medium">{service.category}</p>
+            <h2 className="text-lg sm:text-xl font-bold text-gray-800">Service Details</h2>
+          </div>
+          <div className="space-y-4">
+            {/* Service Name */}
+            <div className="border border-gray-200 rounded-lg p-3 sm:p-4">
+              <div className="flex items-center mb-2">
+                <div className="w-6 h-6 bg-gradient-to-br from-blue-100 to-blue-200 rounded-md flex items-center justify-center mr-3">
+                  <svg className="w-3 h-3 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                  </svg>
+                </div>
+                <p className="text-xs font-semibold text-blue-700 uppercase tracking-wide">Service Name</p>
+              </div>
+              <p className="text-sm font-semibold text-gray-800 ml-9">{service.name}</p>
             </div>
-            <div>
-              <p className="text-sm text-gray-600">Type</p>
-              <p className="font-medium">{service.type}</p>
+            
+            {/* Category and Type */}
+            <div className="grid grid-cols-2 gap-3 sm:gap-4">
+              <div className="border border-gray-200 rounded-lg p-3 sm:p-4">
+                <div className="flex items-center mb-2">
+                  <div className="w-6 h-6 bg-gradient-to-br from-green-100 to-green-200 rounded-md flex items-center justify-center mr-3">
+                    <svg className="w-3 h-3 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                    </svg>
+                  </div>
+                  <p className="text-xs font-semibold text-green-700 uppercase tracking-wide">Category</p>
+                </div>
+                <p className="text-sm font-semibold text-gray-800 ml-9">{service.category}</p>
+              </div>
+              <div className="border border-gray-200 rounded-lg p-3 sm:p-4">
+                <div className="flex items-center mb-2">
+                  <div className="w-6 h-6 bg-gradient-to-br from-purple-100 to-purple-200 rounded-md flex items-center justify-center mr-3">
+                    <svg className="w-3 h-3 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                    </svg>
+                  </div>
+                  <p className="text-xs font-semibold text-purple-700 uppercase tracking-wide">Type</p>
+                </div>
+                <p className="text-sm font-semibold text-gray-800 ml-9">{service.type}</p>
+              </div>
             </div>
-            <div>
-              <p className="text-sm text-gray-600">Price</p>
-                              <p className="font-medium">{formatPrice(service.base_price)}</p>
+            
+            {/* Price and Duration */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+              <div className="border border-gray-200 rounded-lg p-3 sm:p-4">
+                <div className="flex items-center mb-2">
+                  <div className="w-6 h-6 bg-gradient-to-br from-amber-100 to-amber-200 rounded-md flex items-center justify-center mr-3">
+                    <svg className="w-3 h-3 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+                    </svg>
+                  </div>
+                  <p className="text-xs font-semibold text-amber-700 uppercase tracking-wide">Price</p>
+                </div>
+                <p className="text-base sm:text-lg font-bold text-amber-800 ml-9">{formatPrice(service.base_price)}</p>
+              </div>
+              <div className="border border-gray-200 rounded-lg p-3 sm:p-4">
+                <div className="flex items-center mb-2">
+                  <div className="w-6 h-6 bg-gradient-to-br from-indigo-100 to-indigo-200 rounded-md flex items-center justify-center mr-3">
+                    <svg className="w-3 h-3 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+                  <p className="text-xs font-semibold text-indigo-700 uppercase tracking-wide">Duration</p>
+                </div>
+                <p className="text-sm font-semibold text-gray-800 ml-9">{service.duration_minutes} minutes</p>
+              </div>
             </div>
-            <div>
-              <p className="text-sm text-gray-600">Duration</p>
-              <p className="font-medium">{service.duration_minutes} minutes</p>
+            
+            {/* Description */}
+            <div className="border border-gray-200 rounded-lg p-3 sm:p-4">
+              <div className="flex items-center mb-2">
+                <div className="w-6 h-6 bg-gradient-to-br from-teal-100 to-teal-200 rounded-md flex items-center justify-center mr-3">
+                  <svg className="w-3 h-3 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                </div>
+                <p className="text-xs font-semibold text-teal-700 uppercase tracking-wide">Description</p>
+              </div>
+              <p className="text-sm text-gray-800 leading-relaxed ml-9">{service.description}</p>
             </div>
-            <div>
-              <p className="text-sm text-gray-600">Description</p>
-              <p className="font-medium">{service.description}</p>
-            </div>
+            
+            {/* Available Service Areas */}
             {getServicePincodes().length > 0 && (
-              <div className="md:col-span-2">
-                <p className="text-sm text-gray-600">Available Service Areas</p>
-                <div className="flex flex-wrap gap-2 mt-1">
+              <div className="border border-gray-200 rounded-lg p-3 sm:p-4">
+                <div className="flex items-center mb-2">
+                  <div className="w-6 h-6 bg-gradient-to-br from-orange-100 to-orange-200 rounded-md flex items-center justify-center mr-3">
+                    <svg className="w-3 h-3 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                  </div>
+                  <p className="text-xs font-semibold text-orange-700 uppercase tracking-wide">Available Service Areas</p>
+                </div>
+                <div className="flex flex-wrap gap-2 sm:gap-3 ml-9">
                   {getServicePincodes().map((pincode) => (
                     <span 
                       key={pincode} 
-                      className="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full font-medium"
+                      className="inline-block bg-gradient-to-r from-orange-50 to-orange-100 text-orange-700 text-xs px-3 py-1.5 rounded-full font-medium border border-orange-200 shadow-sm"
                     >
                       {pincode}
                     </span>
@@ -349,8 +443,8 @@ const ServiceBookingPage = () => {
         </div>
 
         {/* Booking Form */}
-        <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow-md p-6">
-          <h2 className="text-xl font-semibold mb-6">Booking Information</h2>
+        <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow-md p-4 sm:p-6">
+          <h2 className="text-lg sm:text-xl font-semibold mb-4 sm:mb-6">Booking Information</h2>
           
           {error && (
             <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
@@ -368,22 +462,27 @@ const ServiceBookingPage = () => {
             </div>
           )}
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
             {/* Service Date */}
             <div>
               <label htmlFor="service_date" className="block text-sm font-medium text-gray-700 mb-2">
                 Service Date *
               </label>
-              <input
-                type="date"
-                id="service_date"
-                name="service_date"
+              <CustomDatePicker
                 value={formData.service_date}
-                onChange={handleInputChange}
-                min={new Date().toISOString().split('T')[0]}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500"
+                onChange={(date) => {
+                  setFormData(prev => ({ ...prev, service_date: date }));
+                }}
+                minDate={new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().split('T')[0]}
+                maxDate={new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}
+                className="w-full"
+                name="service_date"
+                id="service_date"
                 required
               />
+              <p className="text-xs text-gray-500 mt-1">
+                Select a date from tomorrow to 1 year from now
+              </p>
             </div>
 
             {/* Service Time */}
@@ -391,30 +490,20 @@ const ServiceBookingPage = () => {
               <label htmlFor="service_time" className="block text-sm font-medium text-gray-700 mb-2">
                 Service Time *
               </label>
-              <select
-                id="service_time"
-                name="service_time"
+              <CustomTimePicker
                 value={formData.service_time}
-                onChange={handleInputChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500"
+                onChange={(time) => {
+                  setFormData(prev => ({ ...prev, service_time: time }));
+                }}
+                className="w-full"
+                name="service_time"
+                id="service_time"
                 required
-              >
-                <option value="">Select time</option>
-                <option value="09:00:00">9:00 AM</option>
-                <option value="10:00:00">10:00 AM</option>
-                <option value="11:00:00">11:00 AM</option>
-                <option value="12:00:00">12:00 PM</option>
-                <option value="13:00:00">1:00 PM</option>
-                <option value="14:00:00">2:00 PM</option>
-                <option value="15:00:00">3:00 PM</option>
-                <option value="16:00:00">4:00 PM</option>
-                <option value="17:00:00">5:00 PM</option>
-                <option value="18:00:00">6:00 PM</option>
-              </select>
+              />
             </div>
 
             {/* Service Address */}
-            <div className="md:col-span-2">
+            <div className="sm:col-span-2">
               <label htmlFor="service_address" className="block text-sm font-medium text-gray-700 mb-2">
                 Service Address *
               </label>
@@ -437,21 +526,24 @@ const ServiceBookingPage = () => {
               </label>
               {getServicePincodes().length > 0 ? (
                 <div>
-                  <select
-                    id="service_pincode"
-                    name="service_pincode"
+                  <CustomDropdown
                     value={formData.service_pincode}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500 bg-white"
+                    onChange={(pincode) => {
+                      setFormData(prev => ({ ...prev, service_pincode: pincode }));
+                    }}
+                    options={[
+                      { value: "", label: "Select your pincode" },
+                      ...getServicePincodes().map((pincode) => ({
+                        value: pincode,
+                        label: pincode
+                      }))
+                    ]}
+                    placeholder="Select your pincode"
+                    className="w-full"
                     required
-                  >
-                    <option value="">Select your pincode</option>
-                    {getServicePincodes().map((pincode) => (
-                      <option key={pincode} value={pincode}>
-                        {pincode}
-                      </option>
-                    ))}
-                  </select>
+                    name="service_pincode"
+                    id="service_pincode"
+                  />
                   <p className="text-xs text-green-600 mt-1 flex items-center gap-1">
                     <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -484,21 +576,25 @@ const ServiceBookingPage = () => {
               <label htmlFor="payment_method" className="block text-sm font-medium text-gray-700 mb-2">
                 Payment Method
               </label>
-              <select
-                id="payment_method"
-                name="payment_method"
+              <CustomDropdown
                 value={formData.payment_method}
-                onChange={handleInputChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500"
-              >
-                <option value="cod">Cash on Delivery</option>
-                <option value="online">Online Payment</option>
-                <option value="card">Card Payment</option>
-              </select>
+                onChange={(method) => {
+                  setFormData(prev => ({ ...prev, payment_method: method }));
+                }}
+                options={[
+                  { value: "cod", label: "Cash on Delivery" },
+                  { value: "online", label: "Online Payment" },
+                  { value: "card", label: "Card Payment" }
+                ]}
+                placeholder="Select payment method"
+                className="w-full"
+                name="payment_method"
+                id="payment_method"
+              />
             </div>
 
             {/* Additional Notes */}
-            <div className="md:col-span-2">
+            <div className="sm:col-span-2">
               <label htmlFor="additional_notes" className="block text-sm font-medium text-gray-700 mb-2">
                 Additional Notes
               </label>
@@ -515,17 +611,17 @@ const ServiceBookingPage = () => {
           </div>
 
           {/* Submit Button */}
-          <div className="mt-8 flex gap-4">
+          <div className="mt-6 sm:mt-8 flex flex-col sm:flex-row gap-3 sm:gap-4">
             <button
               type="submit"
               disabled={submitting}
-              className="flex-1 bg-amber-700 text-white py-3 px-6 rounded-md hover:bg-black transition disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex-1 bg-amber-700 text-white py-3 px-4 sm:px-6 rounded-md hover:bg-black transition disabled:opacity-50 disabled:cursor-not-allowed font-medium"
             >
               {submitting ? 'Booking...' : 'Book Service'}
             </button>
             <Link
               href="/location"
-              className="px-6 py-3 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition"
+              className="px-4 sm:px-6 py-3 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition text-center font-medium"
             >
               Cancel
             </Link>

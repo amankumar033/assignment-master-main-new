@@ -237,8 +237,8 @@ const MultiOrderConfirmationPage = () => {
           <div className="space-y-4">
                                     {orderData.orders.map((order, _index) => (
               <div key={order.order_id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-4">
+                <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
+                  <div className="flex items-start space-x-4">
                     <div className="flex-shrink-0">
                       {order.image ? (
                         <img 
@@ -257,27 +257,28 @@ const MultiOrderConfirmationPage = () => {
                         </div>
                       )}
                     </div>
-                    <div className="flex-1">
-                      <h3 className="text-lg font-semibold text-black">{order.name}</h3>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-lg font-semibold text-black truncate">{order.name}</h3>
                       <p className="text-sm text-gray-600">Order #{order.order_id}</p>
                       <p className="text-sm text-gray-600">Dealer: {order.dealer_name}</p>
-                      <div className="flex items-center space-x-4 mt-1">
+                      <div className="flex flex-wrap items-center gap-4 mt-1">
                         <span className="text-sm text-gray-600">Qty: {order.quantity}</span>
                         <span className="text-sm text-gray-600">Price: {formatPrice(order.price)}</span>
                         <span className="text-sm font-medium text-black">Total: {formatPrice(order.price * order.quantity)}</span>
                       </div>
                     </div>
                   </div>
-                  <div className="flex-shrink-0">
+                  <div className="flex-shrink-0 w-full lg:w-auto">
                     <Link
                       href={`/order-confirmation/${order.order_id}`}
-                      className="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
+                      className="w-full lg:w-auto inline-flex items-center justify-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors whitespace-nowrap"
                     >
-                      <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-4 h-4 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                       </svg>
-                      View Confirmation for Order {order.order_id}
+                      <span className="hidden sm:inline">View Confirmation for Order {order.order_id}</span>
+                      <span className="sm:hidden">View Order</span>
                     </Link>
                   </div>
                 </div>
@@ -297,7 +298,7 @@ const MultiOrderConfirmationPage = () => {
             Continue Shopping
           </Link>
           <Link 
-            href="/profile"
+            href="/profile#recent-orders"
             className="flex-1 bg-gray-600 text-white py-3 px-6 rounded-lg hover:bg-gray-700 transition text-center font-medium"
           >
             View My Orders

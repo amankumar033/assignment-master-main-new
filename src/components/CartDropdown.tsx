@@ -102,7 +102,7 @@ const CartDropdown: React.FC<CartDropdownProps> = ({ onNavigate, onClose }) => {
 
   return (
     <div
-      className={`absolute right-0 mt-2 w-[20rem] sm:w-[26rem] bg-white text-black rounded-lg shadow-xl ring-1 ring-black/5 overflow-hidden z-[1000] transform transition-all duration-200 ease-out ${mounted ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-95 -translate-y-2'}`}
+      className={`absolute right-0 mt-2 w-[20rem] sm:w-[26rem] bg-white text-black rounded-lg shadow-xl ring-1 ring-black/5 overflow-hidden z-[10000] transform transition-all duration-200 ease-out ${mounted ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-95 -translate-y-2'}`}
     >
       <div className="p-3 bg-[#02427A] text-white font-semibold text-sm flex items-center justify-between">
         <span>My Cart ({itemCount})</span>
