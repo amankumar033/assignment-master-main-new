@@ -934,7 +934,7 @@ const closeCancelConfirmation = () => {
         </div>
       )}
 
-              <div className="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8 py-8">
+              <div className="max-w-7xl mx-auto sm:px-6 lg:px-8 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
           {/* Sidebar - Hidden on mobile */}
           <div className="hidden lg:block lg:col-span-1">
@@ -1418,7 +1418,7 @@ const closeCancelConfirmation = () => {
                   </div>
                 </div>
 
-                <div className="p-6">
+                <div className="p-3 sm:p-6">
             
                   {ordersLoading ? (
                   <div className="text-center py-8">
@@ -1473,7 +1473,7 @@ const closeCancelConfirmation = () => {
                                   </div>
                                 </div>
                               </div>
-                              <div className="mt-4 lg:mt-0 flex flex-row gap-[45px]">
+                              <div className="mt-4 lg:mt-0 flex flex-row gap-2 sm:gap-[45px]">
                                 <div className="flex items-center">
                                   <span className="text-sm font-medium text-gray-600 mr-2">Status:</span>
                                   <span className={`px-3 py-1 rounded-full text-sm font-semibold bg-yellow-100 text-yellow-800`}>
@@ -1490,7 +1490,7 @@ const closeCancelConfirmation = () => {
                             </div>
                           </div>
                           
-                          <div className="p-6">
+                          <div className="p-3 sm:p-6">
                             {/* Order Summary Cards */}
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
                               <div className="bg-white rounded-lg p-4 border border-gray-200 shadow-sm">

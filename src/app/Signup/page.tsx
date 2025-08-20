@@ -261,7 +261,7 @@ export default function SignupPage() {
             </div>
 
             {/* Row 4: City, State, and Pincode */}
-            <div className="grid grid-cols-3 gap-3 sm:gap-4">
+            <div className="space-y-4 sm:space-y-0 sm:grid sm:grid-cols-3 sm:gap-4">
               <div>
                 <label htmlFor="city" className="block text-sm font-medium text-gray-700 mb-1 sm:mb-2">
                   City

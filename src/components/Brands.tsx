@@ -160,7 +160,7 @@ export default function Brands() {
   return (
     <div className="container mx-auto py-6 sm:py-10 text-black">
       {/* Header with arrows */}
-      <div className="flex justify-between items-center mb-6 sm:mb-8 px-4 sm:px-20">
+      <div className="flex justify-between items-center mb-6 sm:mb-8 px-1 sm:px-20">
         <h1 className="text-2xl sm:text-3xl font-bold text-black">Featured Brands</h1>
         <div className="flex space-x-4">
           <button 
@@ -187,9 +187,9 @@ export default function Brands() {
       </div>
       
       {/* Brand Row Container */}
-      <div className="px-4 sm:px-20 mb-6 sm:mb-8">
+      <div className="px-1 sm:px-20 mb-6 sm:mb-8">
         {/* Brand Row - Show 7 brands with navigation */}
-        <div className="bg-gray-100 p-4 sm:p-6 rounded-lg">
+        <div className="bg-gray-100 p-1 sm:p-6 rounded-lg">
           <div 
             ref={brandsContainerRef}
             className="flex gap-3 sm:gap-4 overflow-x-auto scrollbar-hide"

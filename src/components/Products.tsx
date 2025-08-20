@@ -224,7 +224,7 @@ const Products = () => {
 
 
   return (
-    <div className="container mx-auto px-4 sm:px-6 lg:px-20 bg-gray-100" style={{ marginTop: '30px' }}>
+    <div className="container mx-auto px-4 sm:px-6 lg:px-20 bg-gray-100 mt-2.5 sm:mt-8">
       {/* First Div - Heading with Navigation */}
       <div className="flex justify-between items-center mb-6  sm:mb-8">
         <div>

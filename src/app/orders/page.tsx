@@ -206,21 +206,15 @@ const OrdersPage = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center space-x-2 text-sm text-black mb-6">
+        <div className="max-w-6xl sm:mx-auto sm:px-6 lg:px-8">
+        <div className="flex items-center space-x-2 text-sm ml-2 sm:ml-0 text-black mb-6">
           <Link href="/" className="hover:text-gray-700">Home</Link>
           <span>/</span>
           <span className="text-black">My Orders</span>
         </div>
 
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-3xl font-bold text-gray-800">Recent Orders</h1>
-          <Link 
-            href="/orders" 
-            className="text-blue-600 hover:text-blue-700 font-medium flex items-center"
-          >
-            View All Orders →
-          </Link>
+        <div className="mb-6">
+          <h1 className="text-3xl ml-2 sm:ml-0 font-bold text-gray-800">Recent Orders</h1>
         </div>
 
         {orders.length === 0 ? (
