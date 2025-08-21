@@ -40,17 +40,17 @@ export const NOTIFICATION_TEMPLATES: NotificationTemplates = {
     admin: {
       title: 'New Order Placed',
       message: 'New order received',
-      description: (data: any) => `A new order has been placed by ${data.customer_name} for $${data.total_amount.toFixed(2)}. Order ID: ${data.order_id}. Items: ${data.items_count} products. Payment method: ${data.payment_method}.`
+      description: (data: any) => `A new order has been placed by ${data.customer_name} for ₹${data.total_amount.toFixed(2)}. Order ID: ${data.order_id}. Items: ${data.items_count} products. Payment method: ${data.payment_method}.`
     },
     customer: {
       title: 'Order Confirmation',
       message: 'Order placed successfully',
-      description: (data: any) => `Your order has been successfully placed! Order ID: ${data.order_id}. Total amount: $${data.total_amount.toFixed(2)}. Expected delivery: ${data.expected_delivery}. Payment status: ${data.payment_status}.`
+      description: (data: any) => `Your order has been successfully placed! Order ID: ${data.order_id}. Total amount: ₹${data.total_amount.toFixed(2)}. Expected delivery: ${data.expected_delivery}. Payment status: ${data.payment_status}.`
     },
     dealer: {
       title: 'New Order for Your Products',
       message: 'New order received',
-      description: (data: any) => `A new order has been placed for your products. Order ID: ${data.order_id}. Customer: ${data.customer_name}. Total amount: $${data.total_amount.toFixed(2)}. Items: ${data.items_count} products.`
+      description: (data: any) => `A new order has been placed for your products. Order ID: ${data.order_id}. Customer: ${data.customer_name}. Total amount: ₹${data.total_amount.toFixed(2)}. Items: ${data.items_count} products.`
     }
   },
 
@@ -59,17 +59,17 @@ export const NOTIFICATION_TEMPLATES: NotificationTemplates = {
     admin: {
       title: 'New Service Order Created',
       message: 'New service order received',
-      description: (data: any) => `A new service order has been created by ${data.customer_name} for ${data.service_name} at $${data.final_price.toFixed(2)}. Service order ID: ${data.service_order_id}. Service scheduled for ${data.service_date} at ${data.service_time}. Customer address: ${data.service_address}, ${data.service_pincode}.`
+      description: (data: any) => `A new service order has been created by ${data.customer_name} for ${data.service_name} at ₹${data.final_price.toFixed(2)}. Service order ID: ${data.service_order_id}. Service scheduled for ${data.service_date} at ${data.service_time}. Customer address: ${data.service_address}, ${data.service_pincode}.`
     },
     customer: {
       title: 'Service Booking Confirmation',
       message: 'Service booked successfully',
-      description: (data: any) => `Your service has been successfully booked! Service order ID: ${data.service_order_id}. Service: ${data.service_name}. Scheduled for ${data.service_date} at ${data.service_time}. Total amount: $${data.final_price.toFixed(2)}. Service address: ${data.service_address}, ${data.service_pincode}.`
+      description: (data: any) => `Your service has been successfully booked! Service order ID: ${data.service_order_id}. Service: ${data.service_name}. Scheduled for ${data.service_date} at ${data.service_time}. Total amount: ₹${data.final_price.toFixed(2)}. Service address: ${data.service_address}, ${data.service_pincode}.`
     },
     vendor: {
       title: 'New Service Order for Your Service',
       message: 'New service order received',
-      description: (data: any) => `A new service order has been booked for your service "${data.service_name}" by ${data.customer_name} for $${data.final_price.toFixed(2)}. Service order ID: ${data.service_order_id}. Service scheduled for ${data.service_date} at ${data.service_time}. Customer address: ${data.service_address}, ${data.service_pincode}. Additional notes: ${data.additional_notes || 'None'}.`
+      description: (data: any) => `A new service order has been booked for your service "${data.service_name}" by ${data.customer_name} for ₹${data.final_price.toFixed(2)}. Service order ID: ${data.service_order_id}. Service scheduled for ${data.service_date} at ${data.service_time}. Customer address: ${data.service_address}, ${data.service_pincode}. Additional notes: ${data.additional_notes || 'None'}.`
     }
   },
 
@@ -78,12 +78,12 @@ export const NOTIFICATION_TEMPLATES: NotificationTemplates = {
     admin: {
       title: 'Payment Received',
       message: 'Payment successful',
-      description: (data: any) => `Payment of $${data.amount.toFixed(2)} has been received for ${data.order_type} ${data.order_id}. Payment method: ${data.payment_method}. Transaction ID: ${data.transaction_id}.`
+      description: (data: any) => `Payment of ₹${data.amount.toFixed(2)} has been received for ${data.order_type} ${data.order_id}. Payment method: ${data.payment_method}. Transaction ID: ${data.transaction_id}.`
     },
     customer: {
       title: 'Payment Confirmation',
       message: 'Payment successful',
-      description: (data: any) => `Your payment of $${data.amount.toFixed(2)} has been successfully processed for ${data.order_type} ${data.order_id}. Payment method: ${data.payment_method}. Transaction ID: ${data.transaction_id}.`
+      description: (data: any) => `Your payment of ₹${data.amount.toFixed(2)} has been successfully processed for ${data.order_type} ${data.order_id}. Payment method: ${data.payment_method}. Transaction ID: ${data.transaction_id}.`
     }
   },
 
@@ -209,13 +209,13 @@ const buildDescriptionFromMetadata = (
       // Price information
       if (metadata.price_breakdown) {
         const price = metadata.price_breakdown;
-        parts.push(`Price: $${toTwoDecimals(price.total || price.final_price)}.`);
-        if (price.subtotal && price.subtotal !== price.total) parts.push(`Subtotal: $${toTwoDecimals(price.subtotal)}.`);
-        if (price.tax && price.tax > 0) parts.push(`Tax: $${toTwoDecimals(price.tax)}.`);
-        if (price.discount && price.discount > 0) parts.push(`Discount: $${toTwoDecimals(price.discount)}.`);
+        parts.push(`Price: ₹${toTwoDecimals(price.total || price.final_price)}.`);
+        if (price.subtotal && price.subtotal !== price.total) parts.push(`Subtotal: ₹${toTwoDecimals(price.subtotal)}.`);
+        if (price.tax && price.tax > 0) parts.push(`Tax: ₹${toTwoDecimals(price.tax)}.`);
+        if (price.discount && price.discount > 0) parts.push(`Discount: ₹${toTwoDecimals(price.discount)}.`);
       } else {
-        if (metadata.total_amount) parts.push(`Total: $${toTwoDecimals(metadata.total_amount)}.`);
-        if (metadata.final_price) parts.push(`Amount: $${toTwoDecimals(metadata.final_price)}.`);
+        if (metadata.total_amount) parts.push(`Total: ₹${toTwoDecimals(metadata.total_amount)}.`);
+        if (metadata.final_price) parts.push(`Amount: ₹${toTwoDecimals(metadata.final_price)}.`);
       }
       
       // Status information
@@ -535,7 +535,7 @@ export const createOrderNotifications = async (
   const userInfo = orderData.user_id ? `[User ID: ${orderData.user_id}]` : '';
   const dealerInfo = orderData.dealer_name ? `Dealer: ${orderData.dealer_name} (ID: ${orderData.dealer_id || 'N/A'})` : 'Dealer: Not assigned';
   
-  const adminDescription = `A new order #${orderId} has been created by ${orderData.customer_name} ${userInfo} for $${toTwoDecimals(orderData.total_amount)}. ` +
+  const adminDescription = `A new order #${orderId} has been created by ${orderData.customer_name} ${userInfo} for ₹${toTwoDecimals(orderData.total_amount)}. ` +
     `Status: ${orderData.order_status}. Payment: ${orderData.payment_status}. ` +
     `Ship to: ${orderData.shipping_address}, ${orderData.shipping_pincode}. ` +
     `Product: ${orderData.items && orderData.items.length > 0 ? orderData.items[0].name : 'N/A'} (Qty: ${orderData.items && orderData.items.length > 0 ? orderData.items[0].quantity : 1}). ` +
@@ -544,7 +544,7 @@ export const createOrderNotifications = async (
   const adminSuccess = await createNotification({
     type: 'order_placed',
     title: `New Order #${orderId} - ${orderData.customer_name}`,
-    message: `Order placed for ${orderData.items && orderData.items.length > 0 ? orderData.items[0].name : 'product'} - $${toTwoDecimals(orderData.total_amount)}`,
+    message: `Order placed for ${orderData.items && orderData.items.length > 0 ? orderData.items[0].name : 'product'} - ₹${toTwoDecimals(orderData.total_amount)}`,
     description: adminDescription,
     for_admin: true,
     for_dealer: false,
@@ -580,7 +580,7 @@ export const createOrderNotifications = async (
       // Enhanced dealer notification description with customer details
       const customerInfo = orderData.user_id ? `[Customer ID: ${orderData.user_id}]` : '';
       
-      const dealerDescription = `Order #${orderId} placed for your products by ${orderData.customer_name} ${customerInfo} for $${toTwoDecimals(orderData.total_amount)}. ` +
+      const dealerDescription = `Order #${orderId} placed for your products by ${orderData.customer_name} ${customerInfo} for ₹${toTwoDecimals(orderData.total_amount)}. ` +
         `Status: ${orderData.order_status}. Payment: ${orderData.payment_status}. ` +
         `Ship to: ${orderData.shipping_address}, ${orderData.shipping_pincode}. ` +
         `Product: ${orderData.items && orderData.items.length > 0 ? orderData.items[0].name : 'N/A'} (Qty: ${orderData.items && orderData.items.length > 0 ? orderData.items[0].quantity : 1}). ` +
@@ -589,7 +589,7 @@ export const createOrderNotifications = async (
       const dealerSuccess = await createNotification({
         type: 'order_placed',
         title: `New Order #${orderId} - ${orderData.customer_name}`,
-        message: `Order for ${orderData.items && orderData.items.length > 0 ? orderData.items[0].name : 'your product'} - $${toTwoDecimals(orderData.total_amount)}`,
+        message: `Order for ${orderData.items && orderData.items.length > 0 ? orderData.items[0].name : 'your product'} - ₹${toTwoDecimals(orderData.total_amount)}`,
         description: dealerDescription,
         for_admin: false,
         for_dealer: true,
@@ -718,7 +718,7 @@ export const createMultipleOrderNotifications = async (
   // Create single admin notification for all orders
   console.log('👨‍💼 Creating admin notification for multiple orders...');
   
-  const adminDescription = `Multiple orders have been created by ${orderData.customer_name} for $${toTwoDecimals(orderData.total_amount)}. ` +
+  const adminDescription = `Multiple orders have been created by ${orderData.customer_name} for ₹${toTwoDecimals(orderData.total_amount)}. ` +
     `Status: ${orderData.order_status}. Payment: ${orderData.payment_status}. ` +
     `Ship to: ${orderData.shipping_address}, ${orderData.shipping_pincode}. ` +
     `Total Orders: ${orderIds.length}. Total Items: ${orderData.total_items}. ` +
@@ -761,7 +761,7 @@ export const createMultipleOrderNotifications = async (
       console.log('📧 Dealer details found:', { name: dealer.business_name, email: dealer.email });
       
       // Create dealer notification for multiple orders
-      const dealerDescription = `Multiple orders have been placed for your products by ${orderData.customer_name} for $${toTwoDecimals(orderData.total_amount)}. ` +
+      const dealerDescription = `Multiple orders have been placed for your products by ${orderData.customer_name} for ₹${toTwoDecimals(orderData.total_amount)}. ` +
         `Status: ${orderData.order_status}. Payment: ${orderData.payment_status}. ` +
         `Ship to: ${orderData.shipping_address}, ${orderData.shipping_pincode}. ` +
         `Total Orders: ${orderIds.length}. Total Items: ${orderData.total_items}. ` +
@@ -919,9 +919,9 @@ export const createServiceOrderNotifications = async (
   
   const adminTemplate: RecipientTemplate = {
     title: `New Service Order #${serviceOrderId} - ${serviceOrderData.customer_name}`,
-    message: `Service booking for ${serviceOrderData.service_name} - $${toTwoDecimals(finalPrice)}`,
+    message: `Service booking for ${serviceOrderData.service_name} - ₹${toTwoDecimals(finalPrice)}`,
     description: (data: any) => {
-      let description = `A new service order #${data.service_order_id} has been created by ${data.customer_name} ${customerInfo} for ${data.service_name} at $${toTwoDecimals(data.final_price)}. ` +
+      let description = `A new service order #${data.service_order_id} has been created by ${data.customer_name} ${customerInfo} for ${data.service_name} at ₹${toTwoDecimals(data.final_price)}. ` +
         `Service scheduled for ${data.service_date} at ${data.service_time}. ` +
         `Service Details: ${serviceDetails}. Duration: ${data.duration_minutes || 'N/A'} minutes. ` +
         `Customer address: ${data.service_address}, ${data.service_pincode}. ` +
@@ -1024,9 +1024,9 @@ export const createServiceOrderNotifications = async (
   
   const vendorTemplate: RecipientTemplate = {
     title: `New Service Order #${serviceOrderId} - ${serviceOrderData.customer_name}`,
-    message: `Service booking for ${serviceOrderData.service_name} - $${toTwoDecimals(finalPrice)}`,
+    message: `Service booking for ${serviceOrderData.service_name} - ₹${toTwoDecimals(finalPrice)}`,
     description: (data: any) => {
-      let description = `A new service order #${data.service_order_id} has been booked for your service "${data.service_name}" by ${data.customer_name} ${customerInfo} for $${toTwoDecimals(data.final_price)}. ` +
+      let description = `A new service order #${data.service_order_id} has been booked for your service "${data.service_name}" by ${data.customer_name} ${customerInfo} for ₹${toTwoDecimals(data.final_price)}. ` +
         `Service scheduled for ${data.service_date} at ${data.service_time}. ` +
         `Service Details: ${serviceDetails}. Duration: ${data.duration_minutes || 'N/A'} minutes. ` +
         `Customer address: ${data.service_address}, ${data.service_pincode}. ` +
@@ -1144,7 +1144,7 @@ export const createOrderCancellationNotifications = async (
     message: 'Order has been cancelled',
     description: (data: any) =>
       `Order ${data.order_id} has been cancelled by ${data.customer_name}. ` +
-      `Order was placed on ${data.order_date} for $${data.total_amount.toFixed(2)}. ` +
+      `Order was placed on ${data.order_date} for ₹${data.total_amount.toFixed(2)}. ` +
       `Cancellation date: ${data.cancellation_date}.`
   };
 
@@ -1171,7 +1171,7 @@ export const createOrderCancellationNotifications = async (
     message: 'Your order has been cancelled',
     description: (data: any) =>
       `Your order ${data.order_id} has been successfully cancelled. ` +
-      `Order was placed on ${data.order_date} for $${data.total_amount.toFixed(2)}. ` +
+      `Order was placed on ${data.order_date} for ₹${data.total_amount.toFixed(2)}. ` +
       `Cancellation date: ${data.cancellation_date}. ` +
       `If you have any questions, please contact our support team.`
   };
@@ -1217,7 +1217,7 @@ export const createOrderCancellationNotifications = async (
           message: 'Customer cancelled their order',
           description: (data: any) =>
             `Order ${data.order_id} has been cancelled by ${data.customer_name}. ` +
-            `Order was placed on ${data.order_date} for $${data.total_amount.toFixed(2)}. ` +
+            `Order was placed on ${data.order_date} for ₹${data.total_amount.toFixed(2)}. ` +
             `Cancellation date: ${data.cancellation_date}. ` +
             `Customer email: ${data.customer_email}.`
         };

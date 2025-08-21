@@ -3,6 +3,12 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/contexts/ToastContext';
 import { formatPrice, formatPriceNumber } from '@/utils/priceUtils';
+
+// Function to strip HTML tags from text
+const stripHtmlTags = (html: string): string => {
+  if (!html) return '';
+  return html.replace(/<[^>]*>/g, '');
+};
 import Link from 'next/link';
 import ConfirmationModal from '@/components/ConfirmationModal';
 
@@ -168,6 +174,17 @@ const ProfilePage = () => {
     }
   }, [activeTab]); // Added activeTab dependency to re-run when tab changes
 
+  // Handle URL query parameter for tab navigation
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search);
+      const tabParam = urlParams.get('tab');
+      if (tabParam && ['profile', 'orders', 'service-bookings', 'settings'].includes(tabParam)) {
+        setActiveTab(tabParam);
+      }
+    }
+  }, []); // Only run once on component mount
+
   // Fetch user profile data
   const fetchUserProfile = async () => {
     console.log('🔄 fetchUserProfile called with user:', user);
@@ -308,6 +325,12 @@ const ProfilePage = () => {
     }
   };
 
+  // Manual refresh function for service bookings
+  const refreshServiceBookings = () => {
+    console.log('Manual refresh of service bookings triggered');
+    fetchRecentServiceBookings();
+  };
+
   // Debounced data fetching to prevent multiple simultaneous requests
   useEffect(() => {
     console.log('🔄 Profile useEffect triggered with:', { isLoggedIn, user, user_id: user?.user_id });
@@ -318,8 +341,8 @@ const ProfilePage = () => {
       fetchUserProfile();
       
       // Fetch orders and service bookings with a slight delay to avoid overwhelming the database
-      const timer1 = setTimeout(() => fetchRecentOrders(), 500);
-      const timer2 = setTimeout(() => fetchRecentServiceBookings(), 1000);
+      const timer1 = setTimeout(() => fetchRecentOrders(), 300);
+      const timer2 = setTimeout(() => fetchRecentServiceBookings(), 500);
       
       return () => {
         clearTimeout(timer1);
@@ -329,6 +352,15 @@ const ProfilePage = () => {
       console.log('⚠️ User is logged in but no user_id found, waiting for user data...');
       // User is logged in but user_id is not available yet, keep loading
       setLoading(true);
+      
+      // Retry fetching service bookings after a short delay if user_id becomes available
+      const retryTimer = setTimeout(() => {
+        if (user?.user_id) {
+          fetchRecentServiceBookings();
+        }
+      }, 2000);
+      
+      return () => clearTimeout(retryTimer);
     } else if (!isLoggedIn) {
       console.log('❌ User is not logged in, setting loading to false');
       setLoading(false);
@@ -1023,9 +1055,7 @@ const closeCancelConfirmation = () => {
                     <div className={`w-10 h-10 rounded-lg flex items-center justify-center mr-3 ${
                       activeTab === 'service-bookings' ? 'bg-white bg-opacity-20' : 'bg-purple-100'
                     }`}>
-                      <svg className={`w-5 h-5 ${activeTab === 'service-bookings' ? 'text-white' : 'text-purple-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                      </svg>
+                      <span className={`text-xl font-bold ${activeTab === 'service-bookings' ? 'text-white' : 'text-purple-600'}`}>₹</span>
                     </div>
                     <div>
                       <div className="font-semibold">Recent Services</div>
@@ -1496,7 +1526,7 @@ const closeCancelConfirmation = () => {
                               <div className="bg-white rounded-lg p-4 border border-gray-200 shadow-sm">
                                 <div className="flex items-center">
                                   <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center mr-3">
-                                    <span className="text-gray-600 font-bold text-lg">₹</span>
+                                    <span className="text-lg font-bold text-gray-600">₹</span>
                                   </div>
                                                                      <div>
                                      <p className="text-xs text-gray-600 font-medium">Total Amount</p>
@@ -1581,7 +1611,7 @@ const closeCancelConfirmation = () => {
                                   )}
                                   <div className="flex-1">
                                     <h5 className="font-semibold text-gray-900 text-lg mb-1">{order.product_name}</h5>
-                                    <p className="text-sm text-gray-600 mb-2">{order.product_description}</p>
+                                    <p className="text-sm text-gray-600 mb-2">{stripHtmlTags(order.product_description)}</p>
                                     <div className="flex justify-between items-center">
                                       <span className="text-sm text-gray-600 bg-gray-100 px-2 py-1 rounded">
                                         Qty: {order.quantity}
@@ -1683,14 +1713,35 @@ const closeCancelConfirmation = () => {
             {activeTab === 'service-bookings' && (
               <div id="recent-services" className="bg-white rounded-lg shadow-sm">
                 <div className="px-5 py-4 border-b border-gray-200">
-                  <div className="flex justify-between items-center">
+                  <div className="flex flex-col space-y-3">
                     <h2 className="text-xl font-semibold text-gray-900">Recent Service Bookings</h2>
-                    <Link 
-                      href="/service-bookings"
-                      className="text-blue-600 hover:text-blue-700 font-medium flex items-center whitespace-nowrap"
-                    >
-                      View All Bookings →
-                    </Link>
+                    <div className="flex justify-between items-center">
+                      <button
+                        onClick={refreshServiceBookings}
+                        disabled={serviceBookingsLoading}
+                        className="text-blue-600 hover:text-blue-700 font-medium flex items-center whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {serviceBookingsLoading ? (
+                          <>
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-2"></div>
+                            Refreshing...
+                          </>
+                        ) : (
+                          <>
+                            <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                            </svg>
+                            Refresh
+                          </>
+                        )}
+                      </button>
+                      <Link 
+                        href="/service-bookings"
+                        className="text-blue-600 hover:text-blue-700 font-medium flex items-center whitespace-nowrap"
+                      >
+                        View All Bookings →
+                      </Link>
+                    </div>
                   </div>
                 </div>
 
@@ -1772,9 +1823,7 @@ const closeCancelConfirmation = () => {
                               <div className="bg-white rounded-lg p-4 border border-gray-200 shadow-sm">
                                 <div className="flex items-center">
                                   <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center mr-3">
-                                    <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
-                                    </svg>
+                                    <span className="text-lg font-bold text-gray-600">₹</span>
                                   </div>
                                   <div>
                                     <p className="text-xs text-gray-600 font-medium">Total Amount</p>

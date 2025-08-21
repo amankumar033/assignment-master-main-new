@@ -172,10 +172,11 @@ const Deals = () => {
     // Add to cart with optimized call
     addToCart({
       product_id: product.product_id,
-      name: product.name,
+      name: product.name || 'Product',
       price: product.sale_price,
       image: product.image_1,
-      stock_quantity: Number(product.stock_quantity) || 0
+      stock_quantity: Number(product.stock_quantity) || 0,
+      product: product
     });
   };
 
@@ -220,9 +221,9 @@ const Deals = () => {
             Adding...
           </span>
         ) : (
-          <>
-            {productStatus.text} <span className='text-xl font-bold text-center'>➜</span>
-          </>
+          <span className="flex items-center justify-center gap-1 whitespace-nowrap">
+            <span>{productStatus.text}</span> <span className='text-xl font-bold'>➜</span>
+          </span>
         )}
       </button>
     );
@@ -384,14 +385,14 @@ const Deals = () => {
                     </div>
                     
                     {/* Price and Add to Cart */}
-                    <div className="mt-3 sm:mt-4 flex flex-col justify-between items-center">
-                      <div className="flex items-center mb-2 gap-1">
+                    <div className="mt-3 sm:mt-4 flex flex-col sm:flex-row justify-between items-center gap-2">
+                      <div className="flex items-center gap-1">
                         {product.original_price && product.original_price > 0 && (
                           <span className="font-bold text-lg text-black line-through">
                             {formatPrice(product.original_price)}
                           </span>
                         )}
-                        <span className="font-bold text-xl text-black mr-2">
+                        <span className="font-bold text-xl text-black">
                           {formatPrice(product.sale_price || 0)}
                         </span>
                       </div>

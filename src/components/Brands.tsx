@@ -161,7 +161,7 @@ export default function Brands() {
     <div className="container mx-auto py-6 sm:py-10 text-black">
       {/* Header with arrows */}
       <div className="flex justify-between items-center mb-6 sm:mb-8 px-1 sm:px-20">
-        <h1 className="text-2xl sm:text-3xl font-bold text-black">Featured Brands</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold text-black ml-2 sm:ml-0">Featured Brands</h1>
         <div className="flex space-x-4">
           <button 
             onClick={scrollLeft}
@@ -205,7 +205,7 @@ export default function Brands() {
           >
             {/* First set of brands for infinite scroll */}
             {brands.map((brand) => (
-              <div key={`first-${brand.id}`} className="flex-shrink-0 flex flex-col items-center">
+              <div key={`first-${brand.id}`} className="flex-shrink-0 flex flex-col items-center pt-2 pb-1 sm:pt-0 sm:pb-0">
                 <div
                   className="flex items-center justify-center bg-white shadow-md hover:shadow-lg transition-all rounded-lg p-4 sm:p-5 h-28 sm:h-32 w-36 sm:w-40 cursor-pointer"
                   onClick={() => handleBrandClick(brand.name)}
@@ -228,7 +228,7 @@ export default function Brands() {
             
             {/* Second set of brands for infinite scroll */}
             {brands.map((brand) => (
-              <div key={`second-${brand.id}`} className="flex-shrink-0 flex flex-col items-center">
+              <div key={`second-${brand.id}`} className="flex-shrink-0 flex flex-col items-center pt-2 pb-1 sm:pt-0 sm:pb-0">
                 <div
                   className="flex items-center justify-center bg-white shadow-md hover:shadow-lg transition-all rounded-lg p-4 sm:p-5 h-28 sm:h-32 w-36 sm:w-40 cursor-pointer"
                   onClick={() => handleBrandClick(brand.name)}

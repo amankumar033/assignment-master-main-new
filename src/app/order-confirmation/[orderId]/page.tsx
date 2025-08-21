@@ -6,6 +6,12 @@ import { useAuth } from '@/contexts/AuthContext';
 import LoadingPage from '@/components/LoadingPage';
 import { formatPrice } from '@/utils/priceUtils';
 
+// Function to strip HTML tags from text
+const stripHtmlTags = (html: string): string => {
+  if (!html) return '';
+  return html.replace(/<[^>]*>/g, '');
+};
+
 type OrderDetails = {
   order_id: number;
   user_id: number;
@@ -125,7 +131,9 @@ const OrderConfirmationPage = () => {
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center space-x-2 text-sm text-black mb-4">
-          <Link href="/" className="hover:text-gray-700">Home</Link>
+          <Link href="/profile?tab=orders" className="hover:text-gray-700">Recent Orders</Link>
+          <span>/</span>
+          <Link href="/orders" className="hover:text-gray-700">View All</Link>
           <span>/</span>
           <span className="text-black">Order Confirmation</span>
         </div>
@@ -153,8 +161,8 @@ const OrderConfirmationPage = () => {
           <div className="flex items-start space-x-4">
             <div className="flex-1">
               <h3 className="text-lg font-semibold text-black mb-2">{orderDetails.product_name}</h3>
-              <p className="text-gray-600 mb-3">{orderDetails.product_description}</p>
-              <div className="grid grid-cols-2 gap-4 text-sm">
+              <p className="text-gray-600 mb-3">{stripHtmlTags(orderDetails.product_description)}</p>
+              <div className="flex flex-col sm:grid sm:grid-cols-2 gap-2 sm:gap-4 text-sm">
                 <div>
                   <span className="text-gray-600">Quantity:</span>
                   <span className="ml-2 font-medium text-black">{orderDetails.quantity}</span>
@@ -301,7 +309,7 @@ const OrderConfirmationPage = () => {
             Continue Shopping
           </Link>
           <Link 
-            href="/profile"
+            href="/profile?tab=orders"
             className="flex-1 bg-gray-600 text-white py-3 px-6 rounded-lg hover:bg-gray-700 transition text-center font-medium"
           >
             View My Orders

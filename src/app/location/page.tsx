@@ -524,7 +524,7 @@ const LocationPage = () => {
                 : `No services found for pincode ${pincode} within ${selectedDistance === 'any' ? 'any distance' : selectedDistance + ' km'}.`
               }
             </p>
-            <div className="flex gap-4 justify-center">
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <button
                 onClick={() => {
                   setSelectedDistance('any');
@@ -534,13 +534,13 @@ const LocationPage = () => {
                     fetchServicesByPincode();
                   }
                 }}
-                className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition"
+                className="w-full sm:w-auto bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition"
               >
                 Search All Services
               </button>
               <button
                 onClick={resetToInitialState}
-                className="text-gray-700 hover:text-gray-900 text-sm underline"
+                className="w-full sm:w-auto text-gray-700 hover:text-gray-900 text-sm underline"
               >
                 ← Back to location options
               </button>
@@ -804,18 +804,108 @@ const LocationPage = () => {
                 {/* Right Column - Services */}
                 <div className="flex-1">
                   {/* Services Grid Header */}
-                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-2">
-                    <h2 className="text-xl sm:text-2xl font-bold text-black">Services</h2>
-                    <div className="text-sm text-gray-700">
-                      Showing {filteredServices.length} of {services.length} services 
-                      {filteringMode === 'all_services' ? ' (all distances)' : ` (within ${selectedDistance} km)`}
-                      {filteringMode === 'all_services' && (
-                        <span className="ml-2 px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded">
+                  <div className="flex flex-col gap-2 mb-6">
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                      <h2 className="text-xl sm:text-2xl font-bold text-black">Services</h2>
+                      <div className="text-sm text-gray-700">
+                        Showing {filteredServices.length} of {services.length} services 
+                        {filteringMode === 'all_services' ? ' (all distances)' : ` (within ${selectedDistance} km)`}
+                      </div>
+                    </div>
+                    {filteringMode === 'all_services' && (
+                      <div className="flex justify-start">
+                        <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded">
                           All Services Mode
                         </span>
-                      )}
-                    </div>
+                      </div>
+                    )}
                   </div>
+
+                  {/* Active Filters */}
+                  {(selectedCategories.length > 0 || selectedTypes.length > 0 || priceRange < Math.max(...services.map(s => Number(s.base_price))) || availableOnly || selectedDistance !== '10') && (
+                    <div className="mb-4 p-3 sm:p-4 bg-gray-50 rounded-lg">
+                      <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
+                        <span className="text-sm font-medium text-gray-700 whitespace-nowrap">Active Filters:</span>
+                        
+                        <div className="flex flex-wrap items-center gap-2">
+                          {/* Distance Filter */}
+                          {selectedDistance !== '10' && (
+                            <span className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded">
+                              {selectedDistance === 'any' ? 'All Distances' : `${selectedDistance} km radius`}
+                              <button
+                                onClick={() => setSelectedDistance('10')}
+                                className="ml-1 hover:text-blue-600"
+                              >
+                                ×
+                              </button>
+                            </span>
+                          )}
+
+                          {/* Category Filters */}
+                          {selectedCategories.map(category => (
+                            <span key={category} className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 text-green-800 text-xs rounded">
+                              Category: {category}
+                              <button
+                                onClick={() => toggleCategory(category)}
+                                className="ml-1 hover:text-green-600"
+                              >
+                                ×
+                              </button>
+                            </span>
+                          ))}
+
+                          {/* Type Filters */}
+                          {selectedTypes.map(type => (
+                            <span key={type} className="inline-flex items-center gap-1 px-2 py-1 bg-purple-100 text-purple-800 text-xs rounded">
+                              Type: {type}
+                              <button
+                                onClick={() => toggleType(type)}
+                                className="ml-1 hover:text-purple-600"
+                              >
+                                ×
+                              </button>
+                            </span>
+                          ))}
+
+                          {/* Price Filter */}
+                          {priceRange < Math.max(...services.map(s => Number(s.base_price))) && (
+                            <span className="inline-flex items-center gap-1 px-2 py-1 bg-orange-100 text-orange-800 text-xs rounded">
+                              Max Price: ₹{priceRange}
+                              <button
+                                onClick={() => setPriceRange(Math.max(...services.map(s => Number(s.base_price))))}
+                                className="ml-1 hover:text-orange-600"
+                              >
+                                ×
+                              </button>
+                            </span>
+                          )}
+
+                          {/* Available Only Filter */}
+                          {availableOnly && (
+                            <span className="inline-flex items-center gap-1 px-2 py-1 bg-red-100 text-red-800 text-xs rounded">
+                              Available Only
+                              <button
+                                onClick={() => setAvailableOnly(false)}
+                                className="ml-1 hover:text-red-600"
+                              >
+                                ×
+                              </button>
+                            </span>
+                          )}
+
+                          {/* Clear All Filters Button */}
+                          {(selectedCategories.length > 0 || selectedTypes.length > 0 || priceRange < Math.max(...services.map(s => Number(s.base_price))) || availableOnly || selectedDistance !== '10') && (
+                            <button
+                              onClick={clearAllFilters}
+                              className="text-xs text-gray-600 hover:text-gray-800 underline"
+                            >
+                              Clear All
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
 
                   {/* Services Grid */}
                   {filteredServices.length > 0 ? (
@@ -834,9 +924,9 @@ const LocationPage = () => {
                                 Unavailable
                               </div>
                             )}
-                            {service.distance && (
+                            {service.distance !== null && service.distance !== undefined && (
                               <div className="absolute top-2 left-2 bg-green-500 text-white text-xs px-2 py-1 rounded">
-                                {service.distance} km
+                                {service.distance === 0 ? 'Nearby' : `${service.distance} km`}
                               </div>
                             )}
                           </div>

@@ -153,9 +153,9 @@ const ServiceConfirmationPage = () => {
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center space-x-2 text-sm text-black mb-4">
-          <Link href="/" className="hover:text-gray-700">Home</Link>
+          <Link href="/profile" className="hover:text-gray-700">Profile</Link>
           <span>/</span>
-          <Link href="/location" className="hover:text-gray-700">Services</Link>
+          <Link href="/service-bookings" className="hover:text-gray-700">All Services</Link>
           <span>/</span>
           <span className="text-black">Service Confirmation</span>
         </div>

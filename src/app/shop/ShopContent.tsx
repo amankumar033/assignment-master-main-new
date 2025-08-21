@@ -331,6 +331,14 @@ export default function ShopContent() {
     };
   }, []);
 
+  // Fetch products when filters change
+  useEffect(() => {
+    // Only fetch if we have categories loaded (to avoid initial fetch)
+    if (categories.length > 0) {
+      fetchProducts();
+    }
+  }, [selectedCategories, selectedSubcategories, selectedBrands, selectedSubBrands, selectedRatings, priceRange, inStockOnly, searchQuery]);
+
   // Carousel navigation
   // const nextSlide = () => {
   //   setStartIndex(prev => 
@@ -466,6 +474,139 @@ export default function ShopContent() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Active Filters Display */}
+        {(selectedCategories.length > 0 || selectedSubcategories.length > 0 || selectedBrands.length > 0 || selectedSubBrands.length > 0 || selectedRatings.length > 0 || priceRange[0] > 0 || priceRange[1] < 1000 || inStockOnly || searchQuery) && (
+          <div className="mb-6 p-3 sm:p-4 bg-gray-50 rounded-lg">
+            <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
+              <span className="text-sm font-medium text-gray-700 whitespace-nowrap">Active Filters:</span>
+              
+              <div className="flex flex-wrap items-center gap-2">
+                {/* Category Filters */}
+                {selectedCategories.map(category => (
+                  <span key={category} className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded">
+                    Category: {category}
+                    <button 
+                      onClick={() => toggleFilterOption(category, selectedCategories, setSelectedCategories)} 
+                      className="ml-1 hover:text-blue-600"
+                    >
+                      ×
+                    </button>
+                  </span>
+                ))}
+                
+                {/* Subcategory Filters */}
+                {selectedSubcategories.map(subcategory => (
+                  <span key={subcategory} className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 text-green-800 text-xs rounded">
+                    Subcategory: {subcategory}
+                    <button 
+                      onClick={() => toggleFilterOption(subcategory, selectedSubcategories, setSelectedSubcategories)} 
+                      className="ml-1 hover:text-green-600"
+                    >
+                      ×
+                    </button>
+                  </span>
+                ))}
+                
+                {/* Brand Filters */}
+                {selectedBrands.map(brand => (
+                  <span key={brand} className="inline-flex items-center gap-1 px-2 py-1 bg-purple-100 text-purple-800 text-xs rounded">
+                    Brand: {brand}
+                    <button 
+                      onClick={() => toggleFilterOption(brand, selectedBrands, setSelectedBrands)} 
+                      className="ml-1 hover:text-purple-600"
+                    >
+                      ×
+                    </button>
+                  </span>
+                ))}
+                
+                {/* Sub-brand Filters */}
+                {selectedSubBrands.map(subBrand => (
+                  <span key={subBrand} className="inline-flex items-center gap-1 px-2 py-1 bg-indigo-100 text-indigo-800 text-xs rounded">
+                    Sub-brand: {subBrand}
+                    <button 
+                      onClick={() => toggleFilterOption(subBrand, selectedSubBrands, setSelectedSubBrands)} 
+                      className="ml-1 hover:text-indigo-600"
+                    >
+                      ×
+                    </button>
+                  </span>
+                ))}
+                
+                {/* Rating Filters */}
+                {selectedRatings.map(rating => (
+                  <span key={rating} className="inline-flex items-center gap-1 px-2 py-1 bg-yellow-100 text-yellow-800 text-xs rounded">
+                    Rating: {rating}★ & up
+                    <button 
+                      onClick={() => toggleRating(rating)} 
+                      className="ml-1 hover:text-yellow-600"
+                    >
+                      ×
+                    </button>
+                  </span>
+                ))}
+                
+                {/* Price Range Filter */}
+                {(priceRange[0] > 0 || priceRange[1] < 1000) && (
+                  <span className="inline-flex items-center gap-1 px-2 py-1 bg-orange-100 text-orange-800 text-xs rounded">
+                    Price: ₹{priceRange[0]} - ₹{priceRange[1]}
+                    <button 
+                      onClick={() => setPriceRange([0, 1000])} 
+                      className="ml-1 hover:text-orange-600"
+                    >
+                      ×
+                    </button>
+                  </span>
+                )}
+                
+                {/* In Stock Only Filter */}
+                {inStockOnly && (
+                  <span className="inline-flex items-center gap-1 px-2 py-1 bg-red-100 text-red-800 text-xs rounded">
+                    In Stock Only
+                    <button 
+                      onClick={() => setInStockOnly(false)} 
+                      className="ml-1 hover:text-red-600"
+                    >
+                      ×
+                    </button>
+                  </span>
+                )}
+                
+                {/* Search Query Filter */}
+                {searchQuery && (
+                  <span className="inline-flex items-center gap-1 px-2 py-1 bg-gray-100 text-gray-800 text-xs rounded">
+                    Search: "{searchQuery}"
+                    <button 
+                      onClick={() => setSearchQuery('')} 
+                      className="ml-1 hover:text-gray-600"
+                    >
+                      ×
+                    </button>
+                  </span>
+                )}
+                
+                {/* Clear All Filters Button */}
+                <button
+                  onClick={() => {
+                    setSelectedCategories([]);
+                    setSelectedSubcategories([]);
+                    setSelectedBrands([]);
+                    setSelectedSubBrands([]);
+                    setSelectedRatings([]);
+                    setPriceRange([0, 1000]);
+                    setInStockOnly(false);
+                    setSearchQuery('');
+                    setBrandSearch('');
+                  }}
+                  className="text-xs text-gray-600 hover:text-gray-800 underline"
+                >
+                  Clear All
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="flex flex-col lg:flex-row gap-8">
           {/* Sidebar Filters */}
           <div className="lg:w-1/4">

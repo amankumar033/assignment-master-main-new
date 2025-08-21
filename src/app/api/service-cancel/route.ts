@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { notificationIdGenerator } from '@/lib/notificationIdGenerator';
+import { createNotification } from '@/lib/notifications';
 import { sendServiceCancellationEmail } from '@/lib/email';
 
 export async function POST(request: NextRequest) {
@@ -69,6 +70,7 @@ export async function POST(request: NextRequest) {
     // Kick off notifications and emails asynchronously so the response returns fast
     setTimeout(async () => {
       try {
+        // Create notification for the customer (user)
         await notificationIdGenerator.createNotification({
           user_id: user_id,
           notification_type: 'service_cancelled',
@@ -80,15 +82,34 @@ export async function POST(request: NextRequest) {
         console.error('❌ Error creating customer notification:', notificationError);
       }
 
+      // Create vendor notification using the proper vendor notification system
       if (order.vendor_id) {
         try {
-          await notificationIdGenerator.createNotification({
-            user_id: order.vendor_id,
-            notification_type: 'service_cancelled',
+          const vendorSuccess = await createNotification({
+            type: 'service_cancelled',
             title: `Service Cancelled #${order.service_order_id} - ${order.customer_name}`,
-            message: `Service booking "${order.service_name}" has been cancelled by ${order.customer_name}. Scheduled for ${order.service_date} at ${order.service_time}.`
+            message: `Service booking "${order.service_name}" has been cancelled by ${order.customer_name}`,
+            description: `Service booking "${order.service_name}" has been cancelled by ${order.customer_name}. Service was scheduled for ${order.service_date} at ${order.service_time}. Customer: ${order.customer_email}.`,
+            for_admin: 0,
+            for_dealer: 0,
+            for_vendor: 1,
+            vendor_id: order.vendor_id,
+            metadata: {
+              service_order_id: order.service_order_id,
+              service_name: order.service_name,
+              customer_name: order.customer_name,
+              customer_email: order.customer_email,
+              service_date: order.service_date,
+              service_time: order.service_time,
+              cancellation_date: new Date().toISOString()
+            }
           });
-          console.log('✅ Vendor notification created for service cancellation');
+          
+          if (vendorSuccess) {
+            console.log('✅ Vendor notification created for service cancellation');
+          } else {
+            console.log('❌ Failed to create vendor notification');
+          }
         } catch (notificationError) {
           console.error('❌ Error creating vendor notification:', notificationError);
         }

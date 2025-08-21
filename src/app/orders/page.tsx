@@ -7,6 +7,12 @@ import LoadingPage from '@/components/LoadingPage';
 import { useToast } from '@/contexts/ToastContext';
 import { formatPrice, formatPriceNumber } from '@/utils/priceUtils';
 
+// Function to strip HTML tags from text
+const stripHtmlTags = (html: string): string => {
+  if (!html) return '';
+  return html.replace(/<[^>]*>/g, '');
+};
+
 type Order = {
   order_id: number;
   user_id: number;
@@ -208,13 +214,15 @@ const OrdersPage = () => {
     <div className="min-h-screen bg-gray-50 py-8">
         <div className="max-w-6xl sm:mx-auto sm:px-6 lg:px-8">
         <div className="flex items-center space-x-2 text-sm ml-2 sm:ml-0 text-black mb-6">
-          <Link href="/" className="hover:text-gray-700">Home</Link>
+          <Link href="/profile" className="hover:text-gray-700">Profile</Link>
           <span>/</span>
-          <span className="text-black">My Orders</span>
+          <Link href="/profile?tab=orders" className="hover:text-gray-700">Recent Orders</Link>
+          <span>/</span>
+          <span className="text-black">All Orders</span>
         </div>
 
         <div className="mb-6">
-          <h1 className="text-3xl ml-2 sm:ml-0 font-bold text-gray-800">Recent Orders</h1>
+          <h1 className="text-3xl ml-2 sm:ml-0 font-bold text-gray-800">All Orders</h1>
         </div>
 
         {orders.length === 0 ? (
@@ -369,7 +377,7 @@ const OrdersPage = () => {
                       )}
                       <div className="flex-1">
                         <h5 className="font-bold text-gray-800 text-lg mb-1">{order.product_name}</h5>
-                        <p className="text-gray-600 text-sm mb-3">{order.product_description}</p>
+                        <p className="text-gray-600 text-sm mb-3">{stripHtmlTags(order.product_description)}</p>
                         <div className="flex items-center justify-between">
                           <span className="text-sm text-gray-600 bg-gray-100 px-2 py-1 rounded">
                             Qty: {order.quantity}
@@ -473,7 +481,7 @@ const OrdersPage = () => {
                           <p className="text-gray-600 mb-6">
                             Are you sure you want to cancel this order? This action cannot be undone.
                           </p>
-                          <div className="flex space-x-3">
+                          <div className="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-3">
                             <button
                               onClick={closeCancelConfirmation}
                               className="flex-1 bg-gray-200 text-gray-800 py-2 px-4 rounded-lg hover:bg-gray-300 transition-colors font-medium"

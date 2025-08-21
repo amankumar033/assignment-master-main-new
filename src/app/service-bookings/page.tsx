@@ -172,16 +172,16 @@ const ServiceBookingsPage = () => {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-amber-50 py-8">
       <div className="w-full max-w-7xl mx-auto px-2 sm:px-4 lg:px-6">
         <div className="flex items-center space-x-2 text-sm text-gray-600 mb-6">
-          <Link href="/" className="hover:text-amber-600 transition-colors">Home</Link>
-          <span className="text-gray-400">/</span>
           <Link href="/profile" className="hover:text-amber-600 transition-colors">Profile</Link>
           <span className="text-gray-400">/</span>
-          <span className="text-amber-700 font-medium">Service Bookings</span>
+          <Link href="/profile?tab=service-bookings" className="hover:text-amber-600 transition-colors">Recent Services</Link>
+          <span className="text-gray-400">/</span>
+          <span className="text-amber-700 font-medium">All Services</span>
         </div>
 
         <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-4xl font-bold text-gray-800 mb-2">Service Bookings</h1>
+            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-800 mb-2"> All Services</h1>
             <p className="text-gray-600">Manage and track your service appointments</p>
           </div>
         

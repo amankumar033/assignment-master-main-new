@@ -64,8 +64,8 @@ export default function ShopPage() {
   const searchParams = useSearchParams();
   const { addToCart, cartItems, loadingItems } = useCart();
 
-  const [startIndex, setStartIndex] = useState(0);
-  const [visibleItems, setVisibleItems] = useState(12);
+
+
   const [activeFilter, setActiveFilter] = useState<number | null>(null);
   
   // Data states
@@ -747,35 +747,36 @@ export default function ShopPage() {
 
 
 
-  // Update visible items based on screen size
-  useEffect(() => {
-    const updateVisibleItems = () => {
-      if (window.innerWidth >= 1024) {
-        setVisibleItems(4); // Desktop: show 4 items (larger cards)
-      } else if (window.innerWidth >= 768) {
-        setVisibleItems(3); // Tablet: show 3 items
-      } else {
-        setVisibleItems(2); // Mobile: show 2 items
-      }
-    };
 
-    updateVisibleItems();
-    window.addEventListener('resize', updateVisibleItems);
-    return () => window.removeEventListener('resize', updateVisibleItems);
-  }, []);
+
+  const carouselRef = useRef<HTMLDivElement>(null);
 
   const nextSlide = () => {
-    setStartIndex((prevIndex) => {
-      const nextIndex = prevIndex + 1;
-      return nextIndex >= categories.length - visibleItems + 1 ? 0 : nextIndex;
-    });
+    if (carouselRef.current) {
+      // Calculate scroll amount based on screen size
+      const isMobile = window.innerWidth < 768;
+      const isTablet = window.innerWidth >= 768 && window.innerWidth < 1024;
+      
+      let scrollAmount = 160; // Default for desktop
+      if (isMobile) scrollAmount = 140; // Mobile: smaller items
+      if (isTablet) scrollAmount = 150; // Tablet: medium items
+      
+      carouselRef.current.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+    }
   };
 
   const prevSlide = () => {
-    setStartIndex((prevIndex) => {
-      const prevIndexNew = prevIndex - 1;
-      return prevIndexNew < 0 ? categories.length - visibleItems : prevIndexNew;
-    });
+    if (carouselRef.current) {
+      // Calculate scroll amount based on screen size
+      const isMobile = window.innerWidth < 768;
+      const isTablet = window.innerWidth >= 768 && window.innerWidth < 1024;
+      
+      let scrollAmount = -160; // Default for desktop
+      if (isMobile) scrollAmount = -140; // Mobile: smaller items
+      if (isTablet) scrollAmount = -150; // Tablet: medium items
+      
+      carouselRef.current.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+    }
   };
 
 
@@ -1021,53 +1022,57 @@ export default function ShopPage() {
         </div>
 
         {/* Carousel Container */}
-        <div className="relative overflow-hidden">
-                      {/* Right-side navigation arrows (icon-only) */}
-            {categories.length > visibleItems && (
-              <div className="absolute top-[6px] -translate-y-1/2 right-0 z-10 flex items-center gap-3 p-2">
-                <button
-                  type="button"
-                  onClick={prevSlide}
-                  onTouchStart={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    prevSlide();
-                  }}
-                  aria-label="Previous categories"
-                  className="p-2 text-gray-700 hover:text-black focus:outline-none touch-manipulation select-none"
-                  style={{ touchAction: 'manipulation' }}
-                >
-                  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-                  </svg>
-                </button>
-                <button
-                  type="button"
-                  onClick={nextSlide}
-                  onTouchStart={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    nextSlide();
-                  }}
-                  aria-label="Next categories"
-                  className="p-2 text-gray-700 hover:text-black focus:outline-none touch-manipulation select-none"
-                  style={{ touchAction: 'manipulation' }}
-                >
-                  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                  </svg>
-                </button>
-              </div>
-            )}
+        <div className="relative overflow-visible">
+          {/* Navigation arrows - hidden on mobile */}
+          {categories.length > 3 && (
+            <div className="hidden md:flex absolute top-[-40px] right-0 z-[9999] items-center gap-2">
+              <button
+                type="button"
+                onClick={prevSlide}
+                onTouchStart={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  prevSlide();
+                }}
+                aria-label="Previous categories"
+                className="w-10 h-10 bg-white/90 hover:bg-white border border-gray-200 rounded-full flex items-center justify-center text-gray-700 hover:text-black focus:outline-none focus:ring-2 focus:ring-blue-500 touch-manipulation select-none shadow-sm"
+                style={{ touchAction: 'manipulation' }}
+              >
+                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+                </svg>
+              </button>
+              <button
+                type="button"
+                onClick={nextSlide}
+                onTouchStart={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  nextSlide();
+                }}
+                aria-label="Next categories"
+                className="w-10 h-10 bg-white/90 hover:bg-white border border-gray-200 rounded-full flex items-center justify-center text-gray-700 hover:text-black focus:outline-none focus:ring-2 focus:ring-blue-500 touch-manipulation select-none shadow-sm"
+                style={{ touchAction: 'manipulation' }}
+              >
+                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
+            </div>
+          )}
 
-
-
+          {/* Horizontal Scrollable Container */}
           <div 
-            className="flex transition-transform duration-500 gap-2 sm:gap-4 py-4"
-            style={{ transform: `translateX(-${startIndex * (100/visibleItems)}%)` }}
+            ref={carouselRef}
+            className="flex gap-3 sm:gap-4 py-4 overflow-x-auto scrollbar-hide"
+            style={{ 
+              scrollbarWidth: 'none',
+              msOverflowStyle: 'none',
+              scrollBehavior: 'smooth'
+            }}
           >
             {categories.map((category) => (
-              <div key={category.category_id} className="relative">
+              <div key={category.category_id} className="relative flex-shrink-0">
                 <button
                   onClick={() => {
                     // Multiple category selection
@@ -1079,9 +1084,10 @@ export default function ShopPage() {
                     // Show loading state immediately
                     setLoading(true); // Resume after 3 seconds
                   }}
-                  className={`flex-shrink-0 w-[200px] sm:w-[200px] lg:w-[240px] gap-2 h-[80px] bg-white overflow-hidden flex items-center p-3 border rounded-lg cursor-pointer transition-all duration-200 ${selectedCategories.includes(category.slug) ? 'ring-2 ring-blue-500 bg-blue-50' : 'hover:bg-gray-50'}`}
+                  className={`w-[120px] sm:w-[140px] lg:w-[200px] bg-white overflow-hidden flex flex-col lg:flex-row lg:items-center p-3 border rounded-lg cursor-pointer transition-all duration-200 ${selectedCategories.includes(category.slug) ? 'ring-2 ring-blue-500 bg-blue-50' : 'hover:bg-gray-50'}`}
                 >
-                  <div className="w-[80px] h-[70px] relative mr-2 flex-shrink-0 bg-white  overflow-hidden">
+                  {/* Image - Left on desktop, centered on mobile */}
+                  <div className="w-[60px] h-[60px] sm:w-[70px] sm:h-[70px] lg:w-[50px] lg:h-[50px] relative mb-2 lg:mb-0 lg:mr-3 flex-shrink-0 bg-white overflow-hidden rounded-lg mx-auto lg:mx-0">
                     <Image
                       src={`/api/categories/image/${category.category_id}`}
                       alt={category.name}
@@ -1091,33 +1097,15 @@ export default function ShopPage() {
                       unoptimized
                     />
                   </div>
-                  <h3 className="text-sm sm:text-base lg:text-sm font-semibold text-gray-800 truncate flex-1">
+                  
+                  {/* Name - Centered on desktop, bottom on mobile */}
+                  <h3 className="text-xs sm:text-sm lg:text-base font-semibold text-gray-800 text-center leading-tight flex-1">
                     {category.name}
                   </h3>
                 </button>
               </div>
             ))}
           </div>
-
-          {/* Progress dots */}
-          {categories.length > visibleItems && (
-            <div className="flex justify-center mt-4 space-x-2">
-              {Array.from({ length: Math.ceil(categories.length / visibleItems) }, (_, i) => (
-                <button
-                  key={i}
-                  onClick={() => {
-                    setStartIndex(i * visibleItems);
-                  }}
-                  className={`w-2 h-2 rounded-full transition-all duration-200 ${
-                    i === Math.floor(startIndex / visibleItems) 
-                      ? 'bg-blue-500 w-4' 
-                      : 'bg-gray-300 hover:bg-gray-400'
-                  }`}
-                  aria-label={`Go to page ${i + 1}`}
-                />
-              ))}
-            </div>
-          )}
         </div>
       </div>
 
@@ -1695,7 +1683,7 @@ export default function ShopPage() {
                     </div>
                     <div className="p-3 sm:p-4 flex flex-col flex-grow">
                       <h3 className="font-semibold text-base sm:text-lg mb-1 line-clamp-2">{product.name}</h3>
-                      <p className="text-xs sm:text-sm text-gray-500 mb-1 line-clamp-1">{product.brand_name} • {product.category_name} • {product.stock_quantity} in stock</p>
+                      <p className="text-xs sm:text-sm text-gray-500 mb-1 line-clamp-1">{product.brand_name} • {product.category_name}</p>
                       {/* Rating */}
                       <div className="flex items-center mb-2">
                         {[...Array(5)].map((_, i) => (

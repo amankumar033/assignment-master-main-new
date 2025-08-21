@@ -287,12 +287,12 @@ const ServiceDetailPage = () => {
     <div className="min-h-screen bg-gray-50">
       {/* Booking Message */}
       {bookingMessage && (
-        <div className={`fixed top-4 right-4 z-50 p-4 rounded-md shadow-lg ${
+        <div className={`fixed top-4 right-2 sm:right-4 z-50 p-3 sm:p-4 rounded-md shadow-lg max-w-xs sm:max-w-sm ${
           bookingMessage.type === 'success' 
             ? 'bg-green-100 text-green-800 border border-green-300' 
             : 'bg-red-100 text-red-800 border border-red-300'
         }`}>
-          {bookingMessage.message}
+          <div className="text-xs sm:text-sm">{bookingMessage.message}</div>
         </div>
       )}
 

@@ -107,7 +107,7 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
         
         {/* Actions */}
         <div className="px-6 py-4 bg-gray-50 border-t border-gray-200">
-          <div className="flex space-x-3">
+          <div className="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-3">
             <button
               onClick={onCancel}
               disabled={isLoading}

@@ -513,11 +513,11 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
           const data = await resp.json();
           if (data?.success) {
             const dbStock: number = Number(data.stock_quantity) || 0;
-            // If cart qty exceeds db stock, clamp it locally
-            if (ci.quantity > dbStock) {
-              setCartItems(prev => prev.map(p => p.product_id === ci.product_id ? { ...p, quantity: Math.max(0, dbStock) } : p));
+            // If cart qty exceeds db stock, clamp it locally but don't clear the cart
+            if (ci.quantity > dbStock && dbStock > 0) {
+              setCartItems(prev => prev.map(p => p.product_id === ci.product_id ? { ...p, quantity: Math.max(1, dbStock) } : p));
               // Also persist
-              const updated = cartItems.map(p => p.product_id === ci.product_id ? { ...p, quantity: Math.max(0, dbStock) } : p);
+              const updated = cartItems.map(p => p.product_id === ci.product_id ? { ...p, quantity: Math.max(1, dbStock) } : p);
               persistLocalCart(updated);
               window.dispatchEvent(new CustomEvent('cartUpdated', { detail: { cartItems: updated } }));
               if (user?.user_id) scheduleCartSync(updated);
@@ -627,7 +627,7 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
     }
 
     // Show success message
-    showToast('success', `${item?.name} removed from cart`);
+    showToast('success', `${item?.name || 'Item'} removed from cart`);
 
     // Keep loading spinner briefly
     setTimeout(() => {

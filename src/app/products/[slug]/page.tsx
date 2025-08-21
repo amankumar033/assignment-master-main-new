@@ -815,7 +815,7 @@ const ProductDetailPage = () => {
                     {/* Image Counter */}
                     {images.length > 1 && (
                       <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 bg-black bg-opacity-50 text-white px-2 py-1 rounded-full text-sm">
-                        {currentImageIndex + 1} / {images.length}
+                        {Math.max(1, currentImageIndex + 1)} / {images.length}
                       </div>
                     )}
                   </>
@@ -824,11 +824,11 @@ const ProductDetailPage = () => {
             </div>
             
             {/* Hot Deal Badge */}
-            {product.is_hot_deal && (
+            {product.is_hot_deal ? (
               <div className="absolute top-4 left-4 bg-red-500 text-white px-3 py-1 rounded-full text-sm font-bold z-10">
                 HOT DEAL
               </div>
-            )}
+            ) : null}
             
             {/* Thumbnail Navigation */}
             {(() => {

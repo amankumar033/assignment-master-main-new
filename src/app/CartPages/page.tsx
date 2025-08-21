@@ -86,12 +86,12 @@ const CartPages = () => {
 
       {/* Toast Notification */}
       {toast && (
-        <div className={`fixed top-4 right-4 z-40 p-4 rounded-lg shadow-lg ${
+        <div className={`fixed top-4 right-2 sm:right-4 z-40 p-3 sm:p-4 rounded-lg shadow-lg max-w-xs sm:max-w-sm ${
           toast.type === 'success' ? 'bg-green-500 text-white' : 
           toast.type === 'error' ? 'bg-red-500 text-white' : 
           'bg-orange-500 text-white'
         }`}>
-          {toast.message}
+          <div className="text-xs sm:text-sm">{toast.message}</div>
         </div>
       )}
 

@@ -14,13 +14,12 @@ export async function POST() {
       message: 'Notification ID generated successfully',
       data: {
         notification_id: notificationId,
-        notification_number: NotificationIdGenerator.extractNotificationNumber(notificationId),
-        range_info: NotificationIdGenerator.getRangeInfo(NotificationIdGenerator.extractNotificationNumber(notificationId)),
+        notification_number: notificationId,
         statistics: {
           total_notifications: statistics.totalNotifications,
-          next_available_number: statistics.nextAvailableNumber,
-          used_ranges: statistics.usedRanges,
-          available_ranges: statistics.availableRanges,
+          max_id: statistics.maxId,
+          min_id: statistics.minId,
+          next_available_id: statistics.nextAvailableId,
           gaps: statistics.gaps
         }
       }
@@ -54,16 +53,11 @@ export async function GET() {
       message: 'Notification ID statistics retrieved successfully',
       data: {
         total_notifications: statistics.totalNotifications,
-        next_available_number: statistics.nextAvailableNumber,
-        used_ranges: statistics.usedRanges,
-        available_ranges: statistics.availableRanges,
+        max_id: statistics.maxId,
+        min_id: statistics.minId,
+        next_available_id: statistics.nextAvailableId,
         gaps: statistics.gaps,
-        range_explanation: {
-          range_1: 'NOT001 to NOT010',
-          range_2: 'NOT011 to NOT020',
-          range_3: 'NOT021 to NOT030',
-          '...': 'And so on...'
-        }
+        explanation: 'Integer-based notification IDs (1, 2, 3, ...)'
       }
     };
     
