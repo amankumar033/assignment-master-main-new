@@ -124,7 +124,7 @@ export const ToastContainer: React.FC = () => {
   const { toasts, hideToast } = useToast();
 
   return (
-    <div className="fixed top-4 right-2 sm:right-4 z-50 space-y-2">
+    <div className="fixed top-4 right-2 sm:right-4 z-[9999999] space-y-2" style={{ zIndex: 9999999 }}>
       {toasts.map((toast) => (
         <Toast
           key={toast.id}

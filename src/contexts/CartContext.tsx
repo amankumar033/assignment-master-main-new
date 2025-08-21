@@ -207,7 +207,7 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
           if (finalQuantity < totalQuantity && finalQuantity > 0) {
             showToast('warning', `${existingItem.name} quantity adjusted to available stock (${finalQuantity})`);
           } else if (finalQuantity === 0 && availableStock === 0) {
-            showToast('warning', `${existingItem.name} is out of stock and removed from cart`);
+            showToast('warning', `${existingItem.name || 'Product'} is out of stock and removed from cart`);
           }
         } else if (existingItem) {
           // Only in user cart
@@ -231,7 +231,7 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
           if (finalQuantity < guestItem.quantity && finalQuantity > 0) {
             showToast('warning', `${guestItem.name} quantity adjusted to available stock (${finalQuantity})`);
           } else if (finalQuantity === 0 && availableStock === 0) {
-            showToast('warning', `${guestItem.name} is out of stock and removed from cart`);
+            showToast('warning', `${guestItem.name || 'Product'} is out of stock and removed from cart`);
           }
         }
       }
@@ -461,16 +461,21 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
         stock_quantity: dbStock !== null ? dbStock : newCartItems[existingItemIndex].stock_quantity
       };
       if (allowedQty > existingItem!.quantity) {
-        showToast('success', `${item.name} quantity updated in cart`);
-      } else if (dbStock !== null && existingItem!.quantity >= dbStock) {
-        showToast('warning', 'Reached available stock');
+        showToast('success', `${item.name || 'Product'} quantity updated in cart`);
+      } else if (allowedQty <= existingItem!.quantity) {
+        // Check if it's because we're already at max stock
+        if (dbStock !== null && existingItem!.quantity >= dbStock) {
+          showToast('warning', 'Reached available stock');
+        } else {
+          showToast('info', `${item.name || 'Product'} is already at maximum quantity in cart`);
+        }
       }
     } else {
       const initialQty = Math.min(1, dbStock === null ? 1 : Math.max(0, dbStock));
       const itemStock = dbStock !== null ? dbStock : (item as any).stock_quantity;
       newCartItems = [...cartItems, { ...item, quantity: initialQty, stock_quantity: typeof itemStock === 'number' ? itemStock : undefined }];
       if (initialQty > 0) {
-        showToast('success', `${item.name} added to cart`);
+        showToast('success', `${item.name || 'Product'} added to cart`);
       } else {
         showToast('error', 'This product is out of stock');
       }
@@ -570,12 +575,12 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
         ci.product_id === productId ? { ...ci, quantity, stock_quantity: (dbStock !== null ? dbStock : ci.stock_quantity) } : ci
       );
       if (quantity !== currentQty) {
-        showToast('success', `${item?.name} quantity updated to ${quantity}`);
+        showToast('success', `${item?.name || 'Product'} quantity updated to ${quantity}`);
       }
     } else {
       // Remove item if quantity is 0 or less
       newCartItems = cartItems.filter(item => item.product_id !== productId);
-      showToast('success', `${item?.name} removed from cart`);
+      showToast('success', `${item?.name || 'Product'} removed from cart`);
     }
 
     // Update UI immediately
@@ -627,7 +632,7 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
     }
 
     // Show success message
-    showToast('success', `${item?.name || 'Item'} removed from cart`);
+    showToast('success', `${item?.name || 'Product'} removed from cart`);
 
     // Keep loading spinner briefly
     setTimeout(() => {

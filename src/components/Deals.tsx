@@ -15,7 +15,7 @@ import ProductSkeleton from './ProductSkeleton';
 const Deals = () => {
   const router = useRouter();
   const { user, isLoggedIn } = useAuth();
-  const { cartItems, addToCart, loadingItems } = useCart();
+  const { cartItems, addToCart, removeFromCart, loadingItems } = useCart();
   const { showToast } = useToast();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -175,8 +175,7 @@ const Deals = () => {
       name: product.name || 'Product',
       price: product.sale_price,
       image: product.image_1,
-      stock_quantity: Number(product.stock_quantity) || 0,
-      product: product
+      stock_quantity: Number(product.stock_quantity) || 0
     });
   };
 
@@ -213,7 +212,7 @@ const Deals = () => {
           handleAddToCart(product, e);
         }}
         disabled={isLoading}
-        className={`relative z-10 font-bold transition-all duration-200 px-4 py-2 text-lg ${isLoading ? 'cursor-wait text-gray-400' : 'hover:text-amber-700 text-[#034c8c] cursor-pointer'}`}
+        className={`relative z-10 font-bold px-4 py-2 text-lg ${isLoading ? 'cursor-wait text-gray-400' : 'text-[#034c8c] cursor-pointer'}`}
       >
         {isLoading ? (
           <span className="inline-flex items-center gap-2">
@@ -222,7 +221,7 @@ const Deals = () => {
           </span>
         ) : (
           <span className="flex items-center justify-center gap-1 whitespace-nowrap">
-            <span>{productStatus.text}</span> <span className='text-xl font-bold'>➜</span>
+            {productStatus.text} <span className='text-xl font-bold'>➜</span>
           </span>
         )}
       </button>
@@ -384,8 +383,8 @@ const Deals = () => {
                       <span className="text-lg text-black ml-1">({Number(product.rating || 0).toFixed(1)})</span>
                     </div>
                     
-                    {/* Price and Add to Cart */}
-                    <div className="mt-3 sm:mt-4 flex flex-col sm:flex-row justify-between items-center gap-2">
+                    {/* Price Row */}
+                    <div className="mt-3 sm:mt-4 flex justify-center">
                       <div className="flex items-center gap-1">
                         {product.original_price && product.original_price > 0 && (
                           <span className="font-bold text-lg text-black line-through">
@@ -396,7 +395,10 @@ const Deals = () => {
                           {formatPrice(product.sale_price || 0)}
                         </span>
                       </div>
+                    </div>
 
+                    {/* Add to Cart Row */}
+                    <div className="mt-2 flex justify-center">
                       {renderActionButton(product)}
                     </div>
                   </div>

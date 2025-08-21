@@ -165,7 +165,7 @@ const Products = () => {
     // Add to cart with optimized call
     addToCart({
       product_id: product.product_id,
-      name: product.name,
+      name: product.name || 'Product',
       price: product.sale_price,
       image: product.image_1,
       stock_quantity: Number(product.stock_quantity) || 0
@@ -214,7 +214,7 @@ const Products = () => {
           </span>
         ) : (
           <>
-            {productStatus.text} <span className='text-xl font-bold text-center'>➜</span>
+            Add to Cart <span className='text-xl font-bold text-center'>➜</span>
           </>
         )}
       </button>
